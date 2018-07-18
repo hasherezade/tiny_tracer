@@ -17,81 +17,21 @@
 #include <set>
 #include <map>
 
+#include "ProcessInfo.h"
+
 #define TOOL_NAME "TinyTracer"
 #ifndef PAGE_SIZE
     #define PAGE_SIZE 0x1000
 #endif
-#define UNKNOWN_ADDR (-1)
+
+FILE *m_BlocksFile = nullptr;
 
 /* ================================================================== */
 // Global variables 
 /* ================================================================== */
 
-std::string m_AnalysedApp;
+ProcessInfo pInfo;
 std::string m_Param;
-FILE *m_BlocksFile = NULL;	// output
-
-INT m_myPid = 0;		//PID of application
-std::string m_PidFileName;
-
-std::set<ADDRINT> m_blocks;	// set of unique blocks addresses
-
-struct s_module {
-    std::string name;
-    ADDRINT start;
-    ADDRINT end;
-};
-
-std::map<ADDRINT, s_module> m_Modules;
-std::map<ADDRINT, s_module> m_Sections;
-
-const s_module* getModuleByAddr(ADDRINT Address, std::map<ADDRINT, s_module> &modules)
-{
-    std::map<ADDRINT, s_module>::iterator bound = modules.upper_bound(Address);
-    std::map<ADDRINT, s_module>::iterator itr = modules.begin();
-
-    for (; itr != bound; itr++) {
-        s_module &mod = itr->second;
-        if (Address >= mod.start && Address < mod.end) {
-            return &mod;
-        }
-    }
-    return NULL;
-}
-
-const bool isPageChanged(ADDRINT Address /* without imagebase */)
-{
-    static ADDRINT prevPageAddr = UNKNOWN_ADDR;
-
-    ADDRINT currPageAddr = (Address / PAGE_SIZE);
-    if (prevPageAddr == UNKNOWN_ADDR || prevPageAddr != currPageAddr) { // execution in different memory page!
-        prevPageAddr = currPageAddr;
-        return true;
-    }
-    return false;
-}
-
-const bool isSectionChanged(ADDRINT Address /* without imagebase */)
-{
-    static s_module* prevModule = NULL;
-    const s_module* currModule = getModuleByAddr(Address, m_Sections);
-
-    if (prevModule != currModule) {
-        prevModule = (s_module*)currModule;
-        return true;
-    }
-    return false;
-}
-
-bool isMyModule(const s_module* mod, std::string name)
-{
-    if (!mod) return false;
-    std::size_t found = mod->name.find(name);
-    if (found != std::string::npos) {
-        return true;
-    }
-    return false;
-}
 
 /* ===================================================================== */
 // Command line switches
@@ -112,7 +52,7 @@ KNOB<string> KnobModuleName(KNOB_MODE_WRITEONCE, "pintool",
 INT32 Usage()
 {
     cerr << "This tool prints out : " << endl <<
-        "Addresses of redirections into to a new section." << endl << endl;
+        "Addresses of redirections into to a new sections. Called API functions." << endl << endl;
 
     cerr << KNOB_BASE::StringKnobSummary() << endl;
     return -1;
@@ -127,6 +67,38 @@ INT32 Usage()
 * @param[in]   numInstInBbl    number of instructions in the basic block
 * @note use atomic operations for multi-threaded applications
 */
+
+void init_log(std::string fileName)
+{
+    if (fileName.empty()) fileName = "output.txt";
+
+    m_BlocksFile = fopen(fileName.c_str(), "w");
+}
+
+void log_call(const ADDRINT prevAddr, const string module, const string func="")
+{
+    fprintf(m_BlocksFile, "%p;called: %s:", prevAddr, module.c_str());
+    if (func.length() > 0) {
+        fprintf(m_BlocksFile, "%s", func.c_str());
+    }
+    fprintf(m_BlocksFile, "\n");
+    fflush(m_BlocksFile);
+}
+
+void log_call(const ADDRINT prevAddr, const ADDRINT callAddr)
+{
+    fprintf(m_BlocksFile, "%p;called module: ?? [%p];\n", prevAddr, callAddr);
+    fprintf(m_BlocksFile, "\n");
+    fflush(m_BlocksFile);
+}
+
+void log_section_change(ADDRINT addr, const s_module* sec)
+{
+    std::string name = (sec != NULL) ? sec->name : "?";
+    fprintf(m_BlocksFile, "%p;sec: %s\n", addr, name.c_str());
+    fflush(m_BlocksFile);
+}
+
 VOID SaveTranitions(ADDRINT Address, UINT32 numInstInBbl)
 {
     PIN_LockClient();
@@ -134,12 +106,11 @@ VOID SaveTranitions(ADDRINT Address, UINT32 numInstInBbl)
     static bool is_prevMy = false;
     static ADDRINT prevAddr = UNKNOWN_ADDR;
 
-    const s_module *mod_ptr = getModuleByAddr(Address, m_Modules);
-    bool is_currMy = isMyModule(mod_ptr, m_AnalysedApp);
+    const s_module *mod_ptr = pInfo.getModByAddr(Address);
+    bool is_currMy = pInfo.isMyAddress(Address);
 
     if (is_currMy == false && is_prevMy == true && prevAddr != UNKNOWN_ADDR) {
         if (mod_ptr) {
-            fprintf(m_BlocksFile, "%p;called module: %s:", prevAddr, mod_ptr->name.c_str());
 
             //PIN_LockClient();
             IMG pImg = IMG_FindByAddress(Address);
@@ -148,24 +119,23 @@ VOID SaveTranitions(ADDRINT Address, UINT32 numInstInBbl)
 
             if (IMG_Valid(pImg) && RTN_Valid(rtn)) {
                 const string func = RTN_Name(rtn);
-                fprintf(m_BlocksFile, "%s", func.c_str());
+                log_call(prevAddr, mod_ptr->name, func);
             }
-            fprintf(m_BlocksFile, "\n");
+            else {
+                log_call(prevAddr, mod_ptr->name);
+            }
 
         }
         else {
-            fprintf(m_BlocksFile, "%p;called module: ?? [%p];\n", prevAddr, Address);
+            log_call(prevAddr, Address);
         }
-        fflush(m_BlocksFile);
     }
 
     if (is_currMy) {
         ADDRINT addr = Address - mod_ptr->start; // substract module's ImageBase
-        const s_module* sec = getModuleByAddr(addr, m_Sections);
-        if (isSectionChanged(addr)) {
-            std::string name = (sec != NULL) ? sec->name : "?";
-            fprintf(m_BlocksFile, "%p;sec: %s\n", addr, name.c_str());
-            fflush(m_BlocksFile);
+        const s_module* sec = pInfo.getSecByAddr(addr);
+        if (pInfo.isSectionChanged(addr)) {
+            log_section_change(addr, sec);
         }
         prevAddr = addr; /* update saved */
     }
@@ -204,60 +174,9 @@ VOID Trace(TRACE trace, VOID *v)
     }
 }
 
-VOID BeforeFunction1Arg(CHAR * name, CHAR * filename)
-{
-    if (filename == NULL) return;
-    //>
-    PIN_LockClient();
-    fprintf(m_BlocksFile, "arg: %s\n", filename);
-    fflush(m_BlocksFile);
-    PIN_UnlockClient();
-    //<
-}
-
-VOID MonitorFunction1Arg(IMG Image, const char* funcName)
-{
-    RTN cfwRtn = RTN_FindByName(Image, funcName);
-    if (RTN_Valid(cfwRtn))
-    {
-        RTN_Open(cfwRtn);
-        RTN_InsertCall(cfwRtn, IPOINT_BEFORE, (AFUNPTR)BeforeFunction1Arg,
-            IARG_ADDRINT, funcName,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-            IARG_END
-        );
-        RTN_Close(cfwRtn);
-    }
-}
-
-
 VOID ImageLoad(IMG Image, VOID *v)
 {
-    // Add module into a global map
-    s_module mod;
-    mod.name = std::string(IMG_Name(Image));
-    mod.start = IMG_LowAddress(Image);
-    mod.end = IMG_HighAddress(Image);
-    m_Modules[mod.start] = mod;
-
-    if (m_myPid == 0 && isMyModule(&mod, m_AnalysedApp)) {
-        FILE *pidFile = fopen(m_PidFileName.c_str(), "w");
-        if (pidFile) {
-            m_myPid = PIN_GetPid();
-            fprintf(pidFile, "%d\n", m_myPid);
-            fclose(pidFile);
-        }
-
-        // enumerate sections within the analysed module
-        for (SEC sec = IMG_SecHead(Image); SEC_Valid(sec); sec = SEC_Next(sec)) {
-
-            s_module section;
-            section.name = SEC_Name(sec);
-            section.start = SEC_Address(sec) - mod.start;
-            section.end = section.start + SEC_Size(sec);
-            m_Sections[section.start] = section;
-        }
-    }
+    pInfo.addModule(Image);
     //---
     //MonitorFunction1Arg(Image, "LoadLibraryA");
 }
@@ -270,7 +189,6 @@ VOID ImageLoad(IMG Image, VOID *v)
 *                              including pin -t <toolname> -- ...
 */
 
-
 int main(int argc, char *argv[])
 {
     // Initialize PIN library. Print help message if -h(elp) is specified
@@ -281,13 +199,14 @@ int main(int argc, char *argv[])
     {
         return Usage();
     }
-
-    m_AnalysedApp = KnobModuleName.Value();
-    if (m_AnalysedApp.length() == 0) {
-        // init App Name (m_AnalysedApp):
+    
+    std::string app_name = KnobModuleName.Value();
+    
+    if (app_name.length() == 0) {
+        // init App Name:
         for (int i = 1; i < (argc - 1); i++) {
             if (strcmp(argv[i], "--") == 0) {
-                m_AnalysedApp = argv[i + 1];
+                app_name = argv[i + 1];
                 if (i + 2 < argc) {
                     m_Param = argv[i + 2];
                 }
@@ -295,12 +214,11 @@ int main(int argc, char *argv[])
             }
         }
     }
-    // init output file:
-    string fileName = KnobOutputFile.Value();
-    if (fileName.empty()) fileName = "output.txt";
 
-    m_BlocksFile = fopen(fileName.c_str(), "w");
-    m_PidFileName = fileName + ".pid";
+    pInfo = ProcessInfo(app_name);
+
+    // init output file:
+    init_log(KnobOutputFile.Value());
 
     // Register function to be called for every loaded module
     IMG_AddInstrumentFunction(ImageLoad, 0);
@@ -310,7 +228,7 @@ int main(int argc, char *argv[])
 
     cerr << "===============================================" << endl;
     cerr << "This application is instrumented by " << TOOL_NAME << endl;
-    cerr << "Tracing module: " << m_AnalysedApp << endl;
+    cerr << "Tracing module: " << app_name << endl;
     if (!KnobOutputFile.Value().empty())
     {
         cerr << "See file " << KnobOutputFile.Value() << " for analysis results" << endl;
