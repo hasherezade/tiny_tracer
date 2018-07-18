@@ -1,5 +1,5 @@
 /*
-* SectionsTracer, CC by: hasherezade@op.pl
+* TinyTracer, CC by: hasherezade@gmail.com
 * Runs with: Intel PIN (https://software.intel.com/en-us/articles/pin-a-dynamic-binary-instrumentation-tool)
 *
 * Prints to <output_file> addresses of transitions from one sections to another
