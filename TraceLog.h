@@ -2,20 +2,19 @@
 #include "pin.H"
 
 #include <iostream>
+#include <fstream>
 
 class TraceLog 
 {
 public:
     TraceLog()
     {
-        m_BlocksFile = nullptr;
     }
 
     ~TraceLog()
     {
-        if (m_BlocksFile) {
-            fclose(m_BlocksFile);
-            m_BlocksFile = nullptr;
+        if (m_traceFile.is_open()) {
+            m_traceFile.close();
         }
     }
 
@@ -33,10 +32,10 @@ public:
 protected:
     void createFile()
     {
-        if (m_BlocksFile) return;
-        m_BlocksFile = fopen(m_logFileName.c_str(), "w");
+        if (m_traceFile.is_open()) return;
+        m_traceFile.open(m_logFileName.c_str());
     }
 
-    FILE *m_BlocksFile;
     std::string m_logFileName;
+    std::ofstream m_traceFile;
 };

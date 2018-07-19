@@ -1,27 +1,39 @@
 #include "TraceLog.h"
 
+#define DELIMITER ';'
+
 void TraceLog::logCall(const ADDRINT prevAddr, const string module, const string func)
 {
     createFile();
-    fprintf(m_BlocksFile, "%p;called: %s:", prevAddr, module.c_str());
+    m_traceFile << 
+        std::hex << prevAddr 
+        << DELIMITER 
+        << "called: " << module;
     if (func.length() > 0) {
-        fprintf(m_BlocksFile, "%s", func.c_str());
+        m_traceFile << "." << func;
     }
-    fprintf(m_BlocksFile, "\n");
-    fflush(m_BlocksFile);
+    m_traceFile << std::endl;
+    m_traceFile.flush();
 }
 
 void TraceLog::logCall(const ADDRINT prevAddr, const ADDRINT callAddr)
 {
     createFile();
-    fprintf(m_BlocksFile, "%p;called: ?? [%p];\n", prevAddr, callAddr);
-    fprintf(m_BlocksFile, "\n");
-    fflush(m_BlocksFile);
+    m_traceFile << 
+        std::hex << prevAddr 
+        << DELIMITER 
+        << "called: ?? [" << callAddr << "]" 
+        << std::endl;
+    m_traceFile.flush();
 }
 
-void TraceLog::logSectionChange(const ADDRINT addr, std::string name)
+void TraceLog::logSectionChange(const ADDRINT prevAddr, std::string name)
 {
     createFile();
-    fprintf(m_BlocksFile, "%p;sec: %s\n", addr, name.c_str());
-    fflush(m_BlocksFile);
+    m_traceFile 
+        << std::hex << prevAddr 
+        << DELIMITER 
+        << "section: " << name 
+        << std::endl;
+    m_traceFile.flush();
 }
