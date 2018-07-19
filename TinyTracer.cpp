@@ -5,8 +5,8 @@
 * Prints to <output_file> addresses of transitions from one sections to another
 * (helpful in finding OEP of packed file)
 * args:
-* -m	<module_name> ; Analysed module name (by default same as app name)
-* -o	<output_path> Output file
+* -m    <module_name> ; Analysed module name (by default same as app name)
+* -o    <output_path> Output file
 *
 * saves PID in <output_file>.pid
 */
@@ -18,20 +18,19 @@
 #include <map>
 
 #include "ProcessInfo.h"
+#include "TraceLog.h"
 
 #define TOOL_NAME "TinyTracer"
 #ifndef PAGE_SIZE
     #define PAGE_SIZE 0x1000
 #endif
 
-FILE *m_BlocksFile = nullptr;
-
 /* ================================================================== */
 // Global variables 
 /* ================================================================== */
 
 ProcessInfo pInfo;
-std::string m_Param;
+TraceLog traceLog;
 
 /* ===================================================================== */
 // Command line switches
@@ -68,37 +67,6 @@ INT32 Usage()
 * @note use atomic operations for multi-threaded applications
 */
 
-void init_log(std::string fileName)
-{
-    if (fileName.empty()) fileName = "output.txt";
-
-    m_BlocksFile = fopen(fileName.c_str(), "w");
-}
-
-void log_call(const ADDRINT prevAddr, const string module, const string func="")
-{
-    fprintf(m_BlocksFile, "%p;called: %s:", prevAddr, module.c_str());
-    if (func.length() > 0) {
-        fprintf(m_BlocksFile, "%s", func.c_str());
-    }
-    fprintf(m_BlocksFile, "\n");
-    fflush(m_BlocksFile);
-}
-
-void log_call(const ADDRINT prevAddr, const ADDRINT callAddr)
-{
-    fprintf(m_BlocksFile, "%p;called module: ?? [%p];\n", prevAddr, callAddr);
-    fprintf(m_BlocksFile, "\n");
-    fflush(m_BlocksFile);
-}
-
-void log_section_change(ADDRINT addr, const s_module* sec)
-{
-    std::string name = (sec != NULL) ? sec->name : "?";
-    fprintf(m_BlocksFile, "%p;sec: %s\n", addr, name.c_str());
-    fflush(m_BlocksFile);
-}
-
 VOID SaveTranitions(ADDRINT Address, UINT32 numInstInBbl)
 {
     PIN_LockClient();
@@ -109,33 +77,33 @@ VOID SaveTranitions(ADDRINT Address, UINT32 numInstInBbl)
     const s_module *mod_ptr = pInfo.getModByAddr(Address);
     bool is_currMy = pInfo.isMyAddress(Address);
 
-    if (is_currMy == false && is_prevMy == true && prevAddr != UNKNOWN_ADDR) {
-        if (mod_ptr) {
-
-            //PIN_LockClient();
+    //is it a transition from the traced module to a foreign module?
+    if (!is_currMy && is_prevMy && prevAddr != UNKNOWN_ADDR) {
+        if (!mod_ptr) {
+            //not in any of the mapped modules:
+            traceLog.logCall(prevAddr, Address);
+        } else {
             IMG pImg = IMG_FindByAddress(Address);
             RTN rtn = RTN_FindByAddress(Address);
-            //PIN_UnlockClient();
 
             if (IMG_Valid(pImg) && RTN_Valid(rtn)) {
                 const string func = RTN_Name(rtn);
-                log_call(prevAddr, mod_ptr->name, func);
+                traceLog.logCall(prevAddr, mod_ptr->name, func);
             }
             else {
-                log_call(prevAddr, mod_ptr->name);
+                traceLog.logCall(prevAddr, mod_ptr->name);
             }
+        }
 
-        }
-        else {
-            log_call(prevAddr, Address);
-        }
     }
-
+    //is the address within the traced module?
     if (is_currMy) {
         ADDRINT addr = Address - mod_ptr->start; // substract module's ImageBase
         const s_module* sec = pInfo.getSecByAddr(addr);
+        // is it a transition from one section to another?
         if (pInfo.isSectionChanged(addr)) {
-            log_section_change(addr, sec);
+            std::string name = (sec) ? sec->name : "?";
+            traceLog.logSectionChange(addr, name);
         }
         prevAddr = addr; /* update saved */
     }
@@ -201,24 +169,20 @@ int main(int argc, char *argv[])
     }
     
     std::string app_name = KnobModuleName.Value();
-    
     if (app_name.length() == 0) {
         // init App Name:
         for (int i = 1; i < (argc - 1); i++) {
             if (strcmp(argv[i], "--") == 0) {
                 app_name = argv[i + 1];
-                if (i + 2 < argc) {
-                    m_Param = argv[i + 2];
-                }
                 break;
             }
         }
     }
 
-    pInfo = ProcessInfo(app_name);
+    pInfo.init(app_name);
 
     // init output file:
-    init_log(KnobOutputFile.Value());
+    traceLog.init(KnobOutputFile.Value());
 
     // Register function to be called for every loaded module
     IMG_AddInstrumentFunction(ImageLoad, 0);

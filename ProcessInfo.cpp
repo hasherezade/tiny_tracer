@@ -11,12 +11,14 @@ const s_module* get_by_addr(ADDRINT Address, std::map<ADDRINT, s_module> &module
             return &mod;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 bool ProcessInfo::isMyModule(const s_module* mod, std::string name)
 {
-    if (!mod) return false;
+    if (!mod) {
+        return false;
+    }
     std::size_t found = mod->name.find(name);
     if (found != std::string::npos) {
         return true;
@@ -57,23 +59,11 @@ bool ProcessInfo::addModule(IMG Image)
 
 const bool ProcessInfo::isSectionChanged(ADDRINT Address /* without imagebase */)
 {
-    static s_module* prevModule = NULL;
+    static s_module* prevModule = nullptr;
     const s_module* currModule = getSecByAddr(Address);
 
     if (prevModule != currModule) {
         prevModule = (s_module*)currModule;
-        return true;
-    }
-    return false;
-}
-
-const bool isPageChanged(ADDRINT Address /* without imagebase */)
-{
-    static ADDRINT prevPageAddr = UNKNOWN_ADDR;
-
-    ADDRINT currPageAddr = (Address / PAGE_SIZE);
-    if (prevPageAddr == UNKNOWN_ADDR || prevPageAddr != currPageAddr) { // execution in different memory page!
-        prevPageAddr = currPageAddr;
         return true;
     }
     return false;

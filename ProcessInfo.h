@@ -17,12 +17,20 @@ const s_module* get_by_addr(ADDRINT Address, std::map<ADDRINT, s_module> &module
 class ProcessInfo
 {
 public:
-    ProcessInfo() {}
-
-    ProcessInfo(std::string app)
+    ProcessInfo()
+        : m_myPid(0), isInit(false)
     {
+    }
+
+    bool init(std::string app)
+    {
+        if (isInit) {
+            return false; // already initialized
+        }
         m_AnalysedApp = app;
         m_myPid = 0; //UNKNOWN
+        isInit = true;
+        return true;
     }
 
     bool addModule(IMG Image);
@@ -54,4 +62,5 @@ protected:
 
     std::string m_AnalysedApp;
     INT m_myPid;
+    bool isInit;
 };
