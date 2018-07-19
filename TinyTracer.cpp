@@ -13,9 +13,6 @@
 
 #include "pin.H"
 #include <iostream>
-#include <fstream>
-#include <set>
-#include <map>
 
 #include "ProcessInfo.h"
 #include "TraceLog.h"
@@ -70,7 +67,7 @@ INT32 Usage()
 VOID SaveTranitions(ADDRINT Address, UINT32 numInstInBbl)
 {
     PIN_LockClient();
-    static s_module *prev_mod = NULL;
+
     static bool is_prevMy = false;
     static ADDRINT prevAddr = UNKNOWN_ADDR;
 
@@ -110,7 +107,6 @@ VOID SaveTranitions(ADDRINT Address, UINT32 numInstInBbl)
 
     /* update saved */
     is_prevMy = is_currMy;
-    prev_mod = (s_module*)mod_ptr;
 
     PIN_UnlockClient();
 }
@@ -145,8 +141,6 @@ VOID Trace(TRACE trace, VOID *v)
 VOID ImageLoad(IMG Image, VOID *v)
 {
     pInfo.addModule(Image);
-    //---
-    //MonitorFunction1Arg(Image, "LoadLibraryA");
 }
 
 /*!
