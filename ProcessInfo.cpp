@@ -62,6 +62,17 @@ const s_module* get_by_addr(ADDRINT Address, std::map<ADDRINT, s_module> &module
     return nullptr;
 }
 
+std::string get_func_at(ADDRINT callAddr)
+{
+    IMG pImg = IMG_FindByAddress(callAddr);
+    RTN rtn = RTN_FindByAddress(callAddr);
+
+    if (IMG_Valid(pImg) && RTN_Valid(rtn)) {
+        return RTN_Name(rtn);
+    }
+    return "";
+}
+
 //----
 
 bool ProcessInfo::isMyModule(const s_module* mod, std::string name)

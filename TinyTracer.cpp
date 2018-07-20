@@ -80,16 +80,8 @@ VOID SaveTranitions(ADDRINT Address, UINT32 numInstInBbl)
             //not in any of the mapped modules:
             traceLog.logCall(prevAddr, Address);
         } else {
-            IMG pImg = IMG_FindByAddress(Address);
-            RTN rtn = RTN_FindByAddress(Address);
-
-            if (IMG_Valid(pImg) && RTN_Valid(rtn)) {
-                const string func = RTN_Name(rtn);
-                traceLog.logCall(prevAddr, mod_ptr->name, func);
-            }
-            else {
-                traceLog.logCall(prevAddr, mod_ptr->name);
-            }
+            const string func = get_func_at(Address);
+            traceLog.logCall(prevAddr, mod_ptr->name, func);
         }
 
     }
