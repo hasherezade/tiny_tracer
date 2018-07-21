@@ -22,8 +22,6 @@
     #define PAGE_SIZE 0x1000
 #endif
 
-bool g_shortPaths = false;
-
 /* ================================================================== */
 // Global variables 
 /* ================================================================== */
@@ -87,9 +85,6 @@ VOID SaveTransitions(ADDRINT Address, UINT32 numInstInBbl)
         } else {
             const string func = get_func_at(Address);
             std::string dll_name = mod_ptr->name;
-            if (g_shortPaths) {
-                dll_name = mod_ptr->short_name;
-            }
             traceLog.logCall(prevAddr, dll_name, func);
         }
 
@@ -166,7 +161,7 @@ int main(int argc, char *argv[])
     {
         return Usage();
     }
-    g_shortPaths = KnobShortLog.Value();
+    
     std::string app_name = KnobModuleName.Value();
     if (app_name.length() == 0) {
         // init App Name:
@@ -181,7 +176,7 @@ int main(int argc, char *argv[])
     pInfo.init(app_name);
 
     // init output file:
-    traceLog.init(KnobOutputFile.Value());
+    traceLog.init(KnobOutputFile.Value(), KnobShortLog.Value());
 
     // Register function to be called for every loaded module
     IMG_AddInstrumentFunction(ImageLoad, 0);

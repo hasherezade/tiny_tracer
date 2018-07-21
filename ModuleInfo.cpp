@@ -1,17 +1,5 @@
 #include "ModuleInfo.h"
 
-std::string get_dll_name(const std::string& str)
-{
-    std::size_t len = str.length();
-    std::size_t found = str.find_last_of("/\\");
-    std::size_t ext = str.find_last_of(".");
-    if (ext >= len) return "";
-
-    std::string name = str.substr(found + 1, ext - (found + 1));
-    std::transform(name.begin(), name.end(), name.begin(), tolower);
-    return name;
-}
-
 bool init_module(s_module &mod, const ADDRINT &Address)
 {
     IMG Image = IMG_FindByAddress(Address);
@@ -29,7 +17,6 @@ bool init_module(s_module &mod, const IMG &Image)
         return false;
     }
     mod.name = std::string(IMG_Name(Image));
-    mod.short_name = get_dll_name(mod.name);
     mod.start = IMG_LoadOffset(Image);
     mod.end = mod.start + IMG_SizeMapped(Image);
     mod.is_valid = true;
@@ -42,7 +29,6 @@ bool init_section(s_module &section, const ADDRINT &ImageBase, const SEC &sec)
         return false;
     }
     section.name = SEC_Name(sec);
-    section.short_name = section.name;
     section.start = SEC_Address(sec) - ImageBase;
     section.end = section.start + SEC_Size(sec);
     return true;

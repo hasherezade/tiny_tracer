@@ -18,10 +18,11 @@ public:
         }
     }
 
-    void init(std::string fileName)
+    void init(std::string fileName, bool is_short)
     {
         if (fileName.empty()) fileName = "output.txt";
         m_logFileName = fileName;
+        m_shortLog = is_short;
         createFile();
     }
 
@@ -39,4 +40,5 @@ protected:
 
     std::string m_logFileName;
     std::ofstream m_traceFile;
+    bool m_shortLog;
 };

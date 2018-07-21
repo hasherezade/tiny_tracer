@@ -8,7 +8,6 @@
 
 struct s_module {
     std::string name;
-    std::string short_name;
     ADDRINT start;
     ADDRINT end;
     bool is_valid;

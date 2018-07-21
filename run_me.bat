@@ -9,8 +9,9 @@ set PINTOOL=C:\pin_tools\TinyTracer.dll
 
 set TARGET_APP=%1%
 set TRACED_APP=%1% # by default it is the main module, but it can be also a DLL within the traced process
+set ENABLE_SHORT_LOGGING=1
 
 cd %PIN_DIR%
-pin.exe -t %PINTOOL% -m %TARGET_APP% -o %TARGET_APP%.tag -- %TARGET_APP% 
+pin.exe -t %PINTOOL% -m %TARGET_APP% -o %TARGET_APP%.tag -s %ENABLE_SHORT_LOGGING% -- %TARGET_APP% 
 
 chdir /d %OLDDIR%
