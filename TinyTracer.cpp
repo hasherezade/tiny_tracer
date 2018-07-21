@@ -22,6 +22,8 @@
     #define PAGE_SIZE 0x1000
 #endif
 
+bool g_shortPaths = false;
+
 /* ================================================================== */
 // Global variables 
 /* ================================================================== */
@@ -37,6 +39,9 @@ KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
 
 KNOB<string> KnobModuleName(KNOB_MODE_WRITEONCE, "pintool",
     "m", "", "Analysed module name (by default same as app name)");
+
+KNOB<bool> KnobShortLog(KNOB_MODE_WRITEONCE, "pintool",
+    "s", "", "Use short call logging (without a full DLL path)");
 
 /* ===================================================================== */
 // Utilities
@@ -81,7 +86,11 @@ VOID SaveTransitions(ADDRINT Address, UINT32 numInstInBbl)
             traceLog.logCall(prevAddr, Address);
         } else {
             const string func = get_func_at(Address);
-            traceLog.logCall(prevAddr, mod_ptr->name, func);
+            std::string dll_name = mod_ptr->name;
+            if (g_shortPaths) {
+                dll_name = mod_ptr->short_name;
+            }
+            traceLog.logCall(prevAddr, dll_name, func);
         }
 
     }
@@ -157,7 +166,7 @@ int main(int argc, char *argv[])
     {
         return Usage();
     }
-    
+    g_shortPaths = KnobShortLog.Value();
     std::string app_name = KnobModuleName.Value();
     if (app_name.length() == 0) {
         // init App Name:
