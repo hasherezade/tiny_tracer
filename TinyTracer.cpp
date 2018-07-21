@@ -64,7 +64,7 @@ INT32 Usage()
 * @note use atomic operations for multi-threaded applications
 */
 
-VOID SaveTranitions(ADDRINT Address, UINT32 numInstInBbl)
+VOID SaveTransitions(ADDRINT Address, UINT32 numInstInBbl)
 {
     PIN_LockClient();
 
@@ -92,6 +92,10 @@ VOID SaveTranitions(ADDRINT Address, UINT32 numInstInBbl)
         // is it a transition from one section to another?
         if (pInfo.isSectionChanged(addr)) {
             std::string name = (sec) ? sec->name : "?";
+            if (prevAddr != UNKNOWN_ADDR && is_prevMy) {
+                const s_module* prev_sec = pInfo.getSecByAddr(prevAddr);
+                traceLog.logNewSectionCalled(prevAddr, prev_sec->name, sec->name);
+            }
             traceLog.logSectionChange(addr, name);
         }
         prevAddr = addr; /* update saved */
@@ -123,7 +127,7 @@ VOID Trace(TRACE trace, VOID *v)
         // Insert a call to SaveTranitions() before every basic block
         for (INS ins = BBL_InsHead(bbl); INS_Valid(ins); ins = INS_Next(ins)) {
             INS_InsertCall(ins, IPOINT_BEFORE,
-                (AFUNPTR)SaveTranitions,
+                (AFUNPTR)SaveTransitions,
                 IARG_INST_PTR,
                 IARG_UINT32, BBL_NumIns(bbl), IARG_END);
         }

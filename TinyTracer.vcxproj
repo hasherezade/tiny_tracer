@@ -256,6 +256,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ModuleInfo.cpp" />
     <ClCompile Include="ProcessInfo.cpp" />
     <ClCompile Include="TinyTracer.cpp" />
     <ClCompile Include="TraceLog.cpp" />
@@ -264,6 +265,7 @@
     <None Include="..\README" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ModuleInfo.h" />
     <ClInclude Include="ProcessInfo.h" />
     <ClInclude Include="TraceLog.h" />
   </ItemGroup>
