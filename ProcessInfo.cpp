@@ -75,13 +75,22 @@ std::string get_func_at(ADDRINT callAddr)
 
 //----
 
-bool ProcessInfo::isMyModule(const s_module* mod, std::string name)
+bool is_my_name(const s_module* mod, std::string name)
 {
     if (!mod) {
         return false;
     }
     std::size_t found = mod->name.find(name);
     if (found != std::string::npos) {
+        return true;
+    }
+    return false;
+}
+
+bool ProcessInfo::isMyModule(const s_module* mod)
+{
+    if (!mod || !myModule) return false;
+    if (this->myModule->start == mod->start) {
         return true;
     }
     return false;
@@ -105,8 +114,9 @@ bool ProcessInfo::addModule(IMG Image)
     m_Modules[mod.start] = mod;
 
     // if this module is an object of observation, add its sections also
-    if (m_myPid == 0 && isMyModule(&mod, m_AnalysedApp)) {
+    if (m_myPid == 0 && is_my_name(&mod, m_AnalysedApp)) {
         m_myPid = PIN_GetPid();
+        myModule = &m_Modules[mod.start];
         addModuleSections(Image, mod.start);
     }
     return true;

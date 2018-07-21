@@ -39,6 +39,7 @@ public:
         m_AnalysedApp = app;
         m_myPid = 0; //UNKNOWN
         isInit = true;
+        myModule = nullptr;
         return true;
     }
 
@@ -57,19 +58,26 @@ public:
     bool isMyAddress(ADDRINT Address)
     {
         const s_module *mod_ptr = getModByAddr(Address);
-        return isMyModule(mod_ptr, m_AnalysedApp);
+        if (!mod_ptr) {
+            return false;
+        }
+        return isMyModule(mod_ptr);
     }
 
     const bool isSectionChanged(ADDRINT Address);
+    
+    bool isMyModule(const s_module* mod);
 
 protected:
-    bool isMyModule(const s_module* mod, std::string name);
+    
     void addModuleSections(IMG Image, ADDRINT ImageBase);
 
     std::map<ADDRINT, s_module> m_Modules;
     std::map<ADDRINT, s_module> m_Sections;
+    const s_module *myModule;
 
     std::string m_AnalysedApp;
     INT m_myPid;
     bool isInit;
 };
+
