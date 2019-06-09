@@ -27,8 +27,7 @@ if %errorlevel% == 64 (
 	set PINTOOL=%PINTOOL64%
 )
 
-set OLDDIR=%CD%
-cd %PIN_DIR%
-pin.exe -t %PINTOOL% -m %TARGET_APP% -o %TARGET_APP%.tag -s %ENABLE_SHORT_LOGGING% -- %TARGET_APP% 
+%PIN_DIR%\pin.exe -t %PINTOOL% -m %TARGET_APP% -o %TARGET_APP%.tag -s %ENABLE_SHORT_LOGGING% -- %TARGET_APP% 
 
-chdir /d %OLDDIR%
+rem Pausing script after the application is executed is useful to see all eventual printed messages and for troubleshooting
+pause
