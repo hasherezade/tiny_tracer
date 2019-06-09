@@ -29,6 +29,6 @@ if %errorlevel% == 64 (
 
 %PIN_DIR%\pin.exe -t %PINTOOL% -m %TARGET_APP% -o %TARGET_APP%.tag -s %ENABLE_SHORT_LOGGING% -- %TARGET_APP% 
 
-echo [OK] PIN tracing finished: the traced application terminated.
+if %ERRORLEVEL% EQU 0 echo [OK] PIN tracing finished: the traced application terminated.
 rem Pausing script after the application is executed is useful to see all eventual printed messages and for troubleshooting
 pause
