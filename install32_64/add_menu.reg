@@ -1,0 +1,7 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\*\shell\PIN_run]
+@="Run with PIN"
+
+[HKEY_CLASSES_ROOT\*\shell\PIN_run\command]
+@="\"C:\\Pin_Tools\\run_me.bat\" \"%1\""
