@@ -14,13 +14,15 @@ std::string get_dll_name(const std::string& str)
     return name;
 }
 
-void TraceLog::logCall(const ADDRINT prevAddr, const std::string module, const std::string func)
+void TraceLog::logCall(const ADDRINT prevAddr, bool isRVA, const std::string module, const std::string func)
 {
     createFile();
+    if (!isRVA) {
+        m_traceFile << ">>";
+    }
     m_traceFile <<
         std::hex << prevAddr
         << DELIMITER;
-        
 
     if (!m_shortLog) {
         m_traceFile << "called: "

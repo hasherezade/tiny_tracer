@@ -29,6 +29,8 @@
 ProcessInfo pInfo;
 TraceLog traceLog;
 
+bool m_FollowShellcode = false;
+
 /* ===================================================================== */
 // Command line switches
 /* ===================================================================== */
@@ -40,6 +42,9 @@ KNOB<std::string> KnobModuleName(KNOB_MODE_WRITEONCE, "pintool",
 
 KNOB<bool> KnobShortLog(KNOB_MODE_WRITEONCE, "pintool",
     "s", "", "Use short call logging (without a full DLL path)");
+
+KNOB<bool> KnobFollowShellcode(KNOB_MODE_WRITEONCE, "pintool",
+    "f", "", "Trace calls executed from shellcodes loaded in the memory");
 
 /* ===================================================================== */
 // Utilities
@@ -76,19 +81,30 @@ VOID SaveTransitions(ADDRINT Address, UINT32 numInstInBbl)
 
     const s_module *mod_ptr = pInfo.getModByAddr(Address);
     bool is_currMy = pInfo.isMyAddress(Address);
+    static bool is_prevUnknown = false;
+    static ADDRINT unknownMod = UNKNOWN_ADDR;
 
     //is it a transition from the traced module to a foreign module?
     if (!is_currMy && is_prevMy && prevAddr != UNKNOWN_ADDR) {
         if (!mod_ptr) {
             //not in any of the mapped modules:
             traceLog.logCall(prevAddr, Address);
+            unknownMod = GetPageOfAddr(Address); //save the beginning of this area
         } else {
             const std::string func = get_func_at(Address);
-            std::string dll_name = mod_ptr->name;
-            traceLog.logCall(prevAddr, dll_name, func);
+            const std::string dll_name = mod_ptr->name;
+            traceLog.logCall(prevAddr, true, dll_name, func);
         }
-
     }
+    if (m_FollowShellcode && is_prevUnknown && mod_ptr) {
+        const ADDRINT start = GetPageOfAddr(prevAddr);
+        if (start == unknownMod) {
+            const std::string func = get_func_at(Address);
+            const std::string dll_name = mod_ptr->name;
+            traceLog.logCall(prevAddr, false, dll_name, func);
+        }
+    }
+
     //is the address within the traced module?
     if (is_currMy && mod_ptr) {
         ADDRINT addr = Address - mod_ptr->start; // substract module's ImageBase
@@ -107,7 +123,13 @@ VOID SaveTransitions(ADDRINT Address, UINT32 numInstInBbl)
 
     /* update saved */
     is_prevMy = is_currMy;
-
+    
+    if (m_FollowShellcode) {
+        is_prevUnknown = (mod_ptr == NULL);
+        if (is_prevUnknown) {
+            prevAddr = Address;
+        }
+    }
     PIN_UnlockClient();
 }
 
@@ -177,6 +199,7 @@ int main(int argc, char *argv[])
 
     // init output file:
     traceLog.init(KnobOutputFile.Value(), KnobShortLog.Value());
+    m_FollowShellcode = KnobFollowShellcode.Value();
 
     // Register function to be called for every loaded module
     IMG_AddInstrumentFunction(ImageLoad, 0);
