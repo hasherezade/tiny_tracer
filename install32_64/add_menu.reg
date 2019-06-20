@@ -4,4 +4,4 @@ Windows Registry Editor Version 5.00
 @="Run with PIN"
 
 [HKEY_CLASSES_ROOT\*\shell\PIN_run\command]
-@="\"C:\\Pin_Tools\\run_me.bat\" \"%1\""
+@="\"C:\\pin\\source\\tools\\tiny_tracer\\install32_64\\run_me.bat\" \"%1\""

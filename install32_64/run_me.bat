@@ -8,7 +8,7 @@ rem PIN_DIR is your root directory of Intel Pin
 set PIN_DIR=C:\pin\
 
 rem PIN_TOOLS_DIR is your directory with this script and the Pin Tools
-set PIN_TOOLS_DIR=C:\pin_tools\
+set PIN_TOOLS_DIR=C:\pin\source\tools\tiny_tracer\install32_64\
 
 set PINTOOL32=%PIN_TOOLS_DIR%\TinyTracer32.dll
 set PINTOOL64=%PIN_TOOLS_DIR%\TinyTracer64.dll
