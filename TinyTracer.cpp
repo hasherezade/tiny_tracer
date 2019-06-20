@@ -90,7 +90,7 @@ VOID SaveTransitions(ADDRINT Address, UINT32 numInstInBbl)
 
     }
     //is the address within the traced module?
-    if (is_currMy) {
+    if (is_currMy && mod_ptr) {
         ADDRINT addr = Address - mod_ptr->start; // substract module's ImageBase
         const s_module* sec = pInfo.getSecByAddr(addr);
         // is it a transition from one section to another?
