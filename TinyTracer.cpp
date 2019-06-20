@@ -32,10 +32,10 @@ TraceLog traceLog;
 /* ===================================================================== */
 // Command line switches
 /* ===================================================================== */
-KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
+KNOB<std::string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
     "o", "", "specify file name for the output");
 
-KNOB<string> KnobModuleName(KNOB_MODE_WRITEONCE, "pintool",
+KNOB<std::string> KnobModuleName(KNOB_MODE_WRITEONCE, "pintool",
     "m", "", "Analysed module name (by default same as app name)");
 
 KNOB<bool> KnobShortLog(KNOB_MODE_WRITEONCE, "pintool",
@@ -50,10 +50,10 @@ KNOB<bool> KnobShortLog(KNOB_MODE_WRITEONCE, "pintool",
 */
 INT32 Usage()
 {
-    cerr << "This tool prints out : " << endl <<
-        "Addresses of redirections into to a new sections. Called API functions." << endl << endl;
+    std::cerr << "This tool prints out : " << std::endl <<
+        "Addresses of redirections into to a new sections. Called API functions.\n" << std::endl;
 
-    cerr << KNOB_BASE::StringKnobSummary() << endl;
+    std::cerr << KNOB_BASE::StringKnobSummary() << std::endl;
     return -1;
 }
 
@@ -83,7 +83,7 @@ VOID SaveTransitions(ADDRINT Address, UINT32 numInstInBbl)
             //not in any of the mapped modules:
             traceLog.logCall(prevAddr, Address);
         } else {
-            const string func = get_func_at(Address);
+            const std::string func = get_func_at(Address);
             std::string dll_name = mod_ptr->name;
             traceLog.logCall(prevAddr, dll_name, func);
         }
@@ -184,14 +184,14 @@ int main(int argc, char *argv[])
     // Register function to be called to instrument traces
     TRACE_AddInstrumentFunction(Trace, 0);
 
-    cerr << "===============================================" << endl;
-    cerr << "This application is instrumented by " << TOOL_NAME << endl;
-    cerr << "Tracing module: " << app_name << endl;
+    std::cerr << "===============================================" << std::endl;
+    std::cerr << "This application is instrumented by " << TOOL_NAME << std::endl;
+    std::cerr << "Tracing module: " << app_name << std::endl;
     if (!KnobOutputFile.Value().empty())
     {
-        cerr << "See file " << KnobOutputFile.Value() << " for analysis results" << endl;
+        std::cerr << "See file " << KnobOutputFile.Value() << " for analysis results" << std::endl;
     }
-    cerr << "===============================================" << endl;
+    std::cerr << "===============================================" << std::endl;
 
     // Start the program, never returns
     PIN_StartProgram();

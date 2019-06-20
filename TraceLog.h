@@ -26,7 +26,7 @@ public:
         createFile();
     }
 
-    void logCall(const ADDRINT prevAddr, const string module, const string func = "");
+    void logCall(const ADDRINT prevAddr, const std::string module, const std::string func = "");
     void logCall(const ADDRINT prevAddr, const ADDRINT callAddr);
     void logSectionChange(const ADDRINT addr, std::string sectionName);
     void logNewSectionCalled(const ADDRINT addFrom, std::string prevSection, std::string currSection);

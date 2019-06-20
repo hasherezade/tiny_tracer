@@ -14,7 +14,7 @@ std::string get_dll_name(const std::string& str)
     return name;
 }
 
-void TraceLog::logCall(const ADDRINT prevAddr, const string module, const string func)
+void TraceLog::logCall(const ADDRINT prevAddr, const std::string module, const std::string func)
 {
     createFile();
     m_traceFile <<
