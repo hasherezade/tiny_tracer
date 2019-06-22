@@ -26,16 +26,22 @@ public:
         createFile();
     }
 
-    void logCall(const ADDRINT prevAddr, bool isRVA, const std::string module, const std::string func = "");
-    void logCall(const ADDRINT prevAddr, const ADDRINT callAddr);
+    void logCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, bool isRVA, const std::string module, const std::string func = "");
+    void logCall(const ADDRINT prevAddr, const ADDRINT calledPageBase, const ADDRINT callAddr);
     void logSectionChange(const ADDRINT addr, std::string sectionName);
     void logNewSectionCalled(const ADDRINT addFrom, std::string prevSection, std::string currSection);
 
 protected:
-    void createFile()
+    bool createFile()
     {
-        if (m_traceFile.is_open()) return;
+        if (m_traceFile.is_open()) {
+            return true;
+        }
         m_traceFile.open(m_logFileName.c_str());
+        if (m_traceFile.is_open()) {
+            return true;
+        }
+        return false;
     }
 
     std::string m_logFileName;

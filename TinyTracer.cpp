@@ -88,12 +88,12 @@ VOID SaveTransitions(ADDRINT Address, UINT32 numInstInBbl)
     if (!is_currMy && is_prevMy && prevAddr != UNKNOWN_ADDR) {
         if (!mod_ptr) {
             //not in any of the mapped modules:
-            traceLog.logCall(prevAddr, Address);
             unknownMod = GetPageOfAddr(Address); //save the beginning of this area
+            traceLog.logCall(prevAddr, unknownMod, Address);
         } else {
             const std::string func = get_func_at(Address);
             const std::string dll_name = mod_ptr->name;
-            traceLog.logCall(prevAddr, true, dll_name, func);
+            traceLog.logCall(0, prevAddr, true, dll_name, func);
         }
     }
     if (m_FollowShellcode && is_prevUnknown && mod_ptr) {
@@ -101,7 +101,7 @@ VOID SaveTransitions(ADDRINT Address, UINT32 numInstInBbl)
         if (start == unknownMod) {
             const std::string func = get_func_at(Address);
             const std::string dll_name = mod_ptr->name;
-            traceLog.logCall(prevAddr, false, dll_name, func);
+            traceLog.logCall(start, prevAddr, false, dll_name, func);
         }
     }
 
@@ -162,7 +162,9 @@ VOID Trace(TRACE trace, VOID *v)
 
 VOID ImageLoad(IMG Image, VOID *v)
 {
+    PIN_LockClient();
     pInfo.addModule(Image);
+    PIN_UnlockClient();
 }
 
 /*!

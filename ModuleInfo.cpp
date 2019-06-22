@@ -52,7 +52,6 @@ std::string get_func_at(ADDRINT callAddr)
 {
     IMG pImg = IMG_FindByAddress(callAddr);
     RTN rtn = RTN_FindByAddress(callAddr);
-
     if (IMG_Valid(pImg) && RTN_Valid(rtn)) {
         return RTN_Name(rtn);
     }
