@@ -14,13 +14,16 @@ std::string get_dll_name(const std::string& str)
     return name;
 }
 
-void TraceLog::logCall(const ADDRINT prevAddr, const std::string module, const std::string func)
+void TraceLog::logCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, bool isRVA, const std::string module, const std::string func)
 {
-    createFile();
+    if (!createFile()) return;
+    ADDRINT rva = (isRVA) ? prevAddr : prevAddr - prevModuleBase;
+    if (!isRVA) {
+        m_traceFile << "> " << prevModuleBase << "+";
+    }
     m_traceFile <<
-        std::hex << prevAddr
+        std::hex << rva
         << DELIMITER;
-        
 
     if (!m_shortLog) {
         m_traceFile << "called: "
@@ -36,20 +39,21 @@ void TraceLog::logCall(const ADDRINT prevAddr, const std::string module, const s
     m_traceFile.flush();
 }
 
-void TraceLog::logCall(const ADDRINT prevAddr, const ADDRINT callAddr)
+void TraceLog::logCall(const ADDRINT prevAddr, const ADDRINT calledPageBase, const ADDRINT callAddr)
 {
-    createFile();
+    if (!createFile()) return;
+    const ADDRINT rva = callAddr - calledPageBase;
     m_traceFile << 
         std::hex << prevAddr 
         << DELIMITER 
-        << "called: ?? [" << callAddr << "]" 
+        << "called: ?? [" << calledPageBase << "+" << rva << "]"
         << std::endl;
     m_traceFile.flush();
 }
 
 void TraceLog::logSectionChange(const ADDRINT prevAddr, std::string name)
 {
-    createFile();
+    if (!createFile()) return;
     m_traceFile 
         << std::hex << prevAddr 
         << DELIMITER 
