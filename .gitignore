@@ -1,4 +1,8 @@
 .vs/
+*.opensdf
+*.sdf
+*.suo
+*.sln
 *.user
 x64/
 Release
