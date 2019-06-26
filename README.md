@@ -23,5 +23,5 @@ i.e.
 
 How to build?
 -
-To compile the prepared project you need to use [Visual Studio 2017](https://visualstudio.microsoft.com/downloads/). It was tested with [Intel Pin 3.7 and Pin 3.10](https://software.intel.com/en-us/articles/pin-a-binary-instrumentation-tool-downloads).<br/>
-Clone this repo into `\source\tools` that is inside your Pin root directory. Open the project in VS 2017 and build.<br/>
+To compile the prepared project you need to use [Visual Studio >=2012](https://visualstudio.microsoft.com/downloads/). It was tested with [Intel Pin 3.7 and Pin 3.10](https://software.intel.com/en-us/articles/pin-a-binary-instrumentation-tool-downloads).<br/>
+Clone this repo into `\source\tools` that is inside your Pin root directory. Open the project in Visual Studio and build. More details about the installation and usage you will find on [the project's Wiki](https://github.com/hasherezade/tiny_tracer/wiki/Installation).<br/>
