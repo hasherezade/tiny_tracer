@@ -1,6 +1,7 @@
 @echo off
 
 set TARGET_APP=%~1
+set PE_TYPE=%~2
 echo PIN is trying to run the app:
 echo "%TARGET_APP%"
 
@@ -34,7 +35,14 @@ if %errorlevel% == 64 (
 echo Target module: "%TRACED_MODULE%"
 echo Tag file: %TAG_FILE%
 
-%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -s %ENABLE_SHORT_LOGGING% -- "%TARGET_APP%" 
+;rem "Trace EXE"
+if %PE_TYPE% == 0 (
+	%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -s %ENABLE_SHORT_LOGGING% -- "%TARGET_APP%" 
+)
+;rem "Trace DLL"
+if %PE_TYPE% == 1 (
+	%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -s %ENABLE_SHORT_LOGGING% -- regsvr32.exe /s "%TARGET_APP%" 
+)
 
 if %ERRORLEVEL% EQU 0 echo [OK] PIN tracing finished: the traced application terminated.
 rem Pausing script after the application is executed is useful to see all eventual printed messages and for troubleshooting
