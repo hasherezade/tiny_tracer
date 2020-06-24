@@ -2,6 +2,7 @@
 
 set TARGET_APP=%~1
 set PE_TYPE=%~2
+set IS_ADMIN=%~3
 echo PIN is trying to run the app:
 echo "%TARGET_APP%"
 
@@ -35,15 +36,34 @@ if %errorlevel% == 64 (
 echo Target module: "%TRACED_MODULE%"
 echo Tag file: %TAG_FILE%
 
+set ADMIN_CMD=runas /savecred /user:Administrator
+set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -s %ENABLE_SHORT_LOGGING% -- regsvr32.exe /s "%TARGET_APP%"
+set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -s %ENABLE_SHORT_LOGGING% -- "%TARGET_APP%" 
+
 ;rem "Trace EXE"
-if %PE_TYPE% == 0 (
-	%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -s %ENABLE_SHORT_LOGGING% -- "%TARGET_APP%" 
+if [%PE_TYPE%] == [exe] (
+	if [%IS_ADMIN%] == [A] (
+		%ADMIN_CMD% "%EXE_CMD%"
+	) else (
+		%EXE_CMD%
+	)
 )
 ;rem "Trace DLL"
-if %PE_TYPE% == 1 (
-	%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -s %ENABLE_SHORT_LOGGING% -- regsvr32.exe /s "%TARGET_APP%" 
+if [%PE_TYPE%] == [dll] (
+	if [%IS_ADMIN%] == [A] (
+		%ADMIN_CMD% "%DLL_CMD%"
+	) else (
+		%DLL_CMD%
+	)
 )
 
-if %ERRORLEVEL% EQU 0 echo [OK] PIN tracing finished: the traced application terminated.
-rem Pausing script after the application is executed is useful to see all eventual printed messages and for troubleshooting
-pause
+if [%IS_ADMIN%] == [A] (
+	rem In Amin mode, new console would be created. Pause only if it failed:
+	if NOT %ERRORLEVEL% EQU 0 pause
+) else (
+	if %ERRORLEVEL% EQU 0 echo [OK] PIN tracing finished: the traced application terminated.
+	rem Pausing script after the application is executed is useful to see all eventual printed messages and for troubleshooting
+	pause
+)
+
+
