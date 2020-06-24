@@ -4,13 +4,13 @@ Windows Registry Editor Version 5.00
 @="Run with PIN (Tiny Tracer)"
 
 [HKEY_CLASSES_ROOT\exefile\shell\PIN_run\command]
-@="\"C:\\pin\\source\\tools\\tiny_tracer\\install32_64\\run_me.bat\" \"%1\" \"exe\""
+@="\"C:\\pin\\source\\tools\\tiny_tracer\\install32_64\\run_me.bat\" \"%1\" \"exe\" \"U\""
 
 [HKEY_CLASSES_ROOT\dllfile\shell\PIN_run]
 @="Run with PIN (Tiny Tracer)"
 
 [HKEY_CLASSES_ROOT\dllfile\shell\PIN_run\command]
-@="\"C:\\pin\\source\\tools\\tiny_tracer\\install32_64\\run_me.bat\" \"%1\" \"dll\""
+@="\"C:\\pin\\source\\tools\\tiny_tracer\\install32_64\\run_me.bat\" \"%1\" \"dll\" \"U\""
 
 [HKEY_CLASSES_ROOT\exefile\shell\PIN_run_admin]
 @="Run with PIN (Tiny Tracer) - as Administrator"
