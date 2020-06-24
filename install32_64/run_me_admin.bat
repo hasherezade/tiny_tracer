@@ -43,3 +43,4 @@ if %PE_TYPE% == 0 (
 if %PE_TYPE% == 1 (
 	runas /savecred /user:Administrator "%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -s %ENABLE_SHORT_LOGGING% -- regsvr32.exe /s "%TARGET_APP%" "
 )
+if NOT %ERRORLEVEL% EQU 0 pause
