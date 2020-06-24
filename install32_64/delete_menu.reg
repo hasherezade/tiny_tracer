@@ -5,3 +5,7 @@ REGEDIT4
 [-HKEY_CLASSES_ROOT\exefile\shell\PIN_run]
 
 [-HKEY_CLASSES_ROOT\dllfile\shell\PIN_run]
+
+[-HKEY_CLASSES_ROOT\exefile\shell\PIN_run_admin]
+
+[-HKEY_CLASSES_ROOT\dllfile\shell\PIN_run_admin]
