@@ -35,8 +35,11 @@ if %errorlevel% == 64 (
 
 echo Target module: "%TRACED_MODULE%"
 echo Tag file: %TAG_FILE%
+if [%IS_ADMIN%] == [A] (
+	echo Elevation requested
+)
 
-set ADMIN_CMD=runas /savecred /user:Administrator
+set ADMIN_CMD=%PIN_TOOLS_DIR%\sudo.vbs
 set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -s %ENABLE_SHORT_LOGGING% -- regsvr32.exe /s "%TARGET_APP%"
 set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -s %ENABLE_SHORT_LOGGING% -- "%TARGET_APP%" 
 
