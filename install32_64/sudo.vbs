@@ -10,7 +10,7 @@ Else
     Set WshShell = CreateObject("WScript.Shell")
     cmd = WshShell.ExpandEnvironmentStrings("%COMSPEC%")
     'Build paramator
-    varg = "/C CD " & WshShell.CurrentDirectory    & " & "
+    varg = "/C CD " & WshShell.CurrentDirectory & " & "
     For i = 0 To WScript.Arguments.Count - 1
         varg = varg & " " & WScript.Arguments(i)
     Next
