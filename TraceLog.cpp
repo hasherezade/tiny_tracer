@@ -39,9 +39,12 @@ void TraceLog::logCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, boo
     m_traceFile.flush();
 }
 
-void TraceLog::logCall(const ADDRINT prevAddr, const ADDRINT calledPageBase, const ADDRINT callAddr)
+void TraceLog::logCall(const ADDRINT prevBase, const ADDRINT prevAddr, const ADDRINT calledPageBase, const ADDRINT callAddr)
 {
     if (!createFile()) return;
+    if (prevBase) {
+        m_traceFile << "> " << prevBase << "+";
+    }
     const ADDRINT rva = callAddr - calledPageBase;
     m_traceFile << 
         std::hex << prevAddr 

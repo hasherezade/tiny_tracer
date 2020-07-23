@@ -91,7 +91,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
         else {
             //not in any of the mapped modules:
             lastShellc = GetPageOfAddr(addrTo); //save the beginning of this area
-            traceLog.logCall(RvaFrom, lastShellc, addrTo);
+            traceLog.logCall(0, RvaFrom, lastShellc, addrTo);
         }
     }
     // trace calls from witin the last shellcode that was called from the traced module:
