@@ -46,7 +46,7 @@ set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f
 ;rem "Trace EXE"
 if [%PE_TYPE%] == [exe] (
 	if [%IS_ADMIN%] == [A] (
-		%ADMIN_CMD% "%EXE_CMD%"
+		%ADMIN_CMD% %EXE_CMD%
 	) else (
 		%EXE_CMD%
 	)
@@ -54,7 +54,7 @@ if [%PE_TYPE%] == [exe] (
 ;rem "Trace DLL"
 if [%PE_TYPE%] == [dll] (
 	if [%IS_ADMIN%] == [A] (
-		%ADMIN_CMD% "%DLL_CMD%"
+		%ADMIN_CMD% %DLL_CMD%
 	) else (
 		%DLL_CMD%
 	)

@@ -12,7 +12,7 @@ Else
     'Build paramator
     varg = "/C CD " & WshShell.CurrentDirectory & " & "
     For i = 0 To WScript.Arguments.Count - 1
-        varg = varg & " " & WScript.Arguments(i)
+        varg = varg & " " & """" & WScript.Arguments(i) & """"
     Next
     varg = varg & " & PAUSE"
     'run cmd /C ... as root
