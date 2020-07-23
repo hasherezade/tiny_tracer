@@ -17,7 +17,6 @@
 #include "ProcessInfo.h"
 #include "TraceLog.h"
 
-#define TOOL_NAME "TinyTracer"
 #ifndef PAGE_SIZE
     #define PAGE_SIZE 0x1000
 #endif
@@ -66,97 +65,113 @@ INT32 Usage()
 // Analysis routines
 /* ===================================================================== */
 
-/*!
-* This function is called for every basic block when it is about to be executed.
-* @param[in]   numInstInBbl    number of instructions in the basic block
-* @note use atomic operations for multi-threaded applications
-*/
 
-VOID SaveTransitions(ADDRINT Address, UINT32 numInstInBbl)
+VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
+{
+    // last shellcode to which the transition got redirected:
+    static ADDRINT lastShellc = UNKNOWN_ADDR;
+
+    const bool isTargetMy = pInfo.isMyAddress(addrTo);
+    const bool isCallerMy = pInfo.isMyAddress(addrFrom);
+
+    IMG targetModule = IMG_FindByAddress(addrTo);
+    IMG callerModule = IMG_FindByAddress(addrFrom);
+
+    //is it a transition from the traced module to a foreign module?
+    if (isCallerMy && !isTargetMy) {
+        ADDRINT RvaFrom = addr_to_rva(addrFrom);
+        if (IMG_Valid(targetModule)) {
+            const std::string func = get_func_at(addrTo);
+            const std::string dll_name = IMG_Name(targetModule);
+            traceLog.logCall(0, RvaFrom, true, dll_name, func);
+        }
+        else {
+            //not in any of the mapped modules:
+            lastShellc = GetPageOfAddr(addrTo); //save the beginning of this area
+            traceLog.logCall(RvaFrom, lastShellc, addrTo);
+        }
+    }
+    // trace calls from witin the last shellcode that was called from the traced module:
+    if (m_FollowShellcode && !IMG_Valid(callerModule) && IMG_Valid(targetModule)) {
+        const ADDRINT callerPage = GetPageOfAddr(addrFrom);
+        if (callerPage != UNKNOWN_ADDR && callerPage == lastShellc) {
+            const std::string func = get_func_at(addrTo);
+            const std::string dll_name = IMG_Name(targetModule);
+            traceLog.logCall(callerPage, addrFrom, false, dll_name, func);
+        }
+    }
+
+    // is the address within the traced module?
+    if (isTargetMy) {
+        ADDRINT rva = addr_to_rva(addrTo); // convert to RVA
+
+        // is it a transition from one section to another?
+        if (pInfo.updateTracedModuleSection(rva)) {
+            const s_module* sec = pInfo.getSecByAddr(rva);
+            std::string curr_name = (sec) ? sec->name : "?";
+            if (isCallerMy) {
+
+                ADDRINT rvaFrom = addr_to_rva(addrFrom); // convert to RVA
+                const s_module* prev_sec = pInfo.getSecByAddr(rvaFrom);
+                std::string prev_name = (prev_sec) ? prev_sec->name : "?";
+                traceLog.logNewSectionCalled(rvaFrom, prev_name, curr_name);
+            }
+            traceLog.logSectionChange(rva, curr_name);
+        }
+    }
+}
+
+VOID SaveTransitions(const ADDRINT prevVA, const ADDRINT Address)
+{
+    PIN_LockClient();
+    _SaveTransitions(prevVA, Address);
+    PIN_UnlockClient();
+}
+
+VOID RdtscCalled(const CONTEXT* ctxt)
 {
     PIN_LockClient();
 
-    static bool is_prevMy = false;
-    static ADDRINT prevAddr = UNKNOWN_ADDR;
-
-    const s_module *mod_ptr = pInfo.getModByAddr(Address);
-    bool is_currMy = pInfo.isMyAddress(Address);
-    static bool is_prevUnknown = false;
-    static ADDRINT unknownMod = UNKNOWN_ADDR;
-
-    //is it a transition from the traced module to a foreign module?
-    if (!is_currMy && is_prevMy && prevAddr != UNKNOWN_ADDR) {
-        if (!mod_ptr) {
-            //not in any of the mapped modules:
-            unknownMod = GetPageOfAddr(Address); //save the beginning of this area
-            traceLog.logCall(prevAddr, unknownMod, Address);
-        } else {
-            const std::string func = get_func_at(Address);
-            const std::string dll_name = mod_ptr->name;
-            traceLog.logCall(0, prevAddr, true, dll_name, func);
-        }
+    ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+    IMG currModule = IMG_FindByAddress(Address);
+    const bool isCurrMy = pInfo.isMyAddress(Address);
+    if (isCurrMy) {
+        ADDRINT rva = addr_to_rva(Address); // convert to RVA
+        traceLog.logRtdsc(0, rva);
     }
-    if (m_FollowShellcode && is_prevUnknown && mod_ptr) {
-        const ADDRINT start = GetPageOfAddr(prevAddr);
-        if (start == unknownMod) {
-            const std::string func = get_func_at(Address);
-            const std::string dll_name = mod_ptr->name;
-            traceLog.logCall(start, prevAddr, false, dll_name, func);
-        }
-    }
-
-    //is the address within the traced module?
-    if (is_currMy && mod_ptr) {
-        ADDRINT addr = Address - mod_ptr->start; // substract module's ImageBase
-        const s_module* sec = pInfo.getSecByAddr(addr);
-        // is it a transition from one section to another?
-        if (pInfo.isSectionChanged(addr)) {
-            std::string name = (sec) ? sec->name : "?";
-            if (prevAddr != UNKNOWN_ADDR && is_prevMy) {
-                const s_module* prev_sec = pInfo.getSecByAddr(prevAddr);
-                traceLog.logNewSectionCalled(prevAddr, prev_sec->name, sec->name);
-            }
-            traceLog.logSectionChange(addr, name);
-        }
-        prevAddr = addr; /* update saved */
-    }
-
-    /* update saved */
-    is_prevMy = is_currMy;
-    
-    if (m_FollowShellcode) {
-        is_prevUnknown = (mod_ptr == NULL);
-        if (is_prevUnknown) {
-            prevAddr = Address;
+    if (m_FollowShellcode && !IMG_Valid(currModule)) {
+        const ADDRINT start = GetPageOfAddr(Address);
+        ADDRINT rva = Address - start;
+        if (start != UNKNOWN_ADDR) {
+            traceLog.logRtdsc(start, rva);
         }
     }
     PIN_UnlockClient();
 }
 
+
 /* ===================================================================== */
 // Instrumentation callbacks
 /* ===================================================================== */
 
-/*!
-* Insert call to the SaveTranitions() analysis routine before every basic block
-* of the trace.
-* This function is called every time a new trace is encountered.
-* @param[in]   trace    trace to be instrumented
-* @param[in]   v        value specified by the tool in the TRACE_AddInstrumentFunction
-*                       function call
-*/
-VOID Trace(TRACE trace, VOID *v)
+VOID InstrumentInstruction(INS ins, VOID *v)
 {
-    // Visit every basic block in the trace
-    for (BBL bbl = TRACE_BblHead(trace); BBL_Valid(bbl); bbl = BBL_Next(bbl))
-    {
-        // Insert a call to SaveTranitions() before every basic block
-        for (INS ins = BBL_InsHead(bbl); INS_Valid(ins); ins = INS_Next(ins)) {
-            INS_InsertCall(ins, IPOINT_BEFORE,
-                (AFUNPTR)SaveTransitions,
-                IARG_INST_PTR,
-                IARG_UINT32, BBL_NumIns(bbl), IARG_END);
-        }
+    if (INS_IsRDTSC(ins)) {
+        INS_InsertCall(
+            ins,
+            IPOINT_BEFORE, (AFUNPTR)RdtscCalled,
+            IARG_CONTEXT,
+            IARG_END
+        );
+    }
+    if ((INS_IsControlFlow(ins) || INS_IsFarJump(ins))) {
+        INS_InsertCall(
+            ins, 
+            IPOINT_BEFORE, (AFUNPTR)SaveTransitions,
+            IARG_INST_PTR,
+            IARG_BRANCH_TARGET_ADDR,
+            IARG_END
+        );
     }
 }
 
@@ -164,6 +179,22 @@ VOID ImageLoad(IMG Image, VOID *v)
 {
     PIN_LockClient();
     pInfo.addModule(Image);
+    PIN_UnlockClient();
+}
+
+static void OnCtxChange(THREADID threadIndex,
+    CONTEXT_CHANGE_REASON reason,
+    const CONTEXT *ctxtFrom,
+    CONTEXT *ctxtTo,
+    INT32 info,
+    VOID *v)
+{
+    if (ctxtTo == NULL || ctxtFrom == NULL) return;
+
+    PIN_LockClient();
+    const ADDRINT addrFrom = (ADDRINT)PIN_GetContextReg(ctxtFrom, REG_INST_PTR);
+    const ADDRINT addrTo = (ADDRINT)PIN_GetContextReg(ctxtTo, REG_INST_PTR);
+    _SaveTransitions(addrFrom, addrTo);
     PIN_UnlockClient();
 }
 
@@ -185,7 +216,7 @@ int main(int argc, char *argv[])
     {
         return Usage();
     }
-    
+
     std::string app_name = KnobModuleName.Value();
     if (app_name.length() == 0) {
         // init App Name:
@@ -204,13 +235,16 @@ int main(int argc, char *argv[])
     m_FollowShellcode = KnobFollowShellcode.Value();
 
     // Register function to be called for every loaded module
-    IMG_AddInstrumentFunction(ImageLoad, 0);
+    IMG_AddInstrumentFunction(ImageLoad, NULL);
 
-    // Register function to be called to instrument traces
-    TRACE_AddInstrumentFunction(Trace, 0);
+    // Register function to be called before every instruction
+    INS_AddInstrumentFunction(InstrumentInstruction, NULL);
+
+    // Register context changes
+    PIN_AddContextChangeFunction(OnCtxChange, NULL);
 
     std::cerr << "===============================================" << std::endl;
-    std::cerr << "This application is instrumented by " << TOOL_NAME << std::endl;
+    std::cerr << "This application is instrumented by " << TOOL_NAME << " v." << VERSION << std::endl;
     std::cerr << "Tracing module: " << app_name << std::endl;
     if (!KnobOutputFile.Value().empty())
     {

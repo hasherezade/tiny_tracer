@@ -21,16 +21,11 @@ public:
         m_AnalysedApp = app;
         m_myPid = 0; //UNKNOWN
         isInit = true;
-        myModule = nullptr;
+        myModuleBase = UNKNOWN_ADDR;
         return true;
     }
 
     bool addModule(IMG Image);
-
-    const s_module* getModByAddr(ADDRINT Address)
-    {
-        return get_by_addr(Address, m_Modules);
-    }
 
     const s_module* getSecByAddr(ADDRINT Address)
     {
@@ -39,24 +34,33 @@ public:
 
     bool isMyAddress(ADDRINT Address)
     {
-        const s_module *mod_ptr = getModByAddr(Address);
-        if (!mod_ptr) {
+        if (Address == UNKNOWN_ADDR) {
             return false;
         }
-        return isMyModule(mod_ptr);
+        IMG myImg = IMG_FindByAddress(myModuleBase);
+        IMG otherImg = IMG_FindByAddress(Address);
+        if (!IMG_Valid(myImg) || !IMG_Valid(otherImg)) {
+            return false;
+        }
+        if (IMG_LoadOffset(myImg) == IMG_LoadOffset(otherImg)) {
+            return true;
+        }
+        return false;
     }
 
-    const bool isSectionChanged(ADDRINT Address);
+    /** 
+        Saves the transition between sections witing the target module.
+        \param Rva : current RVA witin the target module
+        \return : true if the section changed, false otherwise
+    */
+    const bool updateTracedModuleSection(ADDRINT Rva);
     
-    bool isMyModule(const s_module* mod);
-
 protected:
     
     void addModuleSections(IMG Image, ADDRINT ImageBase);
 
-    std::map<ADDRINT, s_module> m_Modules;
     std::map<ADDRINT, s_module> m_Sections;
-    const s_module *myModule;
+    ADDRINT myModuleBase;
 
     std::string m_AnalysedApp;
     INT m_myPid;
