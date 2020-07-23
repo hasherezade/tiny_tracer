@@ -12,6 +12,7 @@
 */
 
 #include "pin.H"
+
 #include <iostream>
 
 #include "ProcessInfo.h"
@@ -149,6 +150,51 @@ VOID RdtscCalled(const CONTEXT* ctxt)
     PIN_UnlockClient();
 }
 
+ADDRINT _setTimer(const CONTEXT* ctxt, bool isEax)
+{
+    static UINT64 Timer = 0;
+    UINT64 result = 0;
+
+    if (Timer == 0) {
+        ADDRINT edx = (ADDRINT)PIN_GetContextReg(ctxt, REG_GDX);
+        ADDRINT eax = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
+        Timer = (UINT64(edx) << 32) | eax;
+    }
+    else {
+        Timer += 100;
+    }
+
+    if (isEax) {
+        result = (Timer << 32) >> 32;
+    }
+    else {
+        result = (Timer) >> 32;
+    }
+    return (ADDRINT)result;
+}
+
+ADDRINT AlterRdtscValueEdx(const CONTEXT* ctxt)
+{
+    ADDRINT result = 0;
+
+    PIN_LockClient();
+    result = _setTimer(ctxt, false);
+    PIN_UnlockClient();
+
+    return result;
+}
+
+ADDRINT AlterRdtscValueEax(const CONTEXT* ctxt)
+{
+    ADDRINT result = 0;
+
+    PIN_LockClient();
+    result = _setTimer(ctxt, true);
+    PIN_UnlockClient();
+
+    return result;
+}
+
 
 /* ===================================================================== */
 // Instrumentation callbacks
@@ -163,7 +209,23 @@ VOID InstrumentInstruction(INS ins, VOID *v)
             IARG_CONTEXT,
             IARG_END
         );
+
+        INS_InsertCall(
+            ins, 
+            IPOINT_AFTER, (AFUNPTR)AlterRdtscValueEdx,
+            IARG_CONTEXT,
+            IARG_RETURN_REGS, 
+            REG_GDX,
+            IARG_END);
+
+        INS_InsertCall(ins, 
+            IPOINT_AFTER, (AFUNPTR)AlterRdtscValueEax,
+            IARG_CONTEXT,
+            IARG_RETURN_REGS,
+            REG_GAX,
+            IARG_END);
     }
+
     if ((INS_IsControlFlow(ins) || INS_IsFarJump(ins))) {
         INS_InsertCall(
             ins, 
