@@ -57,7 +57,21 @@ void TraceLog::logSectionChange(const ADDRINT prevAddr, std::string name)
     m_traceFile 
         << std::hex << prevAddr 
         << DELIMITER 
-        << "section: " << name 
+        << "section: [" << name << "]"
+        << std::endl;
+    m_traceFile.flush();
+}
+
+void TraceLog::logRtdsc(const ADDRINT base, const ADDRINT rva)
+{
+    if (!createFile()) return;
+    if (base) {
+        m_traceFile << ">" << std::hex << base << " + ";
+    }
+    m_traceFile
+        << std::hex << rva
+        << DELIMITER
+        << "RTDCS"
         << std::endl;
     m_traceFile.flush();
 }
@@ -68,7 +82,7 @@ void TraceLog::logNewSectionCalled(const ADDRINT prevAddr, std::string prevSecti
     m_traceFile
         << std::hex << prevAddr
         << DELIMITER
-        << prevSection << "->" << currSection
+        << "[" << prevSection << "] -> [" << currSection << "]"
         << std::endl;
     m_traceFile.flush();
 }

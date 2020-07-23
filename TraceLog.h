@@ -4,6 +4,9 @@
 #include <iostream>
 #include <fstream>
 
+#define TOOL_NAME "TinyTracer"
+#define VERSION "1.3.3-i"
+
 class TraceLog 
 {
 public:
@@ -30,6 +33,7 @@ public:
     void logCall(const ADDRINT prevAddr, const ADDRINT calledPageBase, const ADDRINT callAddr);
     void logSectionChange(const ADDRINT addr, std::string sectionName);
     void logNewSectionCalled(const ADDRINT addFrom, std::string prevSection, std::string currSection);
+    void logRtdsc(const ADDRINT base, const ADDRINT rva);
 
 protected:
     bool createFile()
@@ -39,6 +43,10 @@ protected:
         }
         m_traceFile.open(m_logFileName.c_str());
         if (m_traceFile.is_open()) {
+            m_traceFile
+                << "0;---- traced by "<< TOOL_NAME << " v." << VERSION " ----"
+                << std::endl;
+            m_traceFile.flush();
             return true;
         }
         return false;
