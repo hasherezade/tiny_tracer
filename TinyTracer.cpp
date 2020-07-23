@@ -18,11 +18,19 @@
 #include "TraceLog.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "1.4-rc1"
+#define VERSION "1.4-rc2"
 
 #ifndef PAGE_SIZE
     #define PAGE_SIZE 0x1000
 #endif
+
+typedef enum {
+    SHELLC_DO_NOT_FOLLOW = 0,    // trace only the main target module
+    SHELLC_FOLLOW_FIRST = 1,     // follow only the first shellcode called from the main module
+    SHELLC_FOLLOW_RECURSIVE = 2, // follow also the shellcodes called recursively from the the original shellcode
+    SHELLC_OPTIONS_COUNT
+} t_shellc_options;
+
 
 /* ================================================================== */
 // Global variables 
@@ -30,8 +38,7 @@
 
 ProcessInfo pInfo;
 TraceLog traceLog;
-
-bool m_FollowShellcode = false;
+t_shellc_options m_FollowShellcode = SHELLC_DO_NOT_FOLLOW;
 
 /* ===================================================================== */
 // Command line switches
@@ -45,7 +52,7 @@ KNOB<std::string> KnobModuleName(KNOB_MODE_WRITEONCE, "pintool",
 KNOB<bool> KnobShortLog(KNOB_MODE_WRITEONCE, "pintool",
     "s", "", "Use short call logging (without a full DLL path)");
 
-KNOB<bool> KnobFollowShellcode(KNOB_MODE_WRITEONCE, "pintool",
+KNOB<int> KnobFollowShellcode(KNOB_MODE_WRITEONCE, "pintool",
     "f", "", "Trace calls executed from shellcodes loaded in the memory");
 
 /* ===================================================================== */
@@ -64,6 +71,13 @@ INT32 Usage()
     return -1;
 }
 
+t_shellc_options ConvertShcOption(int value)
+{
+    if (value >= SHELLC_OPTIONS_COUNT) {
+        return SHELLC_FOLLOW_RECURSIVE;
+    }
+    return (t_shellc_options)value;
+}
 /* ===================================================================== */
 // Analysis routines
 /* ===================================================================== */
@@ -80,6 +94,9 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
     IMG targetModule = IMG_FindByAddress(addrTo);
     IMG callerModule = IMG_FindByAddress(addrFrom);
 
+    ADDRINT pageFrom = GetPageOfAddr(addrFrom);
+    ADDRINT pageTo = GetPageOfAddr(addrTo);
+
     //is it a transition from the traced module to a foreign module?
     if (isCallerMy && !isTargetMy) {
         ADDRINT RvaFrom = addr_to_rva(addrFrom);
@@ -90,17 +107,27 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
         }
         else {
             //not in any of the mapped modules:
-            lastShellc = GetPageOfAddr(addrTo); //save the beginning of this area
+            lastShellc = pageTo; //save the beginning of this area
             traceLog.logCall(0, RvaFrom, lastShellc, addrTo);
         }
     }
     // trace calls from witin the last shellcode that was called from the traced module:
-    if (m_FollowShellcode && !IMG_Valid(callerModule) && IMG_Valid(targetModule)) {
-        const ADDRINT callerPage = GetPageOfAddr(addrFrom);
+    if (m_FollowShellcode && !IMG_Valid(callerModule)) {
+
+        const ADDRINT callerPage = pageFrom;
         if (callerPage != UNKNOWN_ADDR && callerPage == lastShellc) {
-            const std::string func = get_func_at(addrTo);
-            const std::string dll_name = IMG_Name(targetModule);
-            traceLog.logCall(callerPage, addrFrom, false, dll_name, func);
+
+            if (IMG_Valid(targetModule)) {
+                const std::string func = get_func_at(addrTo);
+                const std::string dll_name = IMG_Name(targetModule);
+                traceLog.logCall(callerPage, addrFrom, false, dll_name, func);
+            }
+            else if (pageFrom != pageTo
+                && m_FollowShellcode == SHELLC_FOLLOW_RECURSIVE)
+            {
+                // set the called shellcode as the current:
+                lastShellc = pageTo;
+            }
         }
     }
 
@@ -297,7 +324,7 @@ int main(int argc, char *argv[])
 
     // init output file:
     traceLog.init(KnobOutputFile.Value(), KnobShortLog.Value());
-    m_FollowShellcode = KnobFollowShellcode.Value();
+    m_FollowShellcode = ConvertShcOption(KnobFollowShellcode.Value());
 
     // Register function to be called for every loaded module
     IMG_AddInstrumentFunction(ImageLoad, NULL);
