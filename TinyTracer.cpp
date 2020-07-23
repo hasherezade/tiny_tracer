@@ -12,11 +12,13 @@
 */
 
 #include "pin.H"
-
 #include <iostream>
 
 #include "ProcessInfo.h"
 #include "TraceLog.h"
+
+#define TOOL_NAME "TinyTracer"
+#define VERSION "1.4-rc1"
 
 #ifndef PAGE_SIZE
     #define PAGE_SIZE 0x1000
@@ -147,6 +149,7 @@ VOID RdtscCalled(const CONTEXT* ctxt)
             traceLog.logRtdsc(start, rva);
         }
     }
+
     PIN_UnlockClient();
 }
 

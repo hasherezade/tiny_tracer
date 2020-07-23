@@ -4,9 +4,6 @@
 #include <iostream>
 #include <fstream>
 
-#define TOOL_NAME "TinyTracer"
-#define VERSION "1.3.3-i"
-
 class TraceLog 
 {
 public:
@@ -43,10 +40,6 @@ protected:
         }
         m_traceFile.open(m_logFileName.c_str());
         if (m_traceFile.is_open()) {
-            m_traceFile
-                << "0;---- traced by "<< TOOL_NAME << " v." << VERSION " ----"
-                << std::endl;
-            m_traceFile.flush();
             return true;
         }
         return false;
