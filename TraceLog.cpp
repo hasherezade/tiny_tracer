@@ -69,7 +69,7 @@ void TraceLog::logRtdsc(const ADDRINT base, const ADDRINT rva)
 {
     if (!createFile()) return;
     if (base) {
-        m_traceFile << "> " << std::hex << base << " + ";
+        m_traceFile << "> " << std::hex << base << "+";
     }
     m_traceFile
         << std::hex << rva
