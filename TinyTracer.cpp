@@ -8,7 +8,6 @@
 * -m    <module_name> ; Analysed module name (by default same as app name)
 * -o    <output_path> Output file
 *
-* saves PID in <output_file>.pid
 */
 
 #include "pin.H"
@@ -18,7 +17,7 @@
 #include "TraceLog.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "1.4-rc2"
+#define VERSION "1.4-rc3"
 
 #ifndef PAGE_SIZE
     #define PAGE_SIZE 0x1000
@@ -38,13 +37,15 @@ typedef enum {
 
 ProcessInfo pInfo;
 TraceLog traceLog;
+
+bool m_TraceRDTSC = false;
 t_shellc_options m_FollowShellcode = SHELLC_DO_NOT_FOLLOW;
 
 /* ===================================================================== */
 // Command line switches
 /* ===================================================================== */
 KNOB<std::string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
-    "o", "", "specify file name for the output");
+    "o", "", "Specify file name for the output");
 
 KNOB<std::string> KnobModuleName(KNOB_MODE_WRITEONCE, "pintool",
     "m", "", "Analysed module name (by default same as app name)");
@@ -52,8 +53,15 @@ KNOB<std::string> KnobModuleName(KNOB_MODE_WRITEONCE, "pintool",
 KNOB<bool> KnobShortLog(KNOB_MODE_WRITEONCE, "pintool",
     "s", "", "Use short call logging (without a full DLL path)");
 
+KNOB<bool> KnobTraceRDTSC(KNOB_MODE_WRITEONCE, "pintool",
+    "d", "", "Trace RDTSC");
+
 KNOB<int> KnobFollowShellcode(KNOB_MODE_WRITEONCE, "pintool",
-    "f", "", "Trace calls executed from shellcodes loaded in the memory");
+    "f", "", "Trace calls executed from shellcodes loaded in the memory:\n"
+    "\t0 - trace only the main target module\n"
+    "\t1 - follow only the first shellcode called from the main module \n"
+    "\t2 - follow also the shellcodes called recursively from the the original shellcode\n"
+);
 
 /* ===================================================================== */
 // Utilities
@@ -233,12 +241,15 @@ ADDRINT AlterRdtscValueEax(const CONTEXT* ctxt)
 VOID InstrumentInstruction(INS ins, VOID *v)
 {
     if (INS_IsRDTSC(ins)) {
-        INS_InsertCall(
-            ins,
-            IPOINT_BEFORE, (AFUNPTR)RdtscCalled,
-            IARG_CONTEXT,
-            IARG_END
-        );
+
+        if (m_TraceRDTSC) {
+            INS_InsertCall(
+                ins,
+                IPOINT_BEFORE, (AFUNPTR)RdtscCalled,
+                IARG_CONTEXT,
+                IARG_END
+            );
+        }
 
         INS_InsertCall(
             ins, 
@@ -325,6 +336,7 @@ int main(int argc, char *argv[])
     // init output file:
     traceLog.init(KnobOutputFile.Value(), KnobShortLog.Value());
     m_FollowShellcode = ConvertShcOption(KnobFollowShellcode.Value());
+    m_TraceRDTSC = KnobTraceRDTSC.Value();
 
     // Register function to be called for every loaded module
     IMG_AddInstrumentFunction(ImageLoad, NULL);
