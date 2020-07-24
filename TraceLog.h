@@ -31,8 +31,10 @@ public:
     void logSectionChange(const ADDRINT addr, std::string sectionName);
     void logNewSectionCalled(const ADDRINT addFrom, std::string prevSection, std::string currSection);
     void logRtdsc(const ADDRINT base, const ADDRINT rva);
+    void logCpuid(const ADDRINT base, const ADDRINT rva, const ADDRINT param);
 
 protected:
+
     bool createFile()
     {
         if (m_traceFile.is_open()) {

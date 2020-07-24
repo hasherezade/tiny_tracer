@@ -17,7 +17,7 @@
 #include "TraceLog.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "1.4-rc3"
+#define VERSION "1.4-rc4"
 
 #ifndef PAGE_SIZE
     #define PAGE_SIZE 0x1000
@@ -86,6 +86,21 @@ t_shellc_options ConvertShcOption(int value)
     }
     return (t_shellc_options)value;
 }
+
+// compare strings, ignore case
+bool isStrEqualI(const std::string &str1, const std::string &str2)
+{
+    if (str1.length() != str2.length()) {
+        return false;
+    }
+    for (size_t i = 0; i < str1.length(); i++) {
+        if (tolower(str1[i]) != tolower(str2[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /* ===================================================================== */
 // Analysis routines
 /* ===================================================================== */
@@ -188,6 +203,30 @@ VOID RdtscCalled(const CONTEXT* ctxt)
     PIN_UnlockClient();
 }
 
+VOID CpuidCalled(const CONTEXT* ctxt)
+{
+    PIN_LockClient();
+
+    ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+    ADDRINT Param = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
+
+    IMG currModule = IMG_FindByAddress(Address);
+    const bool isCurrMy = pInfo.isMyAddress(Address);
+    if (isCurrMy) {
+        ADDRINT rva = addr_to_rva(Address); // convert to RVA
+        traceLog.logCpuid(0, rva, Param);
+    }
+    if (m_FollowShellcode && !IMG_Valid(currModule)) {
+        const ADDRINT start = GetPageOfAddr(Address);
+        ADDRINT rva = Address - start;
+        if (start != UNKNOWN_ADDR) {
+            traceLog.logCpuid(start, rva, Param);
+        }
+    }
+
+    PIN_UnlockClient();
+}
+
 ADDRINT _setTimer(const CONTEXT* ctxt, bool isEax)
 {
     static UINT64 Timer = 0;
@@ -240,8 +279,16 @@ ADDRINT AlterRdtscValueEax(const CONTEXT* ctxt)
 
 VOID InstrumentInstruction(INS ins, VOID *v)
 {
-    if (INS_IsRDTSC(ins)) {
+    if (isStrEqualI(INS_Mnemonic(ins), "cpuid")) {
+        INS_InsertCall(
+            ins,
+            IPOINT_BEFORE, (AFUNPTR)CpuidCalled,
+            IARG_CONTEXT,
+            IARG_END
+        );
+    }
 
+    if (INS_IsRDTSC(ins)) {
         if (m_TraceRDTSC) {
             INS_InsertCall(
                 ins,
