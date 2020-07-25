@@ -17,7 +17,7 @@
 #include "TraceLog.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "1.4-rc4"
+#define VERSION "1.4"
 
 #ifndef PAGE_SIZE
     #define PAGE_SIZE 0x1000
