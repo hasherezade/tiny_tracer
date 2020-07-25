@@ -1,7 +1,7 @@
 # tiny_tracer
 A Pin Tool for tracing:
 + API calls
-+ selected instructions: RDTCS, CPUID
++ selected instructions: RDTSC, CPUID
 + transition between sections of the traced module (helpful in finding OEP of the packed module)
 
 Generates a report in a `.tag` format (which can be [loaded into other analysis tools](https://github.com/hasherezade/tiny_tracer/wiki/Using-the-TAGs-with-disassemblers-and-debuggers)):
