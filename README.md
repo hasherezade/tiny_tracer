@@ -4,6 +4,8 @@ A Pin Tool for tracing:
 + selected instructions: [RDTSC](https://c9x.me/x86/html/file_module_x86_id_278.html), [CPUID](https://c9x.me/x86/html/file_module_x86_id_45.html)
 + transition between sections of the traced module (helpful in finding OEP of the packed module)
 
+Bypasses the anti-tracing check based on RDTSC.
+
 Generates a report in a `.tag` format (which can be [loaded into other analysis tools](https://github.com/hasherezade/tiny_tracer/wiki/Using-the-TAGs-with-disassemblers-and-debuggers)):
 ```
 RVA;traced event
