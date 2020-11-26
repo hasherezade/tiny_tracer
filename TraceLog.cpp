@@ -65,7 +65,7 @@ void TraceLog::logSectionChange(const ADDRINT prevAddr, std::string name)
     m_traceFile.flush();
 }
 
-void TraceLog::logRtdsc(const ADDRINT base, const ADDRINT rva)
+void TraceLog::logRdtsc(const ADDRINT base, const ADDRINT rva)
 {
     if (!createFile()) return;
     if (base) {
@@ -74,7 +74,7 @@ void TraceLog::logRtdsc(const ADDRINT base, const ADDRINT rva)
     m_traceFile
         << std::hex << rva
         << DELIMITER
-        << "RTDCS"
+        << "RDTSC"
         << std::endl;
     m_traceFile.flush();
 }

@@ -17,7 +17,7 @@
 #include "TraceLog.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "1.4.1"
+#define VERSION "1.4.2"
 
 #ifndef PAGE_SIZE
     #define PAGE_SIZE 0x1000
@@ -190,13 +190,13 @@ VOID RdtscCalled(const CONTEXT* ctxt)
     const bool isCurrMy = pInfo.isMyAddress(Address);
     if (isCurrMy) {
         ADDRINT rva = addr_to_rva(Address); // convert to RVA
-        traceLog.logRtdsc(0, rva);
+        traceLog.logRdtsc(0, rva);
     }
     if (m_FollowShellcode && !IMG_Valid(currModule)) {
         const ADDRINT start = GetPageOfAddr(Address);
         ADDRINT rva = Address - start;
         if (start != UNKNOWN_ADDR) {
-            traceLog.logRtdsc(start, rva);
+            traceLog.logRdtsc(start, rva);
         }
     }
 
