@@ -242,7 +242,7 @@ ADDRINT _setTimer(const CONTEXT* ctxt, bool isEax)
     }
 
     if (isEax) {
-        result = (Timer << 32) >> 32;
+        result = Timer & 0xFFFFFFFFULL;
     }
     else {
         result = (Timer) >> 32;
