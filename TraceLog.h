@@ -4,6 +4,8 @@
 #include <iostream>
 #include <fstream>
 
+std::string get_dll_name(const std::string& str);
+
 class TraceLog 
 {
 public:

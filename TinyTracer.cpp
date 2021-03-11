@@ -10,14 +10,18 @@
 *
 */
 
-#include "pin.H"
 #include <iostream>
+#include <string>
+
+#include "pin.H"
 
 #include "ProcessInfo.h"
 #include "TraceLog.h"
 
 #define TOOL_NAME "TinyTracer"
 #define VERSION "1.4.3"
+
+#define PARAMS_FILE "params.txt"
 
 #define IS_PRINTABLE(c) (c >= 0x20 && c < 0x7f)
 #define IS_ENDLINE(c) (c == 0x0A || c == 0xD)
@@ -33,6 +37,69 @@ typedef enum {
     SHELLC_OPTIONS_COUNT
 } t_shellc_options;
 
+typedef struct {
+    std::string dllName;
+    std::string funcName;
+    size_t paramCount;
+} t_watched_func;
+
+const size_t g_WatchedMax = 300;
+t_watched_func g_Watched[g_WatchedMax];
+size_t g_WatchedCount = 0;
+
+bool append_watched(std::string& dllname, std::string& fname, size_t count)
+{
+    if (g_WatchedCount == (g_WatchedMax - 1)) {
+        return false;
+    }
+    if (dllname.length() == 0 || fname.length() == 0) {
+        return false;
+    }
+    std::cout << " appending: [" << dllname << "][" << fname << "]\n";
+    g_Watched[g_WatchedCount].dllName = dllname;
+    g_Watched[g_WatchedCount].funcName = fname;
+    g_Watched[g_WatchedCount].paramCount = count;
+    g_WatchedCount++;
+    return true;
+}
+
+bool load_func_info(char* line, t_watched_func &func_info)
+{
+    std::vector<std::string> args;
+    static const char* delim = ";";
+    for (char* pt = strtok(line, delim); pt != NULL; pt = strtok(NULL, delim)) {
+        args.push_back(pt);
+    }
+    if (args.size() < 3) return false;
+
+    func_info.dllName = args[0];
+    func_info.funcName = args[1];
+    {
+        std::stringstream ss;
+        ss << std::dec << args[2];
+        ss >> func_info.paramCount;
+    }
+    append_watched(func_info.dllName, func_info.funcName, func_info.paramCount);
+    return true;
+}
+
+size_t load_args(char* filename)
+{
+    std::ifstream myfile(filename);
+    if (!myfile.is_open()) {
+        std::cerr << "Coud not open file: " << filename << std::endl;
+        return 0;
+    }
+    const size_t MAX_LINE = 300;
+    char line[] = { 0 };
+    while (!myfile.eof()) {
+        myfile.getline(line, MAX_LINE);
+        t_watched_func func_info;
+        load_func_info(line, func_info);
+        //append_watched(func_info.dllName, func_info.funcName, func_info.paramCount);
+    }
+    return g_WatchedCount;
+}
 
 /* ================================================================== */
 // Global variables 
@@ -379,11 +446,13 @@ VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID 
     PIN_UnlockClient();
 }
 
-VOID MonitorFunctionArgs(IMG Image, const char* funcName, size_t argNum)
+VOID MonitorFunctionArgs(IMG Image, const CHAR* funcName, size_t argNum)
 {
     RTN funcRtn = RTN_FindByName(Image, funcName);
     if (!RTN_Valid(funcRtn)) return; // failed
 
+
+    std::cout << "Watch " << IMG_Name(Image) << "[" << funcName << "] [" << argNum << "]\n";
     RTN_Open(funcRtn);
 
     RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunctionArgs),
@@ -459,14 +528,12 @@ VOID ImageLoad(IMG Image, VOID *v)
 {
     PIN_LockClient();
     pInfo.addModule(Image);
-
-    // TODO: this list should be read from a config:
-    MonitorFunctionArgs(Image, "LoadLibraryW", 1);
-    MonitorFunctionArgs(Image, "LoadLibraryA", 1);
-    MonitorFunctionArgs(Image, "GetProcAddress", 2);
-    MonitorFunctionArgs(Image, "RegQueryValueW", 1);
-    MonitorFunctionArgs(Image, "RtlAllocateHeap", 3);
-    
+    for (size_t i = 0; i < g_WatchedCount; i++) {
+        const std::string dllName = get_dll_name(IMG_Name(Image));
+        if (dllName == g_Watched[i].dllName) {
+            MonitorFunctionArgs(Image, g_Watched[i].funcName.c_str(), g_Watched[i].paramCount);
+        }
+    }
     PIN_UnlockClient();
 }
 
@@ -517,6 +584,9 @@ int main(int argc, char *argv[])
     }
 
     pInfo.init(app_name);
+
+    size_t loaded = load_args(PARAMS_FILE);
+    std::cout << "Args: " << loaded << "\n";
 
     // init output file:
     traceLog.init(KnobOutputFile.Value(), KnobShortLog.Value());
