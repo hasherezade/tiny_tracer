@@ -19,6 +19,9 @@
 #define TOOL_NAME "TinyTracer"
 #define VERSION "1.4.3"
 
+#define IS_PRINTABLE(c) (c >= 0x20 && c < 0x7f)
+#define IS_ENDLINE(c) (c == 0x0A || c == 0xD)
+
 #ifndef PAGE_SIZE
     #define PAGE_SIZE 0x1000
 #endif
@@ -293,6 +296,28 @@ bool isWatchedAddress(const ADDRINT Address)
     return false;
 }
 
+size_t getAsciiLen(const char *inp, size_t maxInp)
+{
+    size_t i = 0;
+    for (; i < maxInp; i++) {
+        const char c = inp[i];
+        if (c == '\0') return i; //end of string
+        if (!IS_PRINTABLE(c) && !IS_ENDLINE(c)) return 0;
+    }
+    return 0;
+}
+
+size_t getAsciiLenW(const wchar_t *inp, size_t maxInp)
+{
+    size_t i = 0;
+    for (; i < maxInp; i++) {
+        const wchar_t w = inp[i];
+        if (w == 0) return i; //end of string
+        if (!IS_PRINTABLE(w) && !IS_ENDLINE(w)) return 0;
+    }
+    return 0;
+}
+
 std::wstring paramToStr(VOID *arg1)
 {
     if (arg1 == NULL) {
@@ -304,15 +329,13 @@ std::wstring paramToStr(VOID *arg1)
     std::wstringstream ss;
 
     if (isReadableAddr) {
-        char* val = (char*)arg1;
-        bool isString = isprint(val[0]);
-        size_t len = 0;
-        if (isString) {
-            len = strlen(val);
-        }
+        const char* val = (char*)arg1;
+        size_t len = getAsciiLen(val, 100);
+
         if (len == 1) { // Possible wideString
             wchar_t* val = (wchar_t*)arg1;
-            if (wcslen(val) >= len) {
+            size_t wLen = getAsciiLenW(val, 100);
+            if (wLen >= len) {
                 ss << val;
             }
         }
@@ -332,7 +355,7 @@ std::wstring paramToStr(VOID *arg1)
     return argsLineW;
 }
 
-VOID _LogFunction1Arg(const ADDRINT Address, CHAR *name, uint32_t argNum, VOID *arg1)
+VOID _LogFunction1Arg(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6)
 {
     if (arg1 == NULL) {
         return;
@@ -340,29 +363,27 @@ VOID _LogFunction1Arg(const ADDRINT Address, CHAR *name, uint32_t argNum, VOID *
 
     if (!isWatchedAddress(Address)) return;
 
-    BOOL isReadableAddr = PIN_CheckReadAccess(arg1);
+    VOID* args[] = { arg1, arg2, arg3, arg4, arg5, arg6 };
+    std::wstringstream ss;
+    for (size_t i = 0; i <= argCount; i++) {
+        ss << "\tArg[" << i << "] = (";
+        ss << paramToStr(args[i]);
+        ss << ")\n";
+    }
 
-    std::wstring argsLineW;
-    {
-        std::wstringstream ss;
-        ss << "Arg[" << argNum << "] = (" ;
-        ss << paramToStr(arg1);
-        ss << ")";
-
-        argsLineW = ss.str();
-     }
+    std::wstring argsLineW = ss.str();
     std::string s(argsLineW.begin(), argsLineW.end());
     traceLog.logLine(s);
 }
 
-VOID LogFunction1Arg(const ADDRINT Address, CHAR *name, uint32_t argNum, VOID *arg1)
+VOID LogFunction1Arg(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6)
 {
     PIN_LockClient();
-    _LogFunction1Arg(Address, name, argNum, arg1);
+    _LogFunction1Arg(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6);
     PIN_UnlockClient();
 }
 
-VOID MonitorFunction1Arg(IMG Image, const char* funcName, uint32_t argNum)
+VOID MonitorFunction1Arg(IMG Image, const char* funcName, size_t argNum)
 {
     RTN funcRtn = RTN_FindByName(Image, funcName);
     if (!RTN_Valid(funcRtn)) return; // failed
@@ -373,7 +394,12 @@ VOID MonitorFunction1Arg(IMG Image, const char* funcName, uint32_t argNum)
         IARG_RETURN_IP,
         IARG_ADDRINT, funcName,
         IARG_UINT32, argNum,
-        IARG_FUNCARG_ENTRYPOINT_VALUE, argNum,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
         IARG_END
     );
 

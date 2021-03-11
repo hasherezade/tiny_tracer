@@ -100,7 +100,6 @@ void TraceLog::logLine(std::string str)
     if (!createFile()) return;
 
     m_traceFile
-        << "\t"
         << str
         << std::endl;
     m_traceFile.flush();
