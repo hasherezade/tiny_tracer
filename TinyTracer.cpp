@@ -346,7 +346,7 @@ VOID _LogFunction1Arg(const ADDRINT Address, CHAR *name, VOID *arg1)
     {
         std::wstringstream ss;
         ss << "Args(" ;
-        ss << paramToStr(arg1)
+        ss << paramToStr(arg1);
         ss << ")" << std::endl;
         ss >> argsLineW;
      }
