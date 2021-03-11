@@ -355,7 +355,7 @@ std::wstring paramToStr(VOID *arg1)
     return argsLineW;
 }
 
-VOID _LogFunction1Arg(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6)
+VOID _LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6)
 {
     if (arg1 == NULL) {
         return;
@@ -365,7 +365,7 @@ VOID _LogFunction1Arg(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID
 
     VOID* args[] = { arg1, arg2, arg3, arg4, arg5, arg6 };
     std::wstringstream ss;
-    for (size_t i = 0; i <= argCount; i++) {
+    for (size_t i = 0; i < argCount; i++) {
         ss << "\tArg[" << i << "] = (";
         ss << paramToStr(args[i]);
         ss << ")\n";
@@ -376,21 +376,21 @@ VOID _LogFunction1Arg(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID
     traceLog.logLine(s);
 }
 
-VOID LogFunction1Arg(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6)
+VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6)
 {
     PIN_LockClient();
-    _LogFunction1Arg(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6);
+    _LogFunctionArgs(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6);
     PIN_UnlockClient();
 }
 
-VOID MonitorFunction1Arg(IMG Image, const char* funcName, size_t argNum)
+VOID MonitorFunctionArgs(IMG Image, const char* funcName, size_t argNum)
 {
     RTN funcRtn = RTN_FindByName(Image, funcName);
     if (!RTN_Valid(funcRtn)) return; // failed
 
     RTN_Open(funcRtn);
 
-    RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunction1Arg),
+    RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunctionArgs),
         IARG_RETURN_IP,
         IARG_ADDRINT, funcName,
         IARG_UINT32, argNum,
@@ -464,11 +464,12 @@ VOID ImageLoad(IMG Image, VOID *v)
     PIN_LockClient();
     pInfo.addModule(Image);
 
-    MonitorFunction1Arg(Image, "LoadLibraryW",0);
-    MonitorFunction1Arg(Image, "LoadLibraryA", 0);
-    MonitorFunction1Arg(Image, "GetProcAddress", 1);
-    MonitorFunction1Arg(Image, "RegQueryValueW", 0);
-    MonitorFunction1Arg(Image, "RtlAllocateHeap", 2);
+    // TODO: this list should be read from a config:
+    MonitorFunctionArgs(Image, "LoadLibraryW", 1);
+    MonitorFunctionArgs(Image, "LoadLibraryA", 1);
+    MonitorFunctionArgs(Image, "GetProcAddress", 2);
+    MonitorFunctionArgs(Image, "RegQueryValueW", 1);
+    MonitorFunctionArgs(Image, "RtlAllocateHeap", 3);
     
     PIN_UnlockClient();
 }
