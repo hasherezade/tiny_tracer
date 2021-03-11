@@ -357,10 +357,6 @@ std::wstring paramToStr(VOID *arg1)
 
 VOID _LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6)
 {
-    if (arg1 == NULL) {
-        return;
-    }
-
     if (!isWatchedAddress(Address)) return;
 
     VOID* args[] = { arg1, arg2, arg3, arg4, arg5, arg6 };
