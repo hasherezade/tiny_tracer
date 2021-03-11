@@ -293,32 +293,60 @@ bool isWatchedAddress(const ADDRINT Address)
     return false;
 }
 
-VOID _LogFunction1Arg(const ADDRINT Address, CHAR *name, ADDRINT *arg1)
+std::wstring paramToStr(VOID *arg1)
 {
-    if ( arg1 == NULL || *arg1 == NULL || *arg1 == IARG_INVALID ) {
+    if (arg1 == NULL) {
+        return L"0";
+    }
+
+    std::wstring argsLineW;
+    const BOOL isReadableAddr = PIN_CheckReadAccess(arg1);
+    std::wstringstream ss;
+
+    if (isReadableAddr) {
+        char* val = (char*)arg1;
+        bool isString = isprint(val[0]);
+        size_t len = 0;
+        if (isString) {
+            len = strlen(val);
+        }
+        if (len == 1) { // Possible wideString
+            wchar_t* val = (wchar_t*)arg1;
+            if (wcslen(val) >= len) {
+                ss << val;
+            }
+        }
+        else if (len > 1) { // ASCII string
+            ss << val;
+        }
+        else { // possible blob of a hexadecimal data
+            ss << std::hex << (arg1);
+        }
+    }
+    else {
+        // single value
+        ss << std::hex << long(arg1);
+    }
+    ss >> argsLineW;
+
+    return argsLineW;
+}
+
+VOID _LogFunction1Arg(const ADDRINT Address, CHAR *name, VOID *arg1)
+{
+    if (arg1 == NULL) {
         return;
     }
 
     if (!isWatchedAddress(Address)) return;
 
+    BOOL isReadableAddr = PIN_CheckReadAccess(arg1);
+
     std::wstring argsLineW;
     {
         std::wstringstream ss;
         ss << "Args(" ;
-
-        char* val = (char*)*arg1;
-        if (isprint(val[0])) {
-            if (strlen(val) == 1) {
-                wchar_t* val = (wchar_t*)*arg1;
-                ss << val;
-            }
-            else {
-                ss << val;
-            }
-        }
-        else {
-            ss << std::hex << (arg1);
-        }
+        ss << paramToStr(arg1)
         ss << ")" << std::endl;
         ss >> argsLineW;
      }
@@ -326,7 +354,7 @@ VOID _LogFunction1Arg(const ADDRINT Address, CHAR *name, ADDRINT *arg1)
     traceLog.logLine(s);
 }
 
-VOID LogFunction1Arg(const ADDRINT Address, CHAR *name, ADDRINT *arg1)
+VOID LogFunction1Arg(const ADDRINT Address, CHAR *name, VOID *arg1)
 {
     PIN_LockClient();
     _LogFunction1Arg(Address, name, arg1);
@@ -343,7 +371,7 @@ VOID MonitorFunction1Arg(IMG Image, const char* funcName, size_t argNum)
     RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunction1Arg),
         IARG_RETURN_IP,
         IARG_ADDRINT, funcName,
-        IARG_FUNCARG_ENTRYPOINT_REFERENCE, argNum,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, argNum,
         IARG_END
     );
 
@@ -411,7 +439,9 @@ VOID ImageLoad(IMG Image, VOID *v)
     MonitorFunction1Arg(Image, "LoadLibraryW",0);
     MonitorFunction1Arg(Image, "LoadLibraryA", 0);
     MonitorFunction1Arg(Image, "GetProcAddress", 1);
-    //MonitorFunction1Arg(Image, "RegQueryValueW", 1);
+    MonitorFunction1Arg(Image, "RegQueryValueW", 0);
+    MonitorFunction1Arg(Image, "RtlAllocateHeap", 2);
+    
     PIN_UnlockClient();
 }
 
