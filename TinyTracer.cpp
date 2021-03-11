@@ -332,7 +332,7 @@ std::wstring paramToStr(VOID *arg1)
     return argsLineW;
 }
 
-VOID _LogFunction1Arg(const ADDRINT Address, CHAR *name, VOID *arg1)
+VOID _LogFunction1Arg(const ADDRINT Address, CHAR *name, uint32_t argNum, VOID *arg1)
 {
     if (arg1 == NULL) {
         return;
@@ -345,23 +345,24 @@ VOID _LogFunction1Arg(const ADDRINT Address, CHAR *name, VOID *arg1)
     std::wstring argsLineW;
     {
         std::wstringstream ss;
-        ss << "Args(" ;
+        ss << "Arg[" << argNum << "] = (" ;
         ss << paramToStr(arg1);
-        ss << ")" << std::endl;
-        ss >> argsLineW;
+        ss << ")";
+
+        argsLineW = ss.str();
      }
     std::string s(argsLineW.begin(), argsLineW.end());
     traceLog.logLine(s);
 }
 
-VOID LogFunction1Arg(const ADDRINT Address, CHAR *name, VOID *arg1)
+VOID LogFunction1Arg(const ADDRINT Address, CHAR *name, uint32_t argNum, VOID *arg1)
 {
     PIN_LockClient();
-    _LogFunction1Arg(Address, name, arg1);
+    _LogFunction1Arg(Address, name, argNum, arg1);
     PIN_UnlockClient();
 }
 
-VOID MonitorFunction1Arg(IMG Image, const char* funcName, size_t argNum)
+VOID MonitorFunction1Arg(IMG Image, const char* funcName, uint32_t argNum)
 {
     RTN funcRtn = RTN_FindByName(Image, funcName);
     if (!RTN_Valid(funcRtn)) return; // failed
@@ -371,6 +372,7 @@ VOID MonitorFunction1Arg(IMG Image, const char* funcName, size_t argNum)
     RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunction1Arg),
         IARG_RETURN_IP,
         IARG_ADDRINT, funcName,
+        IARG_UINT32, argNum,
         IARG_FUNCARG_ENTRYPOINT_VALUE, argNum,
         IARG_END
     );
