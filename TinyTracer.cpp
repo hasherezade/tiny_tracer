@@ -17,7 +17,7 @@
 #include "TraceLog.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "1.4.2"
+#define VERSION "1.4.3"
 
 #ifndef PAGE_SIZE
     #define PAGE_SIZE 0x1000
@@ -272,6 +272,84 @@ ADDRINT AlterRdtscValueEax(const CONTEXT* ctxt)
     return result;
 }
 
+/* ===================================================================== */
+// Instrument functions arguments
+/* ===================================================================== */
+
+bool isWatchedAddress(const ADDRINT Address)
+{
+    IMG currModule = IMG_FindByAddress(Address);
+    const bool isCurrMy = pInfo.isMyAddress(Address);
+    if (isCurrMy) {
+        return true;
+    }
+    if (m_FollowShellcode && !IMG_Valid(currModule)) {
+        const ADDRINT start = GetPageOfAddr(Address);
+        ADDRINT rva = Address - start;
+        if (start != UNKNOWN_ADDR) {
+            return true;
+        }
+    }
+    return false;
+}
+
+VOID _LogFunction1Arg(const ADDRINT Address, CHAR *name, ADDRINT *arg1)
+{
+    if ( arg1 == NULL || *arg1 == NULL || *arg1 == IARG_INVALID ) {
+        return;
+    }
+
+    if (!isWatchedAddress(Address)) return;
+
+    std::wstring argsLineW;
+    {
+        std::wstringstream ss;
+        ss << "Args(" ;
+
+        char* val = (char*)*arg1;
+        if (isprint(val[0])) {
+            if (strlen(val) == 1) {
+                wchar_t* val = (wchar_t*)*arg1;
+                ss << val;
+            }
+            else {
+                ss << val;
+            }
+        }
+        else {
+            ss << std::hex << (arg1);
+        }
+        ss << ")" << std::endl;
+        ss >> argsLineW;
+     }
+    std::string s(argsLineW.begin(), argsLineW.end());
+    traceLog.logLine(s);
+}
+
+VOID LogFunction1Arg(const ADDRINT Address, CHAR *name, ADDRINT *arg1)
+{
+    PIN_LockClient();
+    _LogFunction1Arg(Address, name, arg1);
+    PIN_UnlockClient();
+}
+
+VOID MonitorFunction1Arg(IMG Image, const char* funcName, size_t argNum)
+{
+    RTN funcRtn = RTN_FindByName(Image, funcName);
+    if (!RTN_Valid(funcRtn)) return; // failed
+
+    RTN_Open(funcRtn);
+
+    RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunction1Arg),
+        IARG_RETURN_IP,
+        IARG_ADDRINT, funcName,
+        IARG_FUNCARG_ENTRYPOINT_REFERENCE, argNum,
+        IARG_END
+    );
+
+    RTN_Close(funcRtn);
+}
+
 
 /* ===================================================================== */
 // Instrumentation callbacks
@@ -329,6 +407,11 @@ VOID ImageLoad(IMG Image, VOID *v)
 {
     PIN_LockClient();
     pInfo.addModule(Image);
+
+    MonitorFunction1Arg(Image, "LoadLibraryW",0);
+    MonitorFunction1Arg(Image, "LoadLibraryA", 0);
+    MonitorFunction1Arg(Image, "GetProcAddress", 1);
+    //MonitorFunction1Arg(Image, "RegQueryValueW", 1);
     PIN_UnlockClient();
 }
 

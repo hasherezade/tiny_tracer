@@ -95,6 +95,16 @@ void TraceLog::logCpuid(const ADDRINT base, const ADDRINT rva, const ADDRINT par
     m_traceFile.flush();
 }
 
+void TraceLog::logLine(std::string str)
+{
+    if (!createFile()) return;
+
+    m_traceFile
+        << "\t"
+        << str
+        << std::endl;
+    m_traceFile.flush();
+}
 
 void TraceLog::logNewSectionCalled(const ADDRINT prevAddr, std::string prevSection, std::string currSection)
 {
