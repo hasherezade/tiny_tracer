@@ -32,7 +32,6 @@ bool FuncWatchList::appendFunc(std::string& dllname, std::string& fname, size_t 
     if (dllname.length() == 0 || fname.length() == 0) {
         return false;
     }
-    std::cout << " appending: [" << dllname << "][" << fname << "]\n";
     funcs[funcsCount].dllName = dllname;
     funcs[funcsCount].funcName = fname;
     funcs[funcsCount].paramCount = count;

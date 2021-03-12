@@ -316,11 +316,11 @@ std::wstring paramToStr(VOID *arg1)
             wchar_t* val = (wchar_t*)arg1;
             size_t wLen = util::getAsciiLenW(val, 100);
             if (wLen >= len) {
-                ss << val;
+                ss << "L\"" << val << "\"";
             }
         }
         else if (len > 1) { // ASCII string
-            ss << val;
+            ss << "\"" << val << "\"";
         }
         else { // possible pointer to some structure
             ss << "ptr " << std::hex << (arg1);
@@ -342,9 +342,9 @@ VOID _LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID
     VOID* args[argsMax] = { arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10 };
     std::wstringstream ss;
     for (size_t i = 0; i < argCount && i < argsMax; i++) {
-        ss << "\tArg[" << i << "] = (";
+        ss << "\tArg[" << i << "] = ";
         ss << paramToStr(args[i]);
-        ss << ")\n";
+        ss << "\n";
     }
 
     std::wstring argsLineW = ss.str();
@@ -364,7 +364,7 @@ VOID MonitorFunctionArgs(IMG Image, const CHAR* funcName, size_t argNum)
     RTN funcRtn = RTN_FindByName(Image, funcName);
     if (!RTN_Valid(funcRtn)) return; // failed
 
-    std::cout << "Watch " << IMG_Name(Image) << "[" << funcName << "] [" << argNum << "]\n";
+    std::cout << "Watch " << IMG_Name(Image) << ": " << funcName << " [" << argNum << "]\n";
     RTN_Open(funcRtn);
 
     RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunctionArgs),
