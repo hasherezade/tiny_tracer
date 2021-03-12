@@ -17,4 +17,6 @@ namespace util {
     size_t getAsciiLenW(const wchar_t *inp, size_t maxInp);
 
     std::string getDllName(const std::string& str);
+
+    bool iequals(const std::string& a, const std::string& b);
 };

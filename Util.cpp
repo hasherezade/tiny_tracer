@@ -35,3 +35,14 @@ std::string util::getDllName(const std::string& str)
     std::transform(name.begin(), name.end(), name.begin(), std::tolower);
     return name;
 }
+
+bool util::iequals(const std::string& a, const std::string& b)
+{
+    size_t aLen = a.size();
+    if (b.size() != aLen) return false;
+
+    for (size_t i = 0; i < aLen; ++i) {
+        if (tolower(a[i]) != tolower(b[i])) return false;
+    }
+    return true;
+}

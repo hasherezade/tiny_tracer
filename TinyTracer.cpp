@@ -447,7 +447,7 @@ VOID ImageLoad(IMG Image, VOID *v)
     pInfo.addModule(Image);
     for (size_t i = 0; i < g_Watch.funcsCount; i++) {
         const std::string dllName = util::getDllName(IMG_Name(Image));
-        if (dllName == g_Watch.funcs[i].dllName) {
+        if (util::iequals(dllName, g_Watch.funcs[i].dllName)) {
             MonitorFunctionArgs(Image, g_Watch.funcs[i].funcName.c_str(), g_Watch.funcs[i].paramCount);
         }
     }
