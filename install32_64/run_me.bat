@@ -24,6 +24,10 @@ set ENABLE_SHORT_LOGGING=1
 set FOLLOW_SHELLCODES=1
 set TRACE_RDTSC=0
 
+rem WATCH_BEFORE - a file with a list of functions which's parameters will be logged before execution
+rem The file must be a list of records in a format: [dll_name];[func_name];[parameters_count]
+set WATCH_BEFORE=%PIN_TOOLS_DIR%\params.txt
+
 %PIN_TOOLS_DIR%\pe_check.exe "%TARGET_APP%"
 if %errorlevel% == 32 (
 	echo 32bit selected
@@ -41,8 +45,8 @@ if [%IS_ADMIN%] == [A] (
 )
 
 set ADMIN_CMD=%PIN_TOOLS_DIR%\sudo.vbs
-set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -d %TRACE_RDTSC% -s %ENABLE_SHORT_LOGGING% -- regsvr32.exe /s "%TARGET_APP%"
-set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -d %TRACE_RDTSC% -s %ENABLE_SHORT_LOGGING% -- "%TARGET_APP%" 
+set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -d %TRACE_RDTSC% -s %ENABLE_SHORT_LOGGING% -b "%WATCH_BEFORE%" -- regsvr32.exe /s "%TARGET_APP%"
+set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -d %TRACE_RDTSC% -s %ENABLE_SHORT_LOGGING% -b "%WATCH_BEFORE%" -- "%TARGET_APP%" 
 
 ;rem "Trace EXE"
 if [%PE_TYPE%] == [exe] (

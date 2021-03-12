@@ -24,10 +24,6 @@
 
 #include "Util.h"
 
-#define PARAMS_FILE "params.txt"
-
-FuncWatchList g_Watch;
-
 typedef enum {
     SHELLC_DO_NOT_FOLLOW = 0,    // trace only the main target module
     SHELLC_FOLLOW_FIRST = 1,     // follow only the first shellcode called from the main module
@@ -46,6 +42,8 @@ TraceLog traceLog;
 bool m_TraceRDTSC = false;
 t_shellc_options m_FollowShellcode = SHELLC_DO_NOT_FOLLOW;
 
+FuncWatchList g_Watch;
+
 /* ===================================================================== */
 // Command line switches
 /* ===================================================================== */
@@ -54,6 +52,9 @@ KNOB<std::string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
 
 KNOB<std::string> KnobModuleName(KNOB_MODE_WRITEONCE, "pintool",
     "m", "", "Analysed module name (by default same as app name)");
+
+KNOB<std::string> KnobWatchListFile(KNOB_MODE_WRITEONCE, "pintool",
+    "b", "", "A list of watched functions (dump parameters before the execution)");
 
 KNOB<bool> KnobShortLog(KNOB_MODE_WRITEONCE, "pintool",
     "s", "", "Use short call logging (without a full DLL path)");
@@ -501,8 +502,13 @@ int main(int argc, char *argv[])
 
     pInfo.init(app_name);
 
-    size_t loaded = g_Watch.loadList(PARAMS_FILE);
-    std::cout << "Args: " << loaded << "\n";
+    if (KnobWatchListFile.Enabled()) {
+        std::string watchListFile = KnobWatchListFile.ValueString();
+        if (watchListFile.length()) {
+            size_t loaded = g_Watch.loadList(watchListFile.c_str());
+            std::cout << "Watch " << loaded << " functions\n";
+        }
+    }
 
     // init output file:
     traceLog.init(KnobOutputFile.Value(), KnobShortLog.Value());
