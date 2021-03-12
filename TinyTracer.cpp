@@ -10,21 +10,23 @@
 *
 */
 
-#include "pin.H"
 #include <iostream>
+#include <string>
+
+#include "pin.H"
 
 #include "ProcessInfo.h"
 #include "TraceLog.h"
+#include "FuncWatch.h"
 
 #define TOOL_NAME "TinyTracer"
 #define VERSION "1.4.3"
 
-#define IS_PRINTABLE(c) (c >= 0x20 && c < 0x7f)
-#define IS_ENDLINE(c) (c == 0x0A || c == 0xD)
+#include "Util.h"
 
-#ifndef PAGE_SIZE
-    #define PAGE_SIZE 0x1000
-#endif
+#define PARAMS_FILE "params.txt"
+
+FuncWatchList g_Watch;
 
 typedef enum {
     SHELLC_DO_NOT_FOLLOW = 0,    // trace only the main target module
@@ -296,45 +298,22 @@ bool isWatchedAddress(const ADDRINT Address)
     return false;
 }
 
-size_t getAsciiLen(const char *inp, size_t maxInp)
-{
-    size_t i = 0;
-    for (; i < maxInp; i++) {
-        const char c = inp[i];
-        if (c == '\0') return i; //end of string
-        if (!IS_PRINTABLE(c) && !IS_ENDLINE(c)) return 0;
-    }
-    return 0;
-}
-
-size_t getAsciiLenW(const wchar_t *inp, size_t maxInp)
-{
-    size_t i = 0;
-    for (; i < maxInp; i++) {
-        const wchar_t w = inp[i];
-        if (w == 0) return i; //end of string
-        if (!IS_PRINTABLE(w) && !IS_ENDLINE(w)) return 0;
-    }
-    return 0;
-}
-
 std::wstring paramToStr(VOID *arg1)
 {
     if (arg1 == NULL) {
         return L"0";
     }
 
-    std::wstring argsLineW;
     const BOOL isReadableAddr = PIN_CheckReadAccess(arg1);
     std::wstringstream ss;
 
     if (isReadableAddr) {
         const char* val = (char*)arg1;
-        size_t len = getAsciiLen(val, 100);
+        size_t len = util::getAsciiLen(val, 100);
 
         if (len == 1) { // Possible wideString
             wchar_t* val = (wchar_t*)arg1;
-            size_t wLen = getAsciiLenW(val, 100);
+            size_t wLen = util::getAsciiLenW(val, 100);
             if (wLen >= len) {
                 ss << val;
             }
@@ -342,26 +321,26 @@ std::wstring paramToStr(VOID *arg1)
         else if (len > 1) { // ASCII string
             ss << val;
         }
-        else { // possible blob of a hexadecimal data
-            ss << std::hex << (arg1);
+        else { // possible pointer to some structure
+            ss << "ptr " << std::hex << (arg1);
         }
     }
     else {
         // single value
-        ss << std::hex << long(arg1);
+        ss << std::hex << (arg1);
     }
-    ss >> argsLineW;
 
-    return argsLineW;
+    return ss.str();
 }
 
-VOID _LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6)
+VOID _LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
 {
     if (!isWatchedAddress(Address)) return;
 
-    VOID* args[] = { arg1, arg2, arg3, arg4, arg5, arg6 };
+    const size_t argsMax = 10;
+    VOID* args[argsMax] = { arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10 };
     std::wstringstream ss;
-    for (size_t i = 0; i < argCount; i++) {
+    for (size_t i = 0; i < argCount && i < argsMax; i++) {
         ss << "\tArg[" << i << "] = (";
         ss << paramToStr(args[i]);
         ss << ")\n";
@@ -372,18 +351,19 @@ VOID _LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID
     traceLog.logLine(s);
 }
 
-VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6)
+VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
 {
     PIN_LockClient();
-    _LogFunctionArgs(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6);
+    _LogFunctionArgs(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
     PIN_UnlockClient();
 }
 
-VOID MonitorFunctionArgs(IMG Image, const char* funcName, size_t argNum)
+VOID MonitorFunctionArgs(IMG Image, const CHAR* funcName, size_t argNum)
 {
     RTN funcRtn = RTN_FindByName(Image, funcName);
     if (!RTN_Valid(funcRtn)) return; // failed
 
+    std::cout << "Watch " << IMG_Name(Image) << "[" << funcName << "] [" << argNum << "]\n";
     RTN_Open(funcRtn);
 
     RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunctionArgs),
@@ -396,6 +376,11 @@ VOID MonitorFunctionArgs(IMG Image, const char* funcName, size_t argNum)
         IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
         IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
         IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 6,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 7,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 8,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 9,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 10,
         IARG_END
     );
 
@@ -459,14 +444,12 @@ VOID ImageLoad(IMG Image, VOID *v)
 {
     PIN_LockClient();
     pInfo.addModule(Image);
-
-    // TODO: this list should be read from a config:
-    MonitorFunctionArgs(Image, "LoadLibraryW", 1);
-    MonitorFunctionArgs(Image, "LoadLibraryA", 1);
-    MonitorFunctionArgs(Image, "GetProcAddress", 2);
-    MonitorFunctionArgs(Image, "RegQueryValueW", 1);
-    MonitorFunctionArgs(Image, "RtlAllocateHeap", 3);
-    
+    for (size_t i = 0; i < g_Watch.funcsCount; i++) {
+        const std::string dllName = util::getDllName(IMG_Name(Image));
+        if (dllName == g_Watch.funcs[i].dllName) {
+            MonitorFunctionArgs(Image, g_Watch.funcs[i].funcName.c_str(), g_Watch.funcs[i].paramCount);
+        }
+    }
     PIN_UnlockClient();
 }
 
@@ -517,6 +500,9 @@ int main(int argc, char *argv[])
     }
 
     pInfo.init(app_name);
+
+    size_t loaded = g_Watch.loadList(PARAMS_FILE);
+    std::cout << "Args: " << loaded << "\n";
 
     // init output file:
     traceLog.init(KnobOutputFile.Value(), KnobShortLog.Value());
