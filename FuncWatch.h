@@ -24,6 +24,14 @@ public:
 
     bool load(const std::string &line, char demiliter);
 
+    bool isValid()
+    {
+        if (dllName.length() > 0 && funcName.length() > 0 && paramCount > 0) {
+            return true;
+        }
+        return false;
+    }
+
     std::string dllName;
     std::string funcName;
     size_t paramCount;
@@ -46,6 +54,7 @@ public:
     size_t loadList(const char* filename);
 
     bool appendFunc(std::string& dllname, std::string& fname, size_t count);
+    bool appendFunc(WFuncInfo &info);
 
     WFuncInfo *funcs;
     size_t funcsCount;

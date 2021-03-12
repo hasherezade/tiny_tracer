@@ -39,6 +39,19 @@ bool FuncWatchList::appendFunc(std::string& dllname, std::string& fname, size_t 
     return true;
 }
 
+bool FuncWatchList::appendFunc(WFuncInfo &func_info)
+{
+    if (funcsCount == (g_WatchedMax - 1)) {
+        return false;
+    }
+    if (!func_info.isValid()) {
+        return false;
+    }
+    funcs[funcsCount] = func_info;
+    funcsCount++;
+    return true;
+}
+
 size_t FuncWatchList::loadList(const char* filename)
 {
     std::ifstream myfile(filename);
@@ -53,8 +66,7 @@ size_t FuncWatchList::loadList(const char* filename)
 
         WFuncInfo func_info;
         if (func_info.load(line, ';')) {
-            funcs[funcsCount] = func_info;
-            funcsCount++;
+            appendFunc(func_info);
         }
     }
     return funcsCount;
