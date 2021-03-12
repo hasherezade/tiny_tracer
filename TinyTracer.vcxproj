@@ -259,11 +259,13 @@
     <ClCompile Include="ProcessInfo.cpp" />
     <ClCompile Include="TinyTracer.cpp" />
     <ClCompile Include="TraceLog.cpp" />
+    <ClCompile Include="Util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ModuleInfo.h" />
     <ClInclude Include="ProcessInfo.h" />
     <ClInclude Include="TraceLog.h" />
+    <ClInclude Include="Util.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
