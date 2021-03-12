@@ -304,33 +304,35 @@ std::wstring paramToStr(VOID *arg1)
     if (arg1 == NULL) {
         return L"0";
     }
-
+    const size_t kMaxStr = 300;
     const BOOL isReadableAddr = PIN_CheckReadAccess(arg1);
     std::wstringstream ss;
 
-    if (isReadableAddr) {
-        const char* val = (char*)arg1;
-        size_t len = util::getAsciiLen(val, 100);
-
-        if (len == 1) { // Possible wideString
-            wchar_t* val = (wchar_t*)arg1;
-            size_t wLen = util::getAsciiLenW(val, 100);
-            if (wLen >= len) {
-                ss << "L\"" << val << "\"";
-            }
-        }
-        else if (len > 1) { // ASCII string
-            ss << "\"" << val << "\"";
-        }
-        else { // possible pointer to some structure
-            ss << "ptr " << std::hex << (arg1);
-        }
-    }
-    else {
+    if (!isReadableAddr) {
         // single value
         ss << std::hex << (arg1);
+        return ss.str();
+    }
+    bool isSet = false;
+    const char* val = (char*)arg1;
+    size_t len = util::getAsciiLen(val, kMaxStr);
+
+    if (len == 1) { // Possible wideString
+        wchar_t* val = (wchar_t*)arg1;
+        size_t wLen = util::getAsciiLenW(val, kMaxStr);
+        if (wLen >= len) {
+            ss << "L\"" << val << "\"";
+            isSet = true;
+        }
+    }
+    else if (len > 1) { // ASCII string
+        ss << "\"" << val << "\"";
+        isSet = true;
     }
 
+    if (!isSet) { // none of the above, possible pointer to some structure
+        ss << "ptr " << std::hex << (arg1);
+    }
     return ss.str();
 }
 
