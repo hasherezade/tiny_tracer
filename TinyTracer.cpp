@@ -21,14 +21,9 @@
 #define TOOL_NAME "TinyTracer"
 #define VERSION "1.4.3"
 
+#include "Util.h"
+
 #define PARAMS_FILE "params.txt"
-
-#define IS_PRINTABLE(c) (c >= 0x20 && c < 0x7f)
-#define IS_ENDLINE(c) (c == 0x0A || c == 0xD)
-
-#ifndef PAGE_SIZE
-    #define PAGE_SIZE 0x1000
-#endif
 
 typedef enum {
     SHELLC_DO_NOT_FOLLOW = 0,    // trace only the main target module
@@ -363,28 +358,6 @@ bool isWatchedAddress(const ADDRINT Address)
     return false;
 }
 
-size_t getAsciiLen(const char *inp, size_t maxInp)
-{
-    size_t i = 0;
-    for (; i < maxInp; i++) {
-        const char c = inp[i];
-        if (c == '\0') return i; //end of string
-        if (!IS_PRINTABLE(c) && !IS_ENDLINE(c)) return 0;
-    }
-    return 0;
-}
-
-size_t getAsciiLenW(const wchar_t *inp, size_t maxInp)
-{
-    size_t i = 0;
-    for (; i < maxInp; i++) {
-        const wchar_t w = inp[i];
-        if (w == 0) return i; //end of string
-        if (!IS_PRINTABLE(w) && !IS_ENDLINE(w)) return 0;
-    }
-    return 0;
-}
-
 std::wstring paramToStr(VOID *arg1)
 {
     if (arg1 == NULL) {
@@ -397,11 +370,11 @@ std::wstring paramToStr(VOID *arg1)
 
     if (isReadableAddr) {
         const char* val = (char*)arg1;
-        size_t len = getAsciiLen(val, 100);
+        size_t len = util::getAsciiLen(val, 100);
 
         if (len == 1) { // Possible wideString
             wchar_t* val = (wchar_t*)arg1;
-            size_t wLen = getAsciiLenW(val, 100);
+            size_t wLen = util::getAsciiLenW(val, 100);
             if (wLen >= len) {
                 ss << val;
             }
@@ -529,7 +502,7 @@ VOID ImageLoad(IMG Image, VOID *v)
     PIN_LockClient();
     pInfo.addModule(Image);
     for (size_t i = 0; i < g_WatchedCount; i++) {
-        const std::string dllName = get_dll_name(IMG_Name(Image));
+        const std::string dllName = util::getDllName(IMG_Name(Image));
         if (dllName == g_Watched[i].dllName) {
             MonitorFunctionArgs(Image, g_Watched[i].funcName.c_str(), g_Watched[i].paramCount);
         }
