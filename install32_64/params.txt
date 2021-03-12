@@ -1,0 +1,5 @@
+kernel32;LoadLibraryW;1
+kernel32;LoadLibraryA;1
+kernel32;GetProcAddress;2
+advapi32;RegQueryValueW;3
+kernel32;CreateFileW;6

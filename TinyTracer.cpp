@@ -10,18 +10,19 @@
 *
 */
 
-#include "pin.H"
 #include <iostream>
+#include <string>
+
+#include "pin.H"
 
 #include "ProcessInfo.h"
 #include "TraceLog.h"
+#include "FuncWatch.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "1.4.2"
+#define VERSION "1.5"
 
-#ifndef PAGE_SIZE
-    #define PAGE_SIZE 0x1000
-#endif
+#include "Util.h"
 
 typedef enum {
     SHELLC_DO_NOT_FOLLOW = 0,    // trace only the main target module
@@ -41,6 +42,8 @@ TraceLog traceLog;
 bool m_TraceRDTSC = false;
 t_shellc_options m_FollowShellcode = SHELLC_DO_NOT_FOLLOW;
 
+FuncWatchList g_Watch;
+
 /* ===================================================================== */
 // Command line switches
 /* ===================================================================== */
@@ -49,6 +52,9 @@ KNOB<std::string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
 
 KNOB<std::string> KnobModuleName(KNOB_MODE_WRITEONCE, "pintool",
     "m", "", "Analysed module name (by default same as app name)");
+
+KNOB<std::string> KnobWatchListFile(KNOB_MODE_WRITEONCE, "pintool",
+    "b", "", "A list of watched functions (dump parameters before the execution)");
 
 KNOB<bool> KnobShortLog(KNOB_MODE_WRITEONCE, "pintool",
     "s", "", "Use short call logging (without a full DLL path)");
@@ -272,6 +278,116 @@ ADDRINT AlterRdtscValueEax(const CONTEXT* ctxt)
     return result;
 }
 
+/* ===================================================================== */
+// Instrument functions arguments
+/* ===================================================================== */
+
+bool isWatchedAddress(const ADDRINT Address)
+{
+    IMG currModule = IMG_FindByAddress(Address);
+    const bool isCurrMy = pInfo.isMyAddress(Address);
+    if (isCurrMy) {
+        return true;
+    }
+    if (m_FollowShellcode && !IMG_Valid(currModule)) {
+        const ADDRINT start = GetPageOfAddr(Address);
+        ADDRINT rva = Address - start;
+        if (start != UNKNOWN_ADDR) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::wstring paramToStr(VOID *arg1)
+{
+    if (arg1 == NULL) {
+        return L"0";
+    }
+
+    const BOOL isReadableAddr = PIN_CheckReadAccess(arg1);
+    std::wstringstream ss;
+
+    if (isReadableAddr) {
+        const char* val = (char*)arg1;
+        size_t len = util::getAsciiLen(val, 100);
+
+        if (len == 1) { // Possible wideString
+            wchar_t* val = (wchar_t*)arg1;
+            size_t wLen = util::getAsciiLenW(val, 100);
+            if (wLen >= len) {
+                ss << "L\"" << val << "\"";
+            }
+        }
+        else if (len > 1) { // ASCII string
+            ss << "\"" << val << "\"";
+        }
+        else { // possible pointer to some structure
+            ss << "ptr " << std::hex << (arg1);
+        }
+    }
+    else {
+        // single value
+        ss << std::hex << (arg1);
+    }
+
+    return ss.str();
+}
+
+VOID _LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
+{
+    if (!isWatchedAddress(Address)) return;
+
+    const size_t argsMax = 10;
+    VOID* args[argsMax] = { arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10 };
+    std::wstringstream ss;
+    for (size_t i = 0; i < argCount && i < argsMax; i++) {
+        ss << "\tArg[" << i << "] = ";
+        ss << paramToStr(args[i]);
+        ss << "\n";
+    }
+
+    std::wstring argsLineW = ss.str();
+    std::string s(argsLineW.begin(), argsLineW.end());
+    traceLog.logLine(s);
+}
+
+VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
+{
+    PIN_LockClient();
+    _LogFunctionArgs(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
+    PIN_UnlockClient();
+}
+
+VOID MonitorFunctionArgs(IMG Image, const CHAR* funcName, size_t argNum)
+{
+    RTN funcRtn = RTN_FindByName(Image, funcName);
+    if (!RTN_Valid(funcRtn)) return; // failed
+
+    std::cout << "Watch " << IMG_Name(Image) << ": " << funcName << " [" << argNum << "]\n";
+    RTN_Open(funcRtn);
+
+    RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunctionArgs),
+        IARG_RETURN_IP,
+        IARG_ADDRINT, funcName,
+        IARG_UINT32, argNum,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 6,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 7,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 8,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 9,
+        IARG_FUNCARG_ENTRYPOINT_VALUE, 10,
+        IARG_END
+    );
+
+    RTN_Close(funcRtn);
+}
+
 
 /* ===================================================================== */
 // Instrumentation callbacks
@@ -329,6 +445,12 @@ VOID ImageLoad(IMG Image, VOID *v)
 {
     PIN_LockClient();
     pInfo.addModule(Image);
+    for (size_t i = 0; i < g_Watch.funcsCount; i++) {
+        const std::string dllName = util::getDllName(IMG_Name(Image));
+        if (util::iequals(dllName, g_Watch.funcs[i].dllName)) {
+            MonitorFunctionArgs(Image, g_Watch.funcs[i].funcName.c_str(), g_Watch.funcs[i].paramCount);
+        }
+    }
     PIN_UnlockClient();
 }
 
@@ -379,6 +501,14 @@ int main(int argc, char *argv[])
     }
 
     pInfo.init(app_name);
+
+    if (KnobWatchListFile.Enabled()) {
+        std::string watchListFile = KnobWatchListFile.ValueString();
+        if (watchListFile.length()) {
+            size_t loaded = g_Watch.loadList(watchListFile.c_str());
+            std::cout << "Watch " << loaded << " functions\n";
+        }
+    }
 
     // init output file:
     traceLog.init(KnobOutputFile.Value(), KnobShortLog.Value());

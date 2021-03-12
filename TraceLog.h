@@ -33,6 +33,8 @@ public:
     void logRdtsc(const ADDRINT base, const ADDRINT rva);
     void logCpuid(const ADDRINT base, const ADDRINT rva, const ADDRINT param);
 
+    void logLine(std::string str);
+
 protected:
 
     bool createFile()

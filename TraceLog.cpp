@@ -2,17 +2,7 @@
 
 #define DELIMITER ';'
 
-std::string get_dll_name(const std::string& str)
-{
-    std::size_t len = str.length();
-    std::size_t found = str.find_last_of("/\\");
-    std::size_t ext = str.find_last_of(".");
-    if (ext >= len) return "";
-
-    std::string name = str.substr(found + 1, ext - (found + 1));
-    std::transform(name.begin(), name.end(), name.begin(), tolower);
-    return name;
-}
+#include "Util.h"
 
 void TraceLog::logCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, bool isRVA, const std::string module, const std::string func)
 {
@@ -30,7 +20,7 @@ void TraceLog::logCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, boo
             << module;
     }
     else {
-        m_traceFile << get_dll_name(module);
+        m_traceFile << util::getDllName(module);
     }
     if (func.length() > 0) {
         m_traceFile << "." << func;
@@ -95,6 +85,15 @@ void TraceLog::logCpuid(const ADDRINT base, const ADDRINT rva, const ADDRINT par
     m_traceFile.flush();
 }
 
+void TraceLog::logLine(std::string str)
+{
+    if (!createFile()) return;
+
+    m_traceFile
+        << str
+        << std::endl;
+    m_traceFile.flush();
+}
 
 void TraceLog::logNewSectionCalled(const ADDRINT prevAddr, std::string prevSection, std::string currSection)
 {
