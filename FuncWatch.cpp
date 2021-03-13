@@ -4,14 +4,20 @@
 #include <fstream>
 #include <sstream>
 
-bool WFuncInfo::load(const std::string &sline, char demiliter)
+size_t split_list(const std::string &sline, const char delimiter, std::vector<std::string> &args)
 {
-    std::vector<std::string> args;
     std::istringstream f(sline);
     std::string s;
-    while (getline(f, s, demiliter)) {
+    while (getline(f, s, delimiter)) {
         args.push_back(s);
     }
+    return args.size();
+}
+
+bool WFuncInfo::load(const std::string &sline, char delimiter)
+{
+    std::vector<std::string> args;
+    split_list(sline, delimiter, args);
     if (args.size() < 3) return false;
 
     this->dllName = args[0];

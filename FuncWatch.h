@@ -22,7 +22,7 @@ public:
         this->paramCount = a.paramCount;
     }
 
-    bool load(const std::string &line, char demiliter);
+    bool load(const std::string &line, char delimiter);
 
     bool isValid()
     {
