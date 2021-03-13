@@ -43,6 +43,9 @@ if %errorlevel% == 64 (
 	set DLL_LOAD=%DLL_LOAD64%
 )
 
+rem The exports that you want to call from a dll, in format: [name1];[name2] or [#ordinal1];[#ordinal2]
+set DLL_EXPORTS=""
+
 echo Target module: "%TRACED_MODULE%"
 echo Tag file: %TAG_FILE%
 if [%IS_ADMIN%] == [A] (
@@ -51,7 +54,7 @@ if [%IS_ADMIN%] == [A] (
 
 set ADMIN_CMD=%PIN_TOOLS_DIR%\sudo.vbs
 
-set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -d %TRACE_RDTSC% -s %ENABLE_SHORT_LOGGING% -b "%WATCH_BEFORE%" -- "%DLL_LOAD%" "%TARGET_APP%"
+set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -d %TRACE_RDTSC% -s %ENABLE_SHORT_LOGGING% -b "%WATCH_BEFORE%" -- "%DLL_LOAD%" "%TARGET_APP%" %DLL_EXPORTS%
 set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -d %TRACE_RDTSC% -s %ENABLE_SHORT_LOGGING% -b "%WATCH_BEFORE%" -- "%TARGET_APP%" 
 
 ;rem "Trace EXE"
