@@ -352,7 +352,7 @@ VOID _LogFunctionArgs(const ADDRINT Address, CHAR *name, BOOL isBefore, uint32_t
             }
         }
         ss << "\t";
-        ss << prefix << " ";
+        ss << prefix;
         ss << "Arg[" << i << "] = ";
         ss << paramToStr(args[i]);
         ss << "\n";
@@ -402,7 +402,7 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
         );
     }
     if (funcInfo.watchAfter) {
-        RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunctionArgs),
+        RTN_InsertCall(funcRtn, IPOINT_AFTER, AFUNPTR(LogFunctionArgs),
             IARG_RETURN_IP,
             IARG_ADDRINT, fName,
             IARG_BOOL, false,
