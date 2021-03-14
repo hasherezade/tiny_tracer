@@ -361,17 +361,19 @@ VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID 
     PIN_UnlockClient();
 }
 
-VOID MonitorFunctionArgs(IMG Image, const CHAR* funcName, size_t argNum)
+VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
 {
-    RTN funcRtn = RTN_FindByName(Image, funcName);
+    const CHAR* fName = funcInfo.funcName.c_str();
+    size_t argNum = funcInfo.paramCount;
+    RTN funcRtn = RTN_FindByName(Image, fName);
     if (!RTN_Valid(funcRtn)) return; // failed
 
-    std::cout << "Watch " << IMG_Name(Image) << ": " << funcName << " [" << argNum << "]\n";
+    std::cout << "Watch " << IMG_Name(Image) << ": " << fName << " [" << argNum << "]\n";
     RTN_Open(funcRtn);
 
     RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunctionArgs),
         IARG_RETURN_IP,
-        IARG_ADDRINT, funcName,
+        IARG_ADDRINT, fName,
         IARG_UINT32, argNum,
         IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
         IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
@@ -450,7 +452,7 @@ VOID ImageLoad(IMG Image, VOID *v)
     for (size_t i = 0; i < g_Watch.funcsCount; i++) {
         const std::string dllName = util::getDllName(IMG_Name(Image));
         if (util::iequals(dllName, g_Watch.funcs[i].dllName)) {
-            MonitorFunctionArgs(Image, g_Watch.funcs[i].funcName.c_str(), g_Watch.funcs[i].paramCount);
+            MonitorFunctionArgs(Image, g_Watch.funcs[i]);
         }
     }
     PIN_UnlockClient();
