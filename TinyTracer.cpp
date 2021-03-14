@@ -336,15 +336,24 @@ std::wstring paramToStr(VOID *arg1)
     return ss.str();
 }
 
-VOID _LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
+VOID _LogFunctionArgs(const ADDRINT Address, CHAR *name, BOOL isBefore, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
 {
     if (!isWatchedAddress(Address)) return;
 
+    const std::wstring prefix = (isBefore) ? L"I" : L"O";
     const size_t argsMax = 10;
     VOID* args[argsMax] = { arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10 };
     std::wstringstream ss;
     for (size_t i = 0; i < argCount && i < argsMax; i++) {
-        ss << "\tArg[" << i << "] = ";
+        if (!isBefore) {
+            if (!PIN_CheckWriteAccess(args[i])) {
+                //skip params that are read-only
+                continue;
+            }
+        }
+        ss << "\t";
+        ss << prefix << " ";
+        ss << "Arg[" << i << "] = ";
         ss << paramToStr(args[i]);
         ss << "\n";
     }
@@ -354,12 +363,13 @@ VOID _LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID
     traceLog.logLine(s);
 }
 
-VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
+VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, BOOL isBefore, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
 {
     PIN_LockClient();
-    _LogFunctionArgs(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
+    _LogFunctionArgs(Address, name, isBefore, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
     PIN_UnlockClient();
 }
+
 
 VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
 {
@@ -371,23 +381,46 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
     std::cout << "Watch " << IMG_Name(Image) << ": " << fName << " [" << argNum << "]\n";
     RTN_Open(funcRtn);
 
-    RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunctionArgs),
-        IARG_RETURN_IP,
-        IARG_ADDRINT, fName,
-        IARG_UINT32, argNum,
-        IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-        IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-        IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
-        IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
-        IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
-        IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
-        IARG_FUNCARG_ENTRYPOINT_VALUE, 6,
-        IARG_FUNCARG_ENTRYPOINT_VALUE, 7,
-        IARG_FUNCARG_ENTRYPOINT_VALUE, 8,
-        IARG_FUNCARG_ENTRYPOINT_VALUE, 9,
-        IARG_FUNCARG_ENTRYPOINT_VALUE, 10,
-        IARG_END
-    );
+    if (funcInfo.watchBefore) {
+        RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunctionArgs),
+            IARG_RETURN_IP,
+            IARG_ADDRINT, fName,
+            IARG_BOOL, true,
+            IARG_UINT32, argNum,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 6,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 7,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 8,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 9,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 10,
+            IARG_END
+        );
+    }
+    if (funcInfo.watchAfter) {
+        RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunctionArgs),
+            IARG_RETURN_IP,
+            IARG_ADDRINT, fName,
+            IARG_BOOL, false,
+            IARG_UINT32, argNum,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 6,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 7,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 8,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 9,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 10,
+            IARG_END
+        );
+    }
 
     RTN_Close(funcRtn);
 }
@@ -509,7 +542,7 @@ int main(int argc, char *argv[])
     if (KnobWatchListFile.Enabled()) {
         std::string watchListFile = KnobWatchListFile.ValueString();
         if (watchListFile.length()) {
-            size_t loaded = g_Watch.loadList(watchListFile.c_str());
+            size_t loaded = g_Watch.loadList(watchListFile.c_str(), true, true);
             std::cout << "Watch " << loaded << " functions\n";
         }
     }

@@ -14,7 +14,7 @@ size_t split_list(const std::string &sline, const char delimiter, std::vector<st
     return args.size();
 }
 
-bool WFuncInfo::load(const std::string &sline, char delimiter)
+bool WFuncInfo::load(const std::string &sline, char delimiter, bool _watchBefore, bool _watchAfter)
 {
     std::vector<std::string> args;
     split_list(sline, delimiter, args);
@@ -27,6 +27,8 @@ bool WFuncInfo::load(const std::string &sline, char delimiter)
         ss << std::dec << args[2];
         ss >> this->paramCount;
     }
+    this->watchBefore = _watchBefore;
+    this->watchAfter = _watchAfter;
     return true;
 }
 
@@ -58,7 +60,7 @@ bool FuncWatchList::appendFunc(WFuncInfo &func_info)
     return true;
 }
 
-size_t FuncWatchList::loadList(const char* filename)
+size_t FuncWatchList::loadList(const char* filename, bool watchBefore, bool watchAfter)
 {
     std::ifstream myfile(filename);
     if (!myfile.is_open()) {
@@ -71,7 +73,7 @@ size_t FuncWatchList::loadList(const char* filename)
         myfile.getline(line, MAX_LINE);
 
         WFuncInfo func_info;
-        if (func_info.load(line, ';')) {
+        if (func_info.load(line, ';', watchBefore, watchAfter)) {
             appendFunc(func_info);
         }
     }

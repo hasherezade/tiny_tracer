@@ -87,6 +87,7 @@ void TraceLog::logCpuid(const ADDRINT base, const ADDRINT rva, const ADDRINT par
 
 void TraceLog::logLine(std::string str)
 {
+    if (!str.length()) return;
     if (!createFile()) return;
 
     m_traceFile
