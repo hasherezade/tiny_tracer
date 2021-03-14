@@ -370,6 +370,27 @@ VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, BOOL isBefore, uint32_t 
     PIN_UnlockClient();
 }
 
+VOID _LogFunctionRet(const ADDRINT Address, CHAR *name, ADDRINT retValue)
+{
+    if (!isWatchedAddress(Address)) return;
+
+    std::wstringstream ss;
+    ss << "\t";
+    ss << "RET = ";
+    ss << paramToStr((VOID*)retValue);
+    ss << "\n";
+    std::wstring argsLineW = ss.str();
+    std::string s(argsLineW.begin(), argsLineW.end());
+    traceLog.logLine(s);
+
+}
+
+VOID LogFunctionRet(const ADDRINT Address, CHAR *name, ADDRINT retValue)
+{
+    PIN_LockClient();
+    _LogFunctionRet(Address, name, retValue);
+    PIN_UnlockClient();
+}
 
 VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
 {
@@ -418,6 +439,14 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
             IARG_FUNCARG_ENTRYPOINT_VALUE, 8,
             IARG_FUNCARG_ENTRYPOINT_VALUE, 9,
             IARG_FUNCARG_ENTRYPOINT_VALUE, 10,
+            IARG_END
+        );
+    }
+    if (funcInfo.watchBefore || funcInfo.watchAfter) {
+        RTN_InsertCall(funcRtn, IPOINT_AFTER, AFUNPTR(LogFunctionRet),
+            IARG_RETURN_IP,
+            IARG_ADDRINT, fName,
+            IARG_FUNCRET_EXITPOINT_VALUE, 
             IARG_END
         );
     }
@@ -542,7 +571,7 @@ int main(int argc, char *argv[])
     if (KnobWatchListFile.Enabled()) {
         std::string watchListFile = KnobWatchListFile.ValueString();
         if (watchListFile.length()) {
-            size_t loaded = g_Watch.loadList(watchListFile.c_str(), true, true);
+            size_t loaded = g_Watch.loadList(watchListFile.c_str(), true, false);
             std::cout << "Watch " << loaded << " functions\n";
         }
     }
