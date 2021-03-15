@@ -1,4 +1,7 @@
 # tiny_tracer
+
+[![GitHub release](https://img.shields.io/github/release/hasherezade/tiny_tracer.svg)](https://github.com/hasherezade/tiny_tracer/releases)
+
 A Pin Tool for tracing:
 + API calls
 + selected instructions: [RDTSC](https://c9x.me/x86/html/file_module_x86_id_278.html), [CPUID](https://c9x.me/x86/html/file_module_x86_id_45.html)
