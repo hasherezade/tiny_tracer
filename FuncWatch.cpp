@@ -20,10 +20,12 @@ bool WFuncInfo::load(const std::string &sline, char delimiter, bool _watchBefore
 {
     std::vector<std::string> args;
     split_list(sline, delimiter, args);
-    if (args.size() < 3) return false;
+    if (args.size() < 2) return false;
 
     this->dllName = args[0];
     this->funcName = args[1];
+    this->paramCount = 0;
+    if (args.size() >= 3)
     {
         std::stringstream ss;
         ss << std::dec << args[2];
