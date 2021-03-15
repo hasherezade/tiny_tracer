@@ -5,8 +5,7 @@
 #include <iostream>
 #include <cstring>
 #include <cstdio>
-
-const size_t g_WatchedMax = 300;
+#include <vector>
 
 class WFuncInfo 
 {
@@ -48,15 +47,11 @@ public:
 class FuncWatchList {
 public:
     FuncWatchList()
-        : funcs(0), funcsCount(NULL)
     {
-        funcs = new WFuncInfo[g_WatchedMax];
     }
 
     ~FuncWatchList()
     {
-        funcs = 0;
-        delete []funcs;
     }
 
     size_t loadList(const char* filename, bool watchBefore, bool watchAfter);
@@ -65,7 +60,6 @@ public:
 
     WFuncInfo* findFunc(const std::string& dllName, const std::string &funcName);
 
-    WFuncInfo *funcs;
-    size_t funcsCount;
+    std::vector<WFuncInfo> funcs;
 };
 

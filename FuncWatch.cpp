@@ -54,16 +54,12 @@ bool WFuncInfo::update(const WFuncInfo &func_info)
 
 bool FuncWatchList::appendFunc(WFuncInfo &func_info)
 {
-    if (funcsCount == (g_WatchedMax - 1)) {
-        return false;
-    }
     if (!func_info.isValid()) {
         return false;
     }
     WFuncInfo* found = findFunc(func_info.dllName, func_info.funcName);
     if (!found) {
-        funcs[funcsCount] = func_info;
-        funcsCount++;
+        funcs.push_back(func_info);
     }
     else {
         found->update(func_info);
@@ -73,7 +69,7 @@ bool FuncWatchList::appendFunc(WFuncInfo &func_info)
 
 WFuncInfo* FuncWatchList::findFunc(const std::string& dllName, const std::string &funcName)
 {
-    for (size_t i = 0; i < funcsCount; i++)
+    for (size_t i = 0; i < funcs.size(); i++)
     {
         WFuncInfo& info = funcs[i];
         if (util::iequals(info.dllName, dllName)
@@ -102,5 +98,5 @@ size_t FuncWatchList::loadList(const char* filename, bool watchBefore, bool watc
             appendFunc(func_info);
         }
     }
-    return funcsCount;
+    return funcs.size();
 }

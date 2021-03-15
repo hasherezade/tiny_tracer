@@ -503,7 +503,7 @@ VOID ImageLoad(IMG Image, VOID *v)
 {
     PIN_LockClient();
     pInfo.addModule(Image);
-    for (size_t i = 0; i < g_Watch.funcsCount; i++) {
+    for (size_t i = 0; i < g_Watch.funcs.size(); i++) {
         const std::string dllName = util::getDllName(IMG_Name(Image));
         if (util::iequals(dllName, g_Watch.funcs[i].dllName)) {
             MonitorFunctionArgs(Image, g_Watch.funcs[i]);
