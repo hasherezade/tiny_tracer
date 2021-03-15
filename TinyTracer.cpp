@@ -20,7 +20,7 @@
 #include "FuncWatch.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "1.5"
+#define VERSION "1.6"
 
 #include "Util.h"
 
@@ -53,8 +53,11 @@ KNOB<std::string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
 KNOB<std::string> KnobModuleName(KNOB_MODE_WRITEONCE, "pintool",
     "m", "", "Analysed module name (by default same as app name)");
 
-KNOB<std::string> KnobWatchListFile(KNOB_MODE_WRITEONCE, "pintool",
+KNOB<std::string> KnobWatchListFileBefore(KNOB_MODE_WRITEONCE, "pintool",
     "b", "", "A list of watched functions (dump parameters before the execution)");
+
+KNOB<std::string> KnobWatchListFileAfter(KNOB_MODE_WRITEONCE, "pintool",
+    "a", "", "A list of watched functions (dump parameters before the execution)");
 
 KNOB<bool> KnobShortLog(KNOB_MODE_WRITEONCE, "pintool",
     "s", "", "Use short call logging (without a full DLL path)");
@@ -382,7 +385,6 @@ VOID _LogFunctionRet(const ADDRINT Address, CHAR *name, ADDRINT retValue)
     std::wstring argsLineW = ss.str();
     std::string s(argsLineW.begin(), argsLineW.end());
     traceLog.logLine(s);
-
 }
 
 VOID LogFunctionRet(const ADDRINT Address, CHAR *name, ADDRINT retValue)
@@ -568,11 +570,19 @@ int main(int argc, char *argv[])
 
     pInfo.init(app_name);
 
-    if (KnobWatchListFile.Enabled()) {
-        std::string watchListFile = KnobWatchListFile.ValueString();
+    if (KnobWatchListFileBefore.Enabled()) {
+        std::string watchListFile = KnobWatchListFileBefore.ValueString();
         if (watchListFile.length()) {
             size_t loaded = g_Watch.loadList(watchListFile.c_str(), true, false);
-            std::cout << "Watch " << loaded << " functions\n";
+            std::cout << "Watch before: " << loaded << " functions\n";
+        }
+    }
+
+    if (KnobWatchListFileAfter.Enabled()) {
+        std::string watchListFile = KnobWatchListFileAfter.ValueString();
+        if (watchListFile.length()) {
+            size_t loaded = g_Watch.loadList(watchListFile.c_str(), false, true);
+            std::cout << "Watch after: " << loaded << " functions\n";
         }
     }
 

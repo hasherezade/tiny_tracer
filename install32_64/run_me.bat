@@ -24,9 +24,13 @@ set ENABLE_SHORT_LOGGING=1
 set FOLLOW_SHELLCODES=1
 set TRACE_RDTSC=0
 
-rem WATCH_BEFORE - a file with a list of functions which's parameters will be logged before execution
+rem WATCH_BEFORE - a file with a list of functions which's parameters will be logged BEFORE execution
 rem The file must be a list of records in a format: [dll_name];[func_name];[parameters_count]
 set WATCH_BEFORE=%PIN_TOOLS_DIR%\params.txt
+
+rem WATCH_AFTER - a file with a list of functions which's parameters will be logged AFTER execution
+rem The file must be a list of records in a format: [dll_name];[func_name];[parameters_count]
+set WATCH_AFTER=%PIN_TOOLS_DIR%\params.txt
 
 set DLL_LOAD32=%PIN_TOOLS_DIR%\dll_load32.exe
 set DLL_LOAD64=%PIN_TOOLS_DIR%\dll_load64.exe
@@ -54,8 +58,8 @@ if [%IS_ADMIN%] == [A] (
 
 set ADMIN_CMD=%PIN_TOOLS_DIR%\sudo.vbs
 
-set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -d %TRACE_RDTSC% -s %ENABLE_SHORT_LOGGING% -b "%WATCH_BEFORE%" -- "%DLL_LOAD%" "%TARGET_APP%" %DLL_EXPORTS%
-set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -d %TRACE_RDTSC% -s %ENABLE_SHORT_LOGGING% -b "%WATCH_BEFORE%" -- "%TARGET_APP%" 
+set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -d %TRACE_RDTSC% -s %ENABLE_SHORT_LOGGING% -b "%WATCH_BEFORE%" -a "%WATCH_AFTER%" -- "%DLL_LOAD%" "%TARGET_APP%" %DLL_EXPORTS%
+set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -d %TRACE_RDTSC% -s %ENABLE_SHORT_LOGGING% -b "%WATCH_BEFORE%" -a "%WATCH_AFTER%" -- "%TARGET_APP%" 
 
 ;rem "Trace EXE"
 if [%PE_TYPE%] == [exe] (

@@ -4,6 +4,8 @@
 #include <fstream>
 #include <sstream>
 
+#include "Util.h"
+
 size_t split_list(const std::string &sline, const char delimiter, std::vector<std::string> &args)
 {
     std::istringstream f(sline);
@@ -32,19 +34,22 @@ bool WFuncInfo::load(const std::string &sline, char delimiter, bool _watchBefore
     return true;
 }
 
-bool FuncWatchList::appendFunc(std::string& dllname, std::string& fname, size_t count)
+bool WFuncInfo::update(const WFuncInfo &func_info)
 {
-    if (funcsCount == (g_WatchedMax - 1)) {
-        return false;
+    bool isUpdated = false;
+    if (this->paramCount < func_info.paramCount) {
+        this->paramCount = func_info.paramCount;
+        isUpdated = true;
     }
-    if (dllname.length() == 0 || fname.length() == 0) {
-        return false;
+    if (!this->watchAfter && func_info.watchAfter) {
+        this->watchAfter = func_info.watchAfter;
+        isUpdated = true;
     }
-    funcs[funcsCount].dllName = dllname;
-    funcs[funcsCount].funcName = fname;
-    funcs[funcsCount].paramCount = count;
-    funcsCount++;
-    return true;
+    if (!this->watchBefore && func_info.watchBefore) {
+        this->watchBefore = func_info.watchBefore;
+        isUpdated = true;
+    }
+    return isUpdated;
 }
 
 bool FuncWatchList::appendFunc(WFuncInfo &func_info)
@@ -55,9 +60,29 @@ bool FuncWatchList::appendFunc(WFuncInfo &func_info)
     if (!func_info.isValid()) {
         return false;
     }
-    funcs[funcsCount] = func_info;
-    funcsCount++;
+    WFuncInfo* found = findFunc(func_info.dllName, func_info.funcName);
+    if (!found) {
+        funcs[funcsCount] = func_info;
+        funcsCount++;
+    }
+    else {
+        found->update(func_info);
+    }
     return true;
+}
+
+WFuncInfo* FuncWatchList::findFunc(const std::string& dllName, const std::string &funcName)
+{
+    for (size_t i = 0; i < funcsCount; i++)
+    {
+        WFuncInfo& info = funcs[i];
+        if (util::iequals(info.dllName, dllName)
+            && util::iequals(info.funcName, funcName))
+        {
+            return &info;
+        }
+    }
+    return NULL;
 }
 
 size_t FuncWatchList::loadList(const char* filename, bool watchBefore, bool watchAfter)
