@@ -28,9 +28,9 @@ public:
 
     bool update(const WFuncInfo &func_info);
 
-    bool isValid()
+    bool isValid() const
     {
-        if (dllName.length() > 0 && funcName.length() > 0 && paramCount > 0
+        if (dllName.length() > 0 && funcName.length() > 0
             && (watchBefore || watchAfter))
         {
             return true;

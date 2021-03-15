@@ -373,7 +373,7 @@ VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, BOOL isBefore, uint32_t 
     PIN_UnlockClient();
 }
 
-VOID _LogFunctionRet(const ADDRINT Address, CHAR *name, ADDRINT retValue)
+VOID _LogFunctionRet(const ADDRINT Address, ADDRINT retValue)
 {
     if (!isWatchedAddress(Address)) return;
 
@@ -387,10 +387,10 @@ VOID _LogFunctionRet(const ADDRINT Address, CHAR *name, ADDRINT retValue)
     traceLog.logLine(s);
 }
 
-VOID LogFunctionRet(const ADDRINT Address, CHAR *name, ADDRINT retValue)
+VOID LogFunctionRet(const ADDRINT Address, ADDRINT retValue)
 {
     PIN_LockClient();
-    _LogFunctionRet(Address, name, retValue);
+    _LogFunctionRet(Address, retValue);
     PIN_UnlockClient();
 }
 
@@ -399,7 +399,7 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
     const CHAR* fName = funcInfo.funcName.c_str();
     size_t argNum = funcInfo.paramCount;
     RTN funcRtn = RTN_FindByName(Image, fName);
-    if (!RTN_Valid(funcRtn)) return; // failed
+    if (!RTN_Valid(funcRtn) || !funcInfo.isValid()) return; // failed
 
     std::cout << "Watch " << IMG_Name(Image) << ": " << fName << " [" << argNum << "]\n";
     RTN_Open(funcRtn);
@@ -438,7 +438,6 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
     if (funcInfo.watchBefore || funcInfo.watchAfter) {
         RTN_InsertCall(funcRtn, IPOINT_AFTER, AFUNPTR(LogFunctionRet),
             IARG_RETURN_IP,
-            IARG_ADDRINT, fName,
             IARG_FUNCRET_EXITPOINT_VALUE, 
             IARG_END
         );
