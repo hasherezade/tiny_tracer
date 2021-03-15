@@ -404,46 +404,37 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
     std::cout << "Watch " << IMG_Name(Image) << ": " << fName << " [" << argNum << "]\n";
     RTN_Open(funcRtn);
 
-    if (funcInfo.watchBefore) {
-        RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunctionArgs),
-            IARG_RETURN_IP,
-            IARG_ADDRINT, fName,
-            IARG_BOOL, true,
-            IARG_UINT32, argNum,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 6,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 7,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 8,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 9,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 10,
-            IARG_END
-        );
+    const size_t watchPointsCount = 2;
+    IPOINT watchPoints[watchPointsCount] = { IPOINT_BEFORE , IPOINT_AFTER };
+    bool watchPointsEnabled[watchPointsCount] = { funcInfo.watchBefore, funcInfo.watchAfter };
+
+    for (size_t i = 0; i < watchPointsCount; i++) {
+        if (!watchPointsEnabled[i]) continue;
+
+        const bool isBefore = (watchPoints[i] == IPOINT_BEFORE) ? true : false;
+
+        if (funcInfo.watchBefore) {
+            RTN_InsertCall(funcRtn, watchPoints[i], AFUNPTR(LogFunctionArgs),
+                IARG_RETURN_IP,
+                IARG_ADDRINT, fName,
+                IARG_BOOL, isBefore,
+                IARG_UINT32, argNum,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 6,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 7,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 8,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 9,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 10,
+                IARG_END
+            );
+        }
     }
-    if (funcInfo.watchAfter) {
-        RTN_InsertCall(funcRtn, IPOINT_AFTER, AFUNPTR(LogFunctionArgs),
-            IARG_RETURN_IP,
-            IARG_ADDRINT, fName,
-            IARG_BOOL, false,
-            IARG_UINT32, argNum,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 6,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 7,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 8,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 9,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 10,
-            IARG_END
-        );
-    }
+
     if (funcInfo.watchBefore || funcInfo.watchAfter) {
         RTN_InsertCall(funcRtn, IPOINT_AFTER, AFUNPTR(LogFunctionRet),
             IARG_RETURN_IP,
