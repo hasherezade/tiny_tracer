@@ -5,8 +5,7 @@
 #include <iostream>
 #include <cstring>
 #include <cstdio>
-
-const size_t g_WatchedMax = 300;
+#include <vector>
 
 class WFuncInfo 
 {
@@ -24,9 +23,11 @@ public:
 
     bool load(const std::string &line, char delimiter);
 
-    bool isValid()
+    bool update(const WFuncInfo &func_info);
+
+    bool isValid() const
     {
-        if (dllName.length() > 0 && funcName.length() > 0 && paramCount > 0) {
+        if (dllName.length() > 0 && funcName.length() > 0) {
             return true;
         }
         return false;
@@ -40,23 +41,18 @@ public:
 class FuncWatchList {
 public:
     FuncWatchList()
-        : funcs(0), funcsCount(NULL)
     {
-        funcs = new WFuncInfo[g_WatchedMax];
     }
 
     ~FuncWatchList()
     {
-        funcs = 0;
-        delete []funcs;
     }
 
     size_t loadList(const char* filename);
-
-    bool appendFunc(std::string& dllname, std::string& fname, size_t count);
     bool appendFunc(WFuncInfo &info);
 
-    WFuncInfo *funcs;
-    size_t funcsCount;
+    WFuncInfo* findFunc(const std::string& dllName, const std::string &funcName);
+
+    std::vector<WFuncInfo> funcs;
 };
 

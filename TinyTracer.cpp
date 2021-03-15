@@ -20,7 +20,7 @@
 #include "FuncWatch.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "1.5"
+#define VERSION "1.5.1"
 
 #include "Util.h"
 
@@ -366,7 +366,7 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
     const CHAR* fName = funcInfo.funcName.c_str();
     size_t argNum = funcInfo.paramCount;
     RTN funcRtn = RTN_FindByName(Image, fName);
-    if (!RTN_Valid(funcRtn)) return; // failed
+    if (!RTN_Valid(funcRtn) || !funcInfo.isValid()) return; // failed
 
     std::cout << "Watch " << IMG_Name(Image) << ": " << fName << " [" << argNum << "]\n";
     RTN_Open(funcRtn);
@@ -449,7 +449,7 @@ VOID ImageLoad(IMG Image, VOID *v)
 {
     PIN_LockClient();
     pInfo.addModule(Image);
-    for (size_t i = 0; i < g_Watch.funcsCount; i++) {
+    for (size_t i = 0; i < g_Watch.funcs.size(); i++) {
         const std::string dllName = util::getDllName(IMG_Name(Image));
         if (util::iequals(dllName, g_Watch.funcs[i].dllName)) {
             MonitorFunctionArgs(Image, g_Watch.funcs[i]);
