@@ -43,6 +43,9 @@ TraceLog traceLog;
 bool m_TraceRDTSC = false;
 t_shellc_options m_FollowShellcode = SHELLC_DO_NOT_FOLLOW;
 
+BOOL m_logSectTrans = TRUE; // watch transitions between sections
+BOOL m_logShelcTrans = TRUE; // watch transitions between shellcodes
+
 FuncWatchList g_Watch;
 
 // last shellcode to which the transition got redirected:
@@ -176,11 +179,12 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
                 {
                     // register the transition
                     m_tracedShellc.insert(pageTo);
-
-                    // save the transition from one shellcode to the other
-                    ADDRINT base = get_base(addrFrom);
-                    ADDRINT RvaFrom = addrFrom - base;
-                    traceLog.logCall(base, RvaFrom, pageTo, addrTo);
+                    if (m_logShelcTrans) {
+                        // save the transition from one shellcode to the other
+                        ADDRINT base = get_base(addrFrom);
+                        ADDRINT RvaFrom = addrFrom - base;
+                        traceLog.logCall(base, RvaFrom, pageTo, addrTo);
+                    }
                 }
             }
         }
@@ -192,16 +196,18 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
 
         // is it a transition from one section to another?
         if (pInfo.updateTracedModuleSection(rva)) {
-            const s_module* sec = pInfo.getSecByAddr(rva);
-            std::string curr_name = (sec) ? sec->name : "?";
-            if (isCallerMy) {
+            if (m_logSectTrans) {
+                const s_module* sec = pInfo.getSecByAddr(rva);
+                std::string curr_name = (sec) ? sec->name : "?";
+                if (isCallerMy) {
 
-                ADDRINT rvaFrom = addr_to_rva(addrFrom); // convert to RVA
-                const s_module* prev_sec = pInfo.getSecByAddr(rvaFrom);
-                std::string prev_name = (prev_sec) ? prev_sec->name : "?";
-                traceLog.logNewSectionCalled(rvaFrom, prev_name, curr_name);
+                    ADDRINT rvaFrom = addr_to_rva(addrFrom); // convert to RVA
+                    const s_module* prev_sec = pInfo.getSecByAddr(rvaFrom);
+                    std::string prev_name = (prev_sec) ? prev_sec->name : "?";
+                    traceLog.logNewSectionCalled(rvaFrom, prev_name, curr_name);
+                }
+                traceLog.logSectionChange(rva, curr_name);
             }
-            traceLog.logSectionChange(rva, curr_name);
         }
     }
 }
