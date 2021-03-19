@@ -9,11 +9,11 @@
 * -o    <output_path> Output file
 *
 */
+#include "pin.H"
 
 #include <iostream>
 #include <string>
-
-#include "pin.H"
+#include <set>
 
 #include "ProcessInfo.h"
 #include "TraceLog.h"
@@ -46,7 +46,7 @@ t_shellc_options m_FollowShellcode = SHELLC_DO_NOT_FOLLOW;
 FuncWatchList g_Watch;
 
 // last shellcode to which the transition got redirected:
-ADDRINT m_lastShellc = UNKNOWN_ADDR;
+std::set<ADDRINT> m_tracedShellc;
 
 /* ===================================================================== */
 // Command line switches
@@ -116,6 +116,13 @@ bool isStrEqualI(const std::string &str1, const std::string &str2)
 // Analysis routines
 /* ===================================================================== */
 
+BOOL isTracedShellc(ADDRINT addr)
+{
+    if (m_tracedShellc.find(addr) != m_tracedShellc.end()) {
+        return TRUE;
+    }
+    return FALSE;
+}
 
 VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
 {
@@ -136,8 +143,8 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
         else {
             //not in any of the mapped modules:
             const ADDRINT pageTo = query_region_base(addrTo);
-            m_lastShellc = pageTo; //save the beginning of this area
-            traceLog.logCall(0, RvaFrom, m_lastShellc, addrTo);
+            m_tracedShellc.insert(pageTo); //save the beginning of this area
+            traceLog.logCall(0, RvaFrom, pageTo, addrTo);
         }
     }
     // trace calls from witin a shellcode:
@@ -155,7 +162,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
                     traceLog.logCall(callerPage, addrFrom, false, dll_name, func);
                 }
             }
-             else if (callerPage == m_lastShellc) { // we trace only the shellcodes called from the main module (possibly recursive)
+             else if (isTracedShellc(callerPage)) { // we trace only the shellcodes called from the main module (possibly recursive)
 
                 const ADDRINT pageTo = query_region_base(addrTo);
                 if (IMG_Valid(targetModule)) { // it is a call to a module
@@ -168,7 +175,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
                     && m_FollowShellcode != SHELLC_FOLLOW_FIRST) // it is a call to another shellcode
                 {
                     // register the transition
-                    m_lastShellc = pageTo;
+                    m_tracedShellc.insert(pageTo);
 
                     // save the transition from one shellcode to the other
                     ADDRINT base = get_base(addrFrom);
@@ -315,7 +322,7 @@ bool isWatchedAddress(const ADDRINT Address)
         }
         const ADDRINT callerRegion = query_region_base(Address);
         // trace calls from the monitored shellcode only:
-        if (callerRegion != UNKNOWN_ADDR && callerRegion == m_lastShellc) {
+        if (callerRegion != UNKNOWN_ADDR && isTracedShellc(callerRegion)) {
             return true;
         }
     }
