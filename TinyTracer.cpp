@@ -289,10 +289,11 @@ bool isWatchedAddress(const ADDRINT Address)
     if (isCurrMy) {
         return true;
     }
-    if (m_FollowShellcode && !IMG_Valid(currModule)) {
-        const ADDRINT start = query_region_base(Address);
-        ADDRINT rva = Address - start;
-        if (start != UNKNOWN_ADDR) {
+    const BOOL isShellcode = !IMG_Valid(currModule);
+    if (m_FollowShellcode && isShellcode) {
+        const ADDRINT callerRegion = query_region_base(Address);
+        // trace calls from the monitored shellcode only:
+        if (callerRegion != UNKNOWN_ADDR && callerRegion == m_lastShellc) {
             return true;
         }
     }
