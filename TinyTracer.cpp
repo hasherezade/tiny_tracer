@@ -44,6 +44,9 @@ t_shellc_options m_FollowShellcode = SHELLC_DO_NOT_FOLLOW;
 
 FuncWatchList g_Watch;
 
+// last shellcode to which the transition got redirected:
+ADDRINT m_lastShellc = UNKNOWN_ADDR;
+
 /* ===================================================================== */
 // Command line switches
 /* ===================================================================== */
@@ -114,17 +117,11 @@ bool isStrEqualI(const std::string &str1, const std::string &str2)
 
 VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
 {
-    // last shellcode to which the transition got redirected:
-    static ADDRINT lastShellc = UNKNOWN_ADDR;
-
     const bool isTargetMy = pInfo.isMyAddress(addrTo);
     const bool isCallerMy = pInfo.isMyAddress(addrFrom);
 
     IMG targetModule = IMG_FindByAddress(addrTo);
     IMG callerModule = IMG_FindByAddress(addrFrom);
-
-    ADDRINT pageFrom = GetPageOfAddr(addrFrom);
-    ADDRINT pageTo = GetPageOfAddr(addrTo);
 
     //is it a transition from the traced module to a foreign module?
     if (isCallerMy && !isTargetMy) {
@@ -136,16 +133,19 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
         }
         else {
             //not in any of the mapped modules:
-            lastShellc = pageTo; //save the beginning of this area
-            traceLog.logCall(0, RvaFrom, lastShellc, addrTo);
+            const ADDRINT pageTo = query_region_base(addrTo);
+            m_lastShellc = pageTo; //save the beginning of this area
+            traceLog.logCall(0, RvaFrom, m_lastShellc, addrTo);
         }
     }
     // trace calls from witin the last shellcode that was called from the traced module:
     if (m_FollowShellcode && !IMG_Valid(callerModule)) {
 
+        ADDRINT pageFrom = query_region_base(addrFrom);
         const ADDRINT callerPage = pageFrom;
-        if (callerPage != UNKNOWN_ADDR && callerPage == lastShellc) {
+        if (callerPage != UNKNOWN_ADDR && callerPage == m_lastShellc) {
 
+            const ADDRINT pageTo = query_region_base(addrTo);
             if (IMG_Valid(targetModule)) {
                 const std::string func = get_func_at(addrTo);
                 const std::string dll_name = IMG_Name(targetModule);
@@ -155,7 +155,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
                 && m_FollowShellcode == SHELLC_FOLLOW_RECURSIVE)
             {
                 // set the called shellcode as the current:
-                lastShellc = pageTo;
+                m_lastShellc = pageTo;
             }
         }
     }
@@ -199,7 +199,7 @@ VOID RdtscCalled(const CONTEXT* ctxt)
         traceLog.logRdtsc(0, rva);
     }
     if (m_FollowShellcode && !IMG_Valid(currModule)) {
-        const ADDRINT start = GetPageOfAddr(Address);
+        const ADDRINT start = query_region_base(Address);
         ADDRINT rva = Address - start;
         if (start != UNKNOWN_ADDR) {
             traceLog.logRdtsc(start, rva);
@@ -223,7 +223,7 @@ VOID CpuidCalled(const CONTEXT* ctxt)
         traceLog.logCpuid(0, rva, Param);
     }
     if (m_FollowShellcode && !IMG_Valid(currModule)) {
-        const ADDRINT start = GetPageOfAddr(Address);
+        const ADDRINT start = query_region_base(Address);
         ADDRINT rva = Address - start;
         if (start != UNKNOWN_ADDR) {
             traceLog.logCpuid(start, rva, Param);
@@ -290,7 +290,7 @@ bool isWatchedAddress(const ADDRINT Address)
         return true;
     }
     if (m_FollowShellcode && !IMG_Valid(currModule)) {
-        const ADDRINT start = GetPageOfAddr(Address);
+        const ADDRINT start = query_region_base(Address);
         ADDRINT rva = Address - start;
         if (start != UNKNOWN_ADDR) {
             return true;

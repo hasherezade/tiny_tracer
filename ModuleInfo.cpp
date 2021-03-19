@@ -1,5 +1,6 @@
 #include "ModuleInfo.h"
 #include <string>
+#include <iostream>
 
 bool init_section(s_module &section, const ADDRINT &ImageBase, const SEC &sec)
 {
@@ -69,7 +70,7 @@ ADDRINT get_base(ADDRINT Address)
     if (base != UNKNOWN_ADDR) {
         return base;
     }
-    return GetPageOfAddr(Address);
+    return query_region_base(Address);
 }
 
 ADDRINT addr_to_rva(ADDRINT Address)
@@ -79,4 +80,24 @@ ADDRINT addr_to_rva(ADDRINT Address)
         return Address;
     }
     return Address - base;
+}
+
+ADDRINT query_region_base(ADDRINT memoryAddr)
+{
+    NATIVE_PID processId = (NATIVE_PID)PIN_GetPid();
+    OS_MEMORY_AT_ADDR_INFORMATION  info = { 0 };
+    OS_RETURN_CODE ret = OS_QueryMemory(processId,
+        (VOID*)memoryAddr,
+        &info
+    );
+    const ADDRINT pageFrom = GetPageOfAddr((ADDRINT)memoryAddr);
+    const ADDRINT baseAddr = (ADDRINT)info.BaseAddress;
+
+    if (pageFrom != baseAddr) {
+        std::cout << std::hex << "baseAddr: " << baseAddr << " pageFrom: " << pageFrom << std::endl;
+    }
+    if (ret.generic_err != OS_RETURN_CODE_NO_ERROR) {
+        return pageFrom;
+    }
+    return baseAddr;
 }
