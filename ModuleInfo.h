@@ -24,3 +24,5 @@ ADDRINT get_mod_base(ADDRINT Address);
 ADDRINT get_base(ADDRINT Address);
 
 ADDRINT addr_to_rva(ADDRINT Address);
+
+ADDRINT query_region_base(ADDRINT memoryAddr);
