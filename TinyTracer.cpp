@@ -156,6 +156,11 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
             {
                 // set the called shellcode as the current:
                 m_lastShellc = pageTo;
+
+                // save the transition from one shellcode to the other
+                ADDRINT base = get_base(addrFrom);
+                ADDRINT RvaFrom = addrFrom - base;
+                traceLog.logCall(base, RvaFrom, m_lastShellc, addrTo);
             }
         }
     }
