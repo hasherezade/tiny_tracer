@@ -511,6 +511,10 @@ int main(int argc, char *argv[])
 
     pInfo.init(app_name);
 
+    if (!m_Settings.loadINI(KnobIniFile.ValueString())) {
+        std::cerr << "Coud not load the INI file: " << KnobIniFile.ValueString() << std::endl;
+    }
+
     if (KnobWatchListFile.Enabled()) {
         std::string watchListFile = KnobWatchListFile.ValueString();
         if (watchListFile.length()) {
@@ -518,8 +522,6 @@ int main(int argc, char *argv[])
             std::cout << "Watch " << loaded << " functions\n";
         }
     }
-    
-    m_Settings.loadINI(KnobIniFile.ValueString());
 
     // init output file:
     traceLog.init(KnobOutputFile.Value(), m_Settings.shortLogging);

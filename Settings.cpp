@@ -73,8 +73,7 @@ bool Settings::loadINI(const std::string filename)
 {
     std::ifstream myfile(filename.c_str());
     if (!myfile.is_open()) {
-        std::cerr << "Coud not open the INI file: " << filename << std::endl;
-        return 0;
+        return false;
     }
     const size_t MAX_LINE = 300;
     char line[MAX_LINE] = { 0 };
