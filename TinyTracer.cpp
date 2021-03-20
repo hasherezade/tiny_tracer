@@ -45,25 +45,14 @@ std::set<ADDRINT> m_tracedShellc;
 KNOB<std::string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
     "o", "", "Specify file name for the output");
 
+KNOB<std::string> KnobIniFile(KNOB_MODE_WRITEONCE, "pintool",
+    "s", "", "Specify the settings file");
+
 KNOB<std::string> KnobModuleName(KNOB_MODE_WRITEONCE, "pintool",
     "m", "", "Analysed module name (by default same as app name)");
 
 KNOB<std::string> KnobWatchListFile(KNOB_MODE_WRITEONCE, "pintool",
     "b", "", "A list of watched functions (dump parameters before the execution)");
-
-KNOB<bool> KnobShortLog(KNOB_MODE_WRITEONCE, "pintool",
-    "s", "", "Use short call logging (without a full DLL path)");
-
-KNOB<bool> KnobTraceRDTSC(KNOB_MODE_WRITEONCE, "pintool",
-    "d", "", "Trace RDTSC");
-
-KNOB<int> KnobFollowShellcode(KNOB_MODE_WRITEONCE, "pintool",
-    "f", "", "Trace calls executed from shellcodes loaded in the memory:\n"
-    "\t0 - trace only the main target module\n"
-    "\t1 - follow only the first shellcode called from the main module \n"
-    "\t2 - follow also the shellcodes called recursively from the the original shellcode\n"
-    "\t3 - follow all shellcodes\n"
-);
 
 /* ===================================================================== */
 // Utilities
@@ -79,15 +68,6 @@ INT32 Usage()
 
     std::cerr << KNOB_BASE::StringKnobSummary() << std::endl;
     return -1;
-}
-
-t_shellc_options ConvertShcOption(int value)
-{
-    if (value >= SHELLC_OPTIONS_COUNT) {
-        // choose the last option:
-        return t_shellc_options(SHELLC_OPTIONS_COUNT - 1);
-    }
-    return (t_shellc_options)value;
 }
 
 // compare strings, ignore case
@@ -538,11 +518,11 @@ int main(int argc, char *argv[])
             std::cout << "Watch " << loaded << " functions\n";
         }
     }
+    
+    m_Settings.loadINI(KnobIniFile.ValueString());
 
     // init output file:
-    traceLog.init(KnobOutputFile.Value(), KnobShortLog.Value());
-    m_Settings.followShellcode = ConvertShcOption(KnobFollowShellcode.Value());
-    m_Settings.traceRDTSC = KnobTraceRDTSC.Value();
+    traceLog.init(KnobOutputFile.Value(), m_Settings.shortLogging);
 
     // Register function to be called for every loaded module
     IMG_AddInstrumentFunction(ImageLoad, NULL);

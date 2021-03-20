@@ -22,4 +22,9 @@ namespace util {
 
     bool iequals(const std::string& a, const std::string& b);
     size_t splitList(const std::string &sline, const char delimiter, std::vector<std::string> &args);
+
+    // trim from both ends (in place)
+    void trim(std::string &s);
+
+    int loadInt(const std::string &str);
 };

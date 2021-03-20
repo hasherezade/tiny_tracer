@@ -14,11 +14,8 @@ bool WFuncInfo::load(const std::string &sline, char delimiter)
 
     this->dllName = args[0];
     this->funcName = args[1];
-    {
-        std::stringstream ss;
-        ss << std::dec << args[2];
-        ss >> this->paramCount;
-    }
+    this->paramCount = util::loadInt(args[2]);
+
     return true;
 }
 

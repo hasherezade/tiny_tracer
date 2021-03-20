@@ -57,3 +57,34 @@ size_t util::splitList(const std::string &sline, const char delimiter, std::vect
     }
     return args.size();
 }
+
+static inline void ltrim(std::string &s)
+{
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
+}
+
+static inline void rtrim(std::string &s)
+{
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(), s.end());
+}
+
+ void util::trim(std::string &s)
+{
+    ltrim(s);
+    rtrim(s);
+}
+
+ int util::loadInt(const std::string &str)
+ {
+     int intVal = 0;
+     
+     std::stringstream ss;
+     ss << std::dec << str;
+     ss >> intVal;
+
+     return intVal;
+ }

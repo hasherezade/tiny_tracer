@@ -10,6 +10,8 @@ typedef enum {
     SHELLC_OPTIONS_COUNT
 } t_shellc_options;
 
+t_shellc_options ConvertShcOption(int value);
+
 class Settings {
 
 public:
@@ -17,14 +19,17 @@ public:
         : followShellcode(SHELLC_DO_NOT_FOLLOW),
         traceRDTSC(false),
         logSectTrans(true),
-        logShelcTrans(true)
+        logShelcTrans(true),
+        shortLogging(true)
     {
     }
 
+    bool loadINI(const std::string filename);
+
     t_shellc_options followShellcode;
 
-    bool traceRDTSC;
+    bool traceRDTSC; // Trace RDTSC
     bool logSectTrans; // watch transitions between sections
     bool logShelcTrans; // watch transitions between shellcodes
-
+    bool shortLogging; // Use short call logging (without a full DLL path)
 };
