@@ -24,6 +24,17 @@ t_shellc_options ConvertShcOption(int value)
 
 //----
 
+bool loadBoolean(const std::string &str, bool defaultVal)
+{
+    if (util::iequals(str, "True") || util::iequals(str, "on") || util::iequals(str, "yes")) {
+        return true;
+    }
+    if (util::iequals(str, "False") || util::iequals(str, "off") || util::iequals(str, "no")) {
+        return false;
+    }
+    return util::loadInt(str);
+}
+
 bool fillSettings(Settings &s, std::string line)
 {
     std::vector<std::string> args;
@@ -38,26 +49,25 @@ bool fillSettings(Settings &s, std::string line)
     util::trim(valName);
     util::trim(valStr);
 
-    const int val = util::loadInt(valStr);
-
     if (util::iequals(valName, KEY_FOLLOW_SHELLCODES)) {
+        const int val = util::loadInt(valStr);
         s.followShellcode = ConvertShcOption(val);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_LOG_RTDSC)) {
-        s.traceRDTSC = val;
+        s.traceRDTSC = loadBoolean(valStr, s.traceRDTSC);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_LOG_SECTIONS_TRANSITIONS)) {
-        s.logSectTrans = val;
+        s.logSectTrans = loadBoolean(valStr, s.logSectTrans);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_LOG_SHELLCODES_TRANSITIONS)) {
-        s.logShelcTrans = val;
+        s.logShelcTrans = loadBoolean(valStr, s.logShelcTrans);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_SHORT_LOGGING)) {
-        s.shortLogging = val;
+        s.shortLogging = loadBoolean(valStr, s.shortLogging);
         isFilled = true;
     }
     return isFilled;
