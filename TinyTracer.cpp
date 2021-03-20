@@ -126,16 +126,9 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
         const ADDRINT callerPage = pageFrom;
         if (callerPage != UNKNOWN_ADDR) {
 
-            if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY) {  //we don't care what shellcode it is because we trace all
-
-                if (IMG_Valid(targetModule)) {
-                    const std::string func = get_func_at(addrTo);
-                    const std::string dll_name = IMG_Name(targetModule);
-                    traceLog.logCall(callerPage, addrFrom, false, dll_name, func);
-                }
-            }
-             else if (isTracedShellc(callerPage)) { // we trace only the shellcodes called from the main module (possibly recursive)
-
+            if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY
+                || isTracedShellc(callerPage))
+            {
                 const ADDRINT pageTo = query_region_base(addrTo);
                 if (IMG_Valid(targetModule)) { // it is a call to a module
 
