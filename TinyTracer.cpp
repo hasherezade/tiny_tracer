@@ -23,28 +23,16 @@
 #define VERSION "1.5.2"
 
 #include "Util.h"
-
-typedef enum {
-    SHELLC_DO_NOT_FOLLOW = 0,    // trace only the main target module
-    SHELLC_FOLLOW_FIRST = 1,     // follow only the first shellcode called from the main module
-    SHELLC_FOLLOW_RECURSIVE = 2, // follow also the shellcodes called recursively from the the original shellcode
-    SHELLC_FOLLOW_ANY = 3, // follow any shellcodes
-    SHELLC_OPTIONS_COUNT
-} t_shellc_options;
+#include "Settings.h"
 
 
 /* ================================================================== */
 // Global variables 
 /* ================================================================== */
 
+Settings m_Settings;
 ProcessInfo pInfo;
 TraceLog traceLog;
-
-t_shellc_options m_FollowShellcode = SHELLC_DO_NOT_FOLLOW;
-
-bool m_TraceRDTSC = false;
-bool m_logSectTrans = true; // watch transitions between sections
-bool m_logShelcTrans = true; // watch transitions between shellcodes
 
 FuncWatchList g_Watch;
 
@@ -152,13 +140,13 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
         }
     }
     // trace calls from witin a shellcode:
-    if (m_FollowShellcode && !IMG_Valid(callerModule)) {
+    if (m_Settings.followShellcode && !IMG_Valid(callerModule)) {
 
         const ADDRINT pageFrom = query_region_base(addrFrom);
         const ADDRINT callerPage = pageFrom;
         if (callerPage != UNKNOWN_ADDR) {
 
-            if (m_FollowShellcode == SHELLC_FOLLOW_ANY) {  //we don't care what shellcode it is because we trace all
+            if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY) {  //we don't care what shellcode it is because we trace all
 
                 if (IMG_Valid(targetModule)) {
                     const std::string func = get_func_at(addrTo);
@@ -176,11 +164,11 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
                     traceLog.logCall(callerPage, addrFrom, false, dll_name, func);
                 }
                 else if (pageFrom != pageTo
-                    && m_FollowShellcode != SHELLC_FOLLOW_FIRST) // it is a call to another shellcode
+                    && m_Settings.followShellcode != SHELLC_FOLLOW_FIRST) // it is a call to another shellcode
                 {
                     // register the transition
                     m_tracedShellc.insert(pageTo);
-                    if (m_logShelcTrans) {
+                    if (m_Settings.logShelcTrans) {
                         // save the transition from one shellcode to the other
                         ADDRINT base = get_base(addrFrom);
                         ADDRINT RvaFrom = addrFrom - base;
@@ -197,7 +185,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
 
         // is it a transition from one section to another?
         if (pInfo.updateTracedModuleSection(rva)) {
-            if (m_logSectTrans) {
+            if (m_Settings.logSectTrans) {
                 const s_module* sec = pInfo.getSecByAddr(rva);
                 std::string curr_name = (sec) ? sec->name : "?";
                 if (isCallerMy) {
@@ -231,7 +219,7 @@ VOID RdtscCalled(const CONTEXT* ctxt)
         ADDRINT rva = addr_to_rva(Address); // convert to RVA
         traceLog.logRdtsc(0, rva);
     }
-    if (m_FollowShellcode && !IMG_Valid(currModule)) {
+    if (m_Settings.followShellcode && !IMG_Valid(currModule)) {
         const ADDRINT start = query_region_base(Address);
         ADDRINT rva = Address - start;
         if (start != UNKNOWN_ADDR) {
@@ -255,7 +243,7 @@ VOID CpuidCalled(const CONTEXT* ctxt)
         ADDRINT rva = addr_to_rva(Address); // convert to RVA
         traceLog.logCpuid(0, rva, Param);
     }
-    if (m_FollowShellcode && !IMG_Valid(currModule)) {
+    if (m_Settings.followShellcode && !IMG_Valid(currModule)) {
         const ADDRINT start = query_region_base(Address);
         ADDRINT rva = Address - start;
         if (start != UNKNOWN_ADDR) {
@@ -323,8 +311,8 @@ bool isWatchedAddress(const ADDRINT Address)
         return true;
     }
     const BOOL isShellcode = !IMG_Valid(currModule);
-    if (m_FollowShellcode && isShellcode) {
-        if (m_FollowShellcode == SHELLC_FOLLOW_ANY) {
+    if (m_Settings.followShellcode && isShellcode) {
+        if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY) {
             return true;
         }
         const ADDRINT callerRegion = query_region_base(Address);
@@ -446,7 +434,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
     }
 
     if (INS_IsRDTSC(ins)) {
-        if (m_TraceRDTSC) {
+        if (m_Settings.traceRDTSC) {
             INS_InsertCall(
                 ins,
                 IPOINT_BEFORE, (AFUNPTR)RdtscCalled,
@@ -553,8 +541,8 @@ int main(int argc, char *argv[])
 
     // init output file:
     traceLog.init(KnobOutputFile.Value(), KnobShortLog.Value());
-    m_FollowShellcode = ConvertShcOption(KnobFollowShellcode.Value());
-    m_TraceRDTSC = KnobTraceRDTSC.Value();
+    m_Settings.followShellcode = ConvertShcOption(KnobFollowShellcode.Value());
+    m_Settings.traceRDTSC = KnobTraceRDTSC.Value();
 
     // Register function to be called for every loaded module
     IMG_AddInstrumentFunction(ImageLoad, NULL);
