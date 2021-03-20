@@ -511,8 +511,10 @@ int main(int argc, char *argv[])
 
     pInfo.init(app_name);
 
-    if (!m_Settings.loadINI(KnobIniFile.ValueString())) {
-        std::cerr << "Coud not load the INI file: " << KnobIniFile.ValueString() << std::endl;
+    const std::string iniFilename = KnobIniFile.ValueString();
+    if (!m_Settings.loadINI(iniFilename)) {
+        std::cerr << "Coud not load the INI file: " << iniFilename << std::endl;
+        m_Settings.saveINI(iniFilename);
     }
 
     if (KnobWatchListFile.Enabled()) {

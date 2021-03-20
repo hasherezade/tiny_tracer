@@ -5,6 +5,8 @@
 #include <fstream>
 #include <sstream>
 
+#define DELIM '='
+
 #define KEY_FOLLOW_SHELLCODES           "FOLLOW_SHELLCODES"
 #define KEY_LOG_RTDSC                   "TRACE_RDTSC"
 #define KEY_LOG_SECTIONS_TRANSITIONS    "LOG_SECTIONS_TRANSITIONS"
@@ -25,7 +27,7 @@ t_shellc_options ConvertShcOption(int value)
 bool fillSettings(Settings &s, std::string line)
 {
     std::vector<std::string> args;
-    util::splitList(line, '=', args);
+    util::splitList(line, DELIM, args);
 
     if (args.size() < 2) {
         return false;
@@ -67,6 +69,22 @@ void stripComments(std::string &str)
     if (found != std::string::npos) {
         str = str.substr(0, found - 1);
     }
+}
+
+bool Settings::saveINI(const std::string filename)
+{
+    std::ofstream myfile(filename.c_str());
+    if (!myfile.is_open()) {
+        return false;
+    }
+    myfile << KEY_FOLLOW_SHELLCODES << DELIM << this->followShellcode << "\r\n";
+    myfile << KEY_LOG_RTDSC << DELIM << this->traceRDTSC << "\r\n";
+
+    myfile << KEY_LOG_SECTIONS_TRANSITIONS << DELIM << this->logSectTrans << "\r\n";
+    myfile << KEY_LOG_SHELLCODES_TRANSITIONS << DELIM << this->logShelcTrans << "\r\n";
+    myfile << KEY_SHORT_LOGGING << DELIM << this->shortLogging << "\r\n";
+    myfile.close();
+    return true;
 }
 
 bool Settings::loadINI(const std::string filename)

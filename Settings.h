@@ -16,7 +16,7 @@ class Settings {
 
 public:
     Settings() 
-        : followShellcode(SHELLC_DO_NOT_FOLLOW),
+        : followShellcode(SHELLC_FOLLOW_FIRST),
         traceRDTSC(false),
         logSectTrans(true),
         logShelcTrans(true),
@@ -25,6 +25,7 @@ public:
     }
 
     bool loadINI(const std::string filename);
+    bool saveINI(const std::string filename);
 
     t_shellc_options followShellcode;
 
