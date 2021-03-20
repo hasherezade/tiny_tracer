@@ -4,6 +4,8 @@
 #include <iostream>
 #include <cstring>
 #include <cstdio>
+#include <string>
+#include <vector>
 
 #define IS_PRINTABLE(c) (c >= 0x20 && c < 0x7f)
 #define IS_ENDLINE(c) (c == 0x0A || c == 0xD)
@@ -19,4 +21,5 @@ namespace util {
     std::string getDllName(const std::string& str);
 
     bool iequals(const std::string& a, const std::string& b);
+    size_t splitList(const std::string &sline, const char delimiter, std::vector<std::string> &args);
 };

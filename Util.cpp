@@ -1,6 +1,7 @@
 #include "Util.h"
 
 #include <algorithm>
+#include <sstream>
 
 size_t util::getAsciiLen(const char *inp, size_t maxInp)
 {
@@ -45,4 +46,14 @@ bool util::iequals(const std::string& a, const std::string& b)
         if (tolower(a[i]) != tolower(b[i])) return false;
     }
     return true;
+}
+
+size_t util::splitList(const std::string &sline, const char delimiter, std::vector<std::string> &args)
+{
+    std::istringstream f(sline);
+    std::string s;
+    while (getline(f, s, delimiter)) {
+        args.push_back(s);
+    }
+    return args.size();
 }
