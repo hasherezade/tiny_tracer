@@ -20,9 +20,9 @@ rem TRACED_MODULE - by default it is the main module, but it can be also a DLL w
 set TRACED_MODULE=%TARGET_APP%
 
 set TAG_FILE="%TRACED_MODULE%.tag"
-set ENABLE_SHORT_LOGGING=1
-set FOLLOW_SHELLCODES=1
-set TRACE_RDTSC=0
+
+rem The ini file specifying the settings of the tracer
+set SETTINGS_FILE=%PIN_TOOLS_DIR%\TinyTracer.ini
 
 rem WATCH_BEFORE - a file with a list of functions which's parameters will be logged before execution
 rem The file must be a list of records in a format: [dll_name];[func_name];[parameters_count]
@@ -54,8 +54,8 @@ if [%IS_ADMIN%] == [A] (
 
 set ADMIN_CMD=%PIN_TOOLS_DIR%\sudo.vbs
 
-set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -d %TRACE_RDTSC% -s %ENABLE_SHORT_LOGGING% -b "%WATCH_BEFORE%" -- "%DLL_LOAD%" "%TARGET_APP%" %DLL_EXPORTS%
-set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -f %FOLLOW_SHELLCODES% -d %TRACE_RDTSC% -s %ENABLE_SHORT_LOGGING% -b "%WATCH_BEFORE%" -- "%TARGET_APP%" 
+set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -- "%DLL_LOAD%" "%TARGET_APP%" %DLL_EXPORTS%
+set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -- "%TARGET_APP%" 
 
 ;rem "Trace EXE"
 if [%PE_TYPE%] == [exe] (

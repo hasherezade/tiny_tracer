@@ -20,31 +20,19 @@
 #include "FuncWatch.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "1.5.2"
+#define VERSION "1.6"
 
 #include "Util.h"
-
-typedef enum {
-    SHELLC_DO_NOT_FOLLOW = 0,    // trace only the main target module
-    SHELLC_FOLLOW_FIRST = 1,     // follow only the first shellcode called from the main module
-    SHELLC_FOLLOW_RECURSIVE = 2, // follow also the shellcodes called recursively from the the original shellcode
-    SHELLC_FOLLOW_ANY = 3, // follow any shellcodes
-    SHELLC_OPTIONS_COUNT
-} t_shellc_options;
+#include "Settings.h"
 
 
 /* ================================================================== */
 // Global variables 
 /* ================================================================== */
 
+Settings m_Settings;
 ProcessInfo pInfo;
 TraceLog traceLog;
-
-t_shellc_options m_FollowShellcode = SHELLC_DO_NOT_FOLLOW;
-
-bool m_TraceRDTSC = false;
-bool m_logSectTrans = true; // watch transitions between sections
-bool m_logShelcTrans = true; // watch transitions between shellcodes
 
 FuncWatchList g_Watch;
 
@@ -57,25 +45,14 @@ std::set<ADDRINT> m_tracedShellc;
 KNOB<std::string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
     "o", "", "Specify file name for the output");
 
+KNOB<std::string> KnobIniFile(KNOB_MODE_WRITEONCE, "pintool",
+    "s", "", "Specify the settings file");
+
 KNOB<std::string> KnobModuleName(KNOB_MODE_WRITEONCE, "pintool",
     "m", "", "Analysed module name (by default same as app name)");
 
 KNOB<std::string> KnobWatchListFile(KNOB_MODE_WRITEONCE, "pintool",
     "b", "", "A list of watched functions (dump parameters before the execution)");
-
-KNOB<bool> KnobShortLog(KNOB_MODE_WRITEONCE, "pintool",
-    "s", "", "Use short call logging (without a full DLL path)");
-
-KNOB<bool> KnobTraceRDTSC(KNOB_MODE_WRITEONCE, "pintool",
-    "d", "", "Trace RDTSC");
-
-KNOB<int> KnobFollowShellcode(KNOB_MODE_WRITEONCE, "pintool",
-    "f", "", "Trace calls executed from shellcodes loaded in the memory:\n"
-    "\t0 - trace only the main target module\n"
-    "\t1 - follow only the first shellcode called from the main module \n"
-    "\t2 - follow also the shellcodes called recursively from the the original shellcode\n"
-    "\t3 - follow all shellcodes\n"
-);
 
 /* ===================================================================== */
 // Utilities
@@ -91,15 +68,6 @@ INT32 Usage()
 
     std::cerr << KNOB_BASE::StringKnobSummary() << std::endl;
     return -1;
-}
-
-t_shellc_options ConvertShcOption(int value)
-{
-    if (value >= SHELLC_OPTIONS_COUNT) {
-        // choose the last option:
-        return t_shellc_options(SHELLC_OPTIONS_COUNT - 1);
-    }
-    return (t_shellc_options)value;
 }
 
 // compare strings, ignore case
@@ -152,22 +120,15 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
         }
     }
     // trace calls from witin a shellcode:
-    if (m_FollowShellcode && !IMG_Valid(callerModule)) {
+    if (m_Settings.followShellcode && !IMG_Valid(callerModule)) {
 
         const ADDRINT pageFrom = query_region_base(addrFrom);
         const ADDRINT callerPage = pageFrom;
         if (callerPage != UNKNOWN_ADDR) {
 
-            if (m_FollowShellcode == SHELLC_FOLLOW_ANY) {  //we don't care what shellcode it is because we trace all
-
-                if (IMG_Valid(targetModule)) {
-                    const std::string func = get_func_at(addrTo);
-                    const std::string dll_name = IMG_Name(targetModule);
-                    traceLog.logCall(callerPage, addrFrom, false, dll_name, func);
-                }
-            }
-             else if (isTracedShellc(callerPage)) { // we trace only the shellcodes called from the main module (possibly recursive)
-
+            if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY
+                || isTracedShellc(callerPage))
+            {
                 const ADDRINT pageTo = query_region_base(addrTo);
                 if (IMG_Valid(targetModule)) { // it is a call to a module
 
@@ -175,12 +136,15 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
                     const std::string dll_name = IMG_Name(targetModule);
                     traceLog.logCall(callerPage, addrFrom, false, dll_name, func);
                 }
-                else if (pageFrom != pageTo
-                    && m_FollowShellcode != SHELLC_FOLLOW_FIRST) // it is a call to another shellcode
+                else if (pageFrom != pageTo) // it is a call to another shellcode
                 {
+                    // add the new shellcode to the set of traced
+                    if (m_Settings.followShellcode != SHELLC_FOLLOW_FIRST) {
+                        m_tracedShellc.insert(pageTo);
+                    }
+
                     // register the transition
-                    m_tracedShellc.insert(pageTo);
-                    if (m_logShelcTrans) {
+                    if (m_Settings.logShelcTrans) {
                         // save the transition from one shellcode to the other
                         ADDRINT base = get_base(addrFrom);
                         ADDRINT RvaFrom = addrFrom - base;
@@ -197,7 +161,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
 
         // is it a transition from one section to another?
         if (pInfo.updateTracedModuleSection(rva)) {
-            if (m_logSectTrans) {
+            if (m_Settings.logSectTrans) {
                 const s_module* sec = pInfo.getSecByAddr(rva);
                 std::string curr_name = (sec) ? sec->name : "?";
                 if (isCallerMy) {
@@ -231,7 +195,7 @@ VOID RdtscCalled(const CONTEXT* ctxt)
         ADDRINT rva = addr_to_rva(Address); // convert to RVA
         traceLog.logRdtsc(0, rva);
     }
-    if (m_FollowShellcode && !IMG_Valid(currModule)) {
+    if (m_Settings.followShellcode && !IMG_Valid(currModule)) {
         const ADDRINT start = query_region_base(Address);
         ADDRINT rva = Address - start;
         if (start != UNKNOWN_ADDR) {
@@ -255,7 +219,7 @@ VOID CpuidCalled(const CONTEXT* ctxt)
         ADDRINT rva = addr_to_rva(Address); // convert to RVA
         traceLog.logCpuid(0, rva, Param);
     }
-    if (m_FollowShellcode && !IMG_Valid(currModule)) {
+    if (m_Settings.followShellcode && !IMG_Valid(currModule)) {
         const ADDRINT start = query_region_base(Address);
         ADDRINT rva = Address - start;
         if (start != UNKNOWN_ADDR) {
@@ -323,8 +287,8 @@ bool isWatchedAddress(const ADDRINT Address)
         return true;
     }
     const BOOL isShellcode = !IMG_Valid(currModule);
-    if (m_FollowShellcode && isShellcode) {
-        if (m_FollowShellcode == SHELLC_FOLLOW_ANY) {
+    if (m_Settings.followShellcode && isShellcode) {
+        if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY) {
             return true;
         }
         const ADDRINT callerRegion = query_region_base(Address);
@@ -446,7 +410,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
     }
 
     if (INS_IsRDTSC(ins)) {
-        if (m_TraceRDTSC) {
+        if (m_Settings.traceRDTSC) {
             INS_InsertCall(
                 ins,
                 IPOINT_BEFORE, (AFUNPTR)RdtscCalled,
@@ -543,6 +507,12 @@ int main(int argc, char *argv[])
 
     pInfo.init(app_name);
 
+    const std::string iniFilename = KnobIniFile.ValueString();
+    if (!m_Settings.loadINI(iniFilename)) {
+        std::cerr << "Coud not load the INI file: " << iniFilename << std::endl;
+        m_Settings.saveINI(iniFilename);
+    }
+
     if (KnobWatchListFile.Enabled()) {
         std::string watchListFile = KnobWatchListFile.ValueString();
         if (watchListFile.length()) {
@@ -552,9 +522,7 @@ int main(int argc, char *argv[])
     }
 
     // init output file:
-    traceLog.init(KnobOutputFile.Value(), KnobShortLog.Value());
-    m_FollowShellcode = ConvertShcOption(KnobFollowShellcode.Value());
-    m_TraceRDTSC = KnobTraceRDTSC.Value();
+    traceLog.init(KnobOutputFile.Value(), m_Settings.shortLogging);
 
     // Register function to be called for every loaded module
     IMG_AddInstrumentFunction(ImageLoad, NULL);

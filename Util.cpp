@@ -1,6 +1,7 @@
 #include "Util.h"
 
 #include <algorithm>
+#include <sstream>
 
 size_t util::getAsciiLen(const char *inp, size_t maxInp)
 {
@@ -46,3 +47,44 @@ bool util::iequals(const std::string& a, const std::string& b)
     }
     return true;
 }
+
+size_t util::splitList(const std::string &sline, const char delimiter, std::vector<std::string> &args)
+{
+    std::istringstream f(sline);
+    std::string s;
+    while (getline(f, s, delimiter)) {
+        args.push_back(s);
+    }
+    return args.size();
+}
+
+static inline void ltrim(std::string &s)
+{
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
+}
+
+static inline void rtrim(std::string &s)
+{
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(), s.end());
+}
+
+ void util::trim(std::string &s)
+{
+    ltrim(s);
+    rtrim(s);
+}
+
+ int util::loadInt(const std::string &str)
+ {
+     int intVal = 0;
+     
+     std::stringstream ss;
+     ss << std::dec << str;
+     ss >> intVal;
+
+     return intVal;
+ }
