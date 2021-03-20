@@ -61,6 +61,14 @@ bool fillSettings(Settings &s, std::string line)
     return isFilled;
 }
 
+void stripComments(std::string &str)
+{
+    size_t found = str.find_first_of(";#");
+    if (found != std::string::npos) {
+        str = str.substr(0, found - 1);
+    }
+}
+
 bool Settings::loadINI(const std::string filename)
 {
     std::ifstream myfile(filename.c_str());
@@ -74,7 +82,10 @@ bool Settings::loadINI(const std::string filename)
 
     while (!myfile.eof()) {
         myfile.getline(line, MAX_LINE);
-        if (fillSettings(*this, line)) {
+        std::string lineStr = line;
+        stripComments(lineStr);
+        
+        if (fillSettings(*this, lineStr)) {
             filledAny = true;
         }
     }
