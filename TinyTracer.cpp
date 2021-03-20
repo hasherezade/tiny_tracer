@@ -136,8 +136,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
                     const std::string dll_name = IMG_Name(targetModule);
                     traceLog.logCall(callerPage, addrFrom, false, dll_name, func);
                 }
-                else if (pageFrom != pageTo
-                    && m_Settings.followShellcode != SHELLC_FOLLOW_FIRST) // it is a call to another shellcode
+                else if (pageFrom != pageTo) // it is a call to another shellcode
                 {
                     // register the transition
                     m_tracedShellc.insert(pageTo);
