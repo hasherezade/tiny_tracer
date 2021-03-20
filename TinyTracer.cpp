@@ -138,8 +138,12 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
                 }
                 else if (pageFrom != pageTo) // it is a call to another shellcode
                 {
+                    // add the new shellcode to the set of traced
+                    if (m_Settings.followShellcode != SHELLC_FOLLOW_FIRST) {
+                        m_tracedShellc.insert(pageTo);
+                    }
+
                     // register the transition
-                    m_tracedShellc.insert(pageTo);
                     if (m_Settings.logShelcTrans) {
                         // save the transition from one shellcode to the other
                         ADDRINT base = get_base(addrFrom);
