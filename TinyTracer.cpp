@@ -40,11 +40,11 @@ typedef enum {
 ProcessInfo pInfo;
 TraceLog traceLog;
 
-bool m_TraceRDTSC = false;
 t_shellc_options m_FollowShellcode = SHELLC_DO_NOT_FOLLOW;
 
-BOOL m_logSectTrans = TRUE; // watch transitions between sections
-BOOL m_logShelcTrans = TRUE; // watch transitions between shellcodes
+bool m_TraceRDTSC = false;
+bool m_logSectTrans = true; // watch transitions between sections
+bool m_logShelcTrans = true; // watch transitions between shellcodes
 
 FuncWatchList g_Watch;
 
@@ -74,6 +74,7 @@ KNOB<int> KnobFollowShellcode(KNOB_MODE_WRITEONCE, "pintool",
     "\t0 - trace only the main target module\n"
     "\t1 - follow only the first shellcode called from the main module \n"
     "\t2 - follow also the shellcodes called recursively from the the original shellcode\n"
+    "\t3 - follow all shellcodes\n"
 );
 
 /* ===================================================================== */
