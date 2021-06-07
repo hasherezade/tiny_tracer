@@ -117,7 +117,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/export:main %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>pin.lib;xed.lib;pinvm.lib;pincrt.lib;ntdll-32.lib;kernel32.lib;crtbeginS.obj</AdditionalDependencies>
+      <AdditionalDependencies>pin.lib;xed.lib;pincrt.lib;kernel32.lib;crtbeginS.obj</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\ia32\lib;..\..\..\ia32\lib-ext;..\..\..\extras\xed-ia32\lib;..\..\..\ia32\runtime\pincrt;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -156,7 +156,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/export:main %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>pin.lib;xed.lib;pinvm.lib;pincrt.lib;ntdll-64.lib;kernel32.lib;crtbeginS.obj</AdditionalDependencies>
+      <AdditionalDependencies>pin.lib;xed.lib;pincrt.lib;kernel32.lib;crtbeginS.obj</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\intel64\lib;..\..\..\intel64\lib-ext;..\..\..\extras\xed-intel64\lib;..\..\..\intel64\runtime\pincrt;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -194,7 +194,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/export:main %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>pin.lib;xed.lib;pinvm.lib;pincrt.lib;ntdll-32.lib;kernel32.lib;crtbeginS.obj</AdditionalDependencies>
+      <AdditionalDependencies>pin.lib;xed.lib;pincrt.lib;kernel32.lib;crtbeginS.obj</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\ia32\lib;..\..\..\ia32\lib-ext;..\..\..\extras\xed-ia32\lib;..\..\..\ia32\runtime\pincrt;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -238,7 +238,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/export:main %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>pin.lib;xed.lib;pinvm.lib;pincrt.lib;ntdll-64.lib;kernel32.lib;crtbeginS.obj</AdditionalDependencies>
+      <AdditionalDependencies>pin.lib;xed.lib;pincrt.lib;kernel32.lib;crtbeginS.obj</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\intel64\lib;..\..\..\intel64\lib-ext;..\..\..\extras\xed-intel64\lib;..\..\..\intel64\runtime\pincrt;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
