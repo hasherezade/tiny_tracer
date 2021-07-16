@@ -3,10 +3,15 @@
 #include <algorithm>
 #include <sstream>
 
+#include "pin.H"
+
 size_t util::getAsciiLen(const char *inp, size_t maxInp)
 {
     size_t i = 0;
     for (; i < maxInp; i++) {
+        if (!PIN_CheckReadAccess((char*)inp + i)) {
+            return 0;
+        }
         const char c = inp[i];
         if (c == '\0') return i; //end of string
         if (!IS_PRINTABLE(c) && !IS_ENDLINE(c)) return 0;
@@ -18,6 +23,9 @@ size_t util::getAsciiLenW(const wchar_t *inp, size_t maxInp)
 {
     size_t i = 0;
     for (; i < maxInp; i++) {
+        if (!PIN_CheckReadAccess((wchar_t*)inp + i)) {
+            return 0;
+        }
         const wchar_t w = inp[i];
         if (w == 0) return i; //end of string
         if (!IS_PRINTABLE(w) && !IS_ENDLINE(w)) return 0;
