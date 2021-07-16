@@ -343,7 +343,7 @@ std::wstring paramToStr(VOID *arg1)
     if (!isString) {
         ss << " -> {";
         ss << util::hexdump((const uint8_t*)val, HEXDUMP_SIZE);
-        ss << "... }";
+        ss << "}";
     }
     return ss.str();
 }

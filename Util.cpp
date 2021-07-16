@@ -12,7 +12,12 @@ std::wstring util::hexdump(const uint8_t* in_buf, const size_t max_size)
         if (!PIN_CheckReadAccess(const_cast<uint8_t*>(in_buf) + i)) {
             break;
         }
-        ss << std::setfill('0') << std::setw(2) << std::hex << (unsigned int)in_buf[i] << " ";
+        if (IS_PRINTABLE(in_buf[i])) {
+            ss << char(in_buf[i]);
+        }
+        else {
+            ss << "\\x" << std::setfill('0') << std::setw(2) << std::hex << (unsigned int)in_buf[i];
+        }
     }
     return ss.str();
 }
