@@ -311,28 +311,32 @@ std::wstring paramToStr(VOID *arg1)
 
     if (!isReadableAddr) {
         // single value
-        ss << std::hex << (arg1);
+        ss << std::hex << (arg1)
+            << " = "
+            << std::dec << ((uint64_t)arg1);
         return ss.str();
     }
-    bool isSet = false;
+
+    // possible pointer:
+    ss << "ptr " << std::hex << (arg1);
+
+    bool isString = false;
     const char* val = (char*)arg1;
     size_t len = util::getAsciiLen(val, kMaxStr);
-
+    if (len > 0) {
+        ss << " -> ";
+    }
     if (len == 1) { // Possible wideString
         wchar_t* val = (wchar_t*)arg1;
         size_t wLen = util::getAsciiLenW(val, kMaxStr);
         if (wLen >= len) {
             ss << "L\"" << val << "\"";
-            isSet = true;
+            isString = true;
         }
     }
     else if (len > 1) { // ASCII string
         ss << "\"" << val << "\"";
-        isSet = true;
-    }
-
-    if (!isSet) { // none of the above, possible pointer to some structure
-        ss << "ptr " << std::hex << (arg1);
+        isString = true;
     }
     return ss.str();
 }
