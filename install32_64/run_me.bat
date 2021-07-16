@@ -31,6 +31,13 @@ set WATCH_BEFORE=%PIN_TOOLS_DIR%\params.txt
 set DLL_LOAD32=%PIN_TOOLS_DIR%\dll_load32.exe
 set DLL_LOAD64=%PIN_TOOLS_DIR%\dll_load64.exe
 
+%PIN_TOOLS_DIR%\kdb_check.exe
+if NOT %errorlevel% EQU 0 (
+	echo Disable Kernel Mode Debugger before running the PIN tool!
+	pause
+	exit
+)
+
 %PIN_TOOLS_DIR%\pe_check.exe "%TARGET_APP%"
 if %errorlevel% == 32 (
 	echo 32bit selected
