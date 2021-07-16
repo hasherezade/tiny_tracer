@@ -20,7 +20,9 @@
 #include "FuncWatch.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "1.6"
+#define VERSION "1.7"
+
+#define HEXDUMP_SIZE 8
 
 #include "Util.h"
 #include "Settings.h"
@@ -337,6 +339,11 @@ std::wstring paramToStr(VOID *arg1)
     else if (len > 1) { // ASCII string
         ss << "\"" << val << "\"";
         isString = true;
+    }
+    if (!isString) {
+        ss << " -> {";
+        ss << util::hexdump((const uint8_t*)val, HEXDUMP_SIZE);
+        ss << "... }";
     }
     return ss.str();
 }

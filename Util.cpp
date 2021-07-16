@@ -5,11 +5,23 @@
 
 #include "pin.H"
 
+std::wstring util::hexdump(const uint8_t* in_buf, const size_t max_size)
+{
+    std::wstringstream ss;
+    for (size_t i = 0; i < max_size; i++) {
+        if (!PIN_CheckReadAccess(const_cast<uint8_t*>(in_buf) + i)) {
+            break;
+        }
+        ss << std::setfill('0') << std::setw(2) << std::hex << (unsigned int)in_buf[i] << " ";
+    }
+    return ss.str();
+}
+
 size_t util::getAsciiLen(const char *inp, size_t maxInp)
 {
     size_t i = 0;
     for (; i < maxInp; i++) {
-        if (!PIN_CheckReadAccess((char*)inp + i)) {
+        if (!PIN_CheckReadAccess(const_cast<char*>(inp) + i)) {
             return 0;
         }
         const char c = inp[i];
@@ -23,7 +35,7 @@ size_t util::getAsciiLenW(const wchar_t *inp, size_t maxInp)
 {
     size_t i = 0;
     for (; i < maxInp; i++) {
-        if (!PIN_CheckReadAccess((wchar_t*)inp + i)) {
+        if (!PIN_CheckReadAccess(const_cast<wchar_t*>(inp) + i)) {
             return 0;
         }
         const wchar_t w = inp[i];

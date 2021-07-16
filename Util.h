@@ -15,6 +15,8 @@
 #endif
 
 namespace util {
+    std::wstring hexdump(const uint8_t* in_buf, const size_t max_size);
+
     size_t getAsciiLen(const char *inp, size_t maxInp);
     size_t getAsciiLenW(const wchar_t *inp, size_t maxInp);
 
