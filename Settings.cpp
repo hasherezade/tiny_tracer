@@ -32,7 +32,9 @@ bool loadBoolean(const std::string &str, bool defaultVal)
     if (util::iequals(str, "False") || util::iequals(str, "off") || util::iequals(str, "no")) {
         return false;
     }
-    return util::loadInt(str);
+    const int val = util::loadInt(str);
+    if (val == 0) return false;
+    return true;
 }
 
 bool fillSettings(Settings &s, std::string line)
