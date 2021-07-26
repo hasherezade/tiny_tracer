@@ -12,6 +12,7 @@
 #define KEY_LOG_SECTIONS_TRANSITIONS    "LOG_SECTIONS_TRANSITIONS"
 #define KEY_LOG_SHELLCODES_TRANSITIONS  "LOG_SHELLCODES_TRANSITIONS"
 #define KEY_SHORT_LOGGING               "ENABLE_SHORT_LOGGING"
+#define HEXDUMP_SIZE                     "HEXDUMP_SIZE"
 
 t_shellc_options ConvertShcOption(int value)
 {
@@ -72,6 +73,10 @@ bool fillSettings(Settings &s, std::string line)
         s.shortLogging = loadBoolean(valStr, s.shortLogging);
         isFilled = true;
     }
+    if (util::iequals(valName, HEXDUMP_SIZE)) {
+        s.hexdumpSize = util::loadInt(valStr);
+        isFilled = true;
+    }
     return isFilled;
 }
 
@@ -95,6 +100,7 @@ bool Settings::saveINI(const std::string filename)
     myfile << KEY_LOG_SECTIONS_TRANSITIONS << DELIM << this->logSectTrans << "\r\n";
     myfile << KEY_LOG_SHELLCODES_TRANSITIONS << DELIM << this->logShelcTrans << "\r\n";
     myfile << KEY_SHORT_LOGGING << DELIM << this->shortLogging << "\r\n";
+    myfile << HEXDUMP_SIZE << DELIM << this->hexdumpSize << "\r\n";
     myfile.close();
     return true;
 }

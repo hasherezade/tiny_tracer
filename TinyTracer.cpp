@@ -22,8 +22,6 @@
 #define TOOL_NAME "TinyTracer"
 #define VERSION "1.7"
 
-#define HEXDUMP_SIZE 8
-
 #include "Util.h"
 #include "Settings.h"
 
@@ -342,7 +340,7 @@ std::wstring paramToStr(VOID *arg1)
     }
     if (!isString) {
         ss << " -> {";
-        ss << util::hexdump((const uint8_t*)val, HEXDUMP_SIZE);
+        ss << util::hexdump((const uint8_t*)val, m_Settings.hexdumpSize);
         ss << "}";
     }
     return ss.str();
