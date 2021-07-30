@@ -34,6 +34,8 @@ Clone this repo into `\source\tools` that is inside your Pin root directory. Ope
 
 📖 More details about the usage you will find on [the project's Wiki](https://github.com/hasherezade/tiny_tracer/wiki).<br/>
 
-WARNING
+WARNINGS
 -
-In order for Pin to work correctly, Kernel Debugging must be **DISABLED**. 
++ In order for Pin to work correctly, Kernel Debugging must be **DISABLED**.
++ Since the version 3.20 Pin has dropped a support for **old versions of Windows**. If you need to use the tool on Windows < 8, try to compile it with Pin 3.19.
+
