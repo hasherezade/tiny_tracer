@@ -71,16 +71,13 @@ INT32 Usage()
 }
 
 // compare strings, ignore case
-bool isStrEqualI(const std::string& str1, const std::string& str2)
+bool isStrEqualI(const std::string &str1, const std::string &str2)
 {
-    if (str1.length() != str2.length())
-    {
+    if (str1.length() != str2.length()) {
         return false;
     }
-    for (size_t i = 0; i < str1.length(); i++)
-    {
-        if (tolower(str1[i]) != tolower(str2[i]))
-        {
+    for (size_t i = 0; i < str1.length(); i++) {
+        if (tolower(str1[i]) != tolower(str2[i])) {
             return false;
         }
     }
@@ -93,8 +90,7 @@ bool isStrEqualI(const std::string& str1, const std::string& str2)
 
 BOOL isTracedShellc(ADDRINT addr)
 {
-    if (m_tracedShellc.find(addr) != m_tracedShellc.end())
-    {
+    if (m_tracedShellc.find(addr) != m_tracedShellc.end()) {
         return TRUE;
     }
     return FALSE;
@@ -109,17 +105,14 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
     IMG callerModule = IMG_FindByAddress(addrFrom);
 
     //is it a transition from the traced module to a foreign module?
-    if (isCallerMy && !isTargetMy)
-    {
+    if (isCallerMy && !isTargetMy) {
         ADDRINT RvaFrom = addr_to_rva(addrFrom);
-        if (IMG_Valid(targetModule))
-        {
+        if (IMG_Valid(targetModule)) {
             const std::string func = get_func_at(addrTo);
             const std::string dll_name = IMG_Name(targetModule);
             traceLog.logCall(0, RvaFrom, true, dll_name, func);
         }
-        else
-        {
+        else {
             //not in any of the mapped modules:
             const ADDRINT pageTo = query_region_base(addrTo);
             m_tracedShellc.insert(pageTo); //save the beginning of this area
@@ -127,20 +120,17 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
         }
     }
     // trace calls from witin a shellcode:
-    if (m_Settings.followShellcode && !IMG_Valid(callerModule))
-    {
+    if (m_Settings.followShellcode && !IMG_Valid(callerModule)) {
 
         const ADDRINT pageFrom = query_region_base(addrFrom);
         const ADDRINT callerPage = pageFrom;
-        if (callerPage != UNKNOWN_ADDR)
-        {
+        if (callerPage != UNKNOWN_ADDR) {
 
             if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY
                 || isTracedShellc(callerPage))
             {
                 const ADDRINT pageTo = query_region_base(addrTo);
-                if (IMG_Valid(targetModule))
-                { // it is a call to a module
+                if (IMG_Valid(targetModule)) { // it is a call to a module
 
                     const std::string func = get_func_at(addrTo);
                     const std::string dll_name = IMG_Name(targetModule);
@@ -149,14 +139,12 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
                 else if (pageFrom != pageTo) // it is a call to another shellcode
                 {
                     // add the new shellcode to the set of traced
-                    if (m_Settings.followShellcode != SHELLC_FOLLOW_FIRST)
-                    {
+                    if (m_Settings.followShellcode != SHELLC_FOLLOW_FIRST) {
                         m_tracedShellc.insert(pageTo);
                     }
 
                     // register the transition
-                    if (m_Settings.logShelcTrans)
-                    {
+                    if (m_Settings.logShelcTrans) {
                         // save the transition from one shellcode to the other
                         ADDRINT base = get_base(addrFrom);
                         ADDRINT RvaFrom = addrFrom - base;
@@ -168,19 +156,15 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
     }
 
     // is the address within the traced module?
-    if (isTargetMy)
-    {
+    if (isTargetMy) {
         ADDRINT rva = addr_to_rva(addrTo); // convert to RVA
 
         // is it a transition from one section to another?
-        if (pInfo.updateTracedModuleSection(rva))
-        {
-            if (m_Settings.logSectTrans)
-            {
+        if (pInfo.updateTracedModuleSection(rva)) {
+            if (m_Settings.logSectTrans) {
                 const s_module* sec = pInfo.getSecByAddr(rva);
                 std::string curr_name = (sec) ? sec->name : "?";
-                if (isCallerMy)
-                {
+                if (isCallerMy) {
 
                     ADDRINT rvaFrom = addr_to_rva(addrFrom); // convert to RVA
                     const s_module* prev_sec = pInfo.getSecByAddr(rvaFrom);
@@ -207,17 +191,14 @@ VOID RdtscCalled(const CONTEXT* ctxt)
     ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
     IMG currModule = IMG_FindByAddress(Address);
     const bool isCurrMy = pInfo.isMyAddress(Address);
-    if (isCurrMy)
-    {
+    if (isCurrMy) {
         ADDRINT rva = addr_to_rva(Address); // convert to RVA
         traceLog.logRdtsc(0, rva);
     }
-    if (m_Settings.followShellcode && !IMG_Valid(currModule))
-    {
+    if (m_Settings.followShellcode && !IMG_Valid(currModule)) {
         const ADDRINT start = query_region_base(Address);
         ADDRINT rva = Address - start;
-        if (start != UNKNOWN_ADDR)
-        {
+        if (start != UNKNOWN_ADDR) {
             traceLog.logRdtsc(start, rva);
         }
     }
@@ -234,17 +215,14 @@ VOID CpuidCalled(const CONTEXT* ctxt)
 
     IMG currModule = IMG_FindByAddress(Address);
     const bool isCurrMy = pInfo.isMyAddress(Address);
-    if (isCurrMy)
-    {
+    if (isCurrMy) {
         ADDRINT rva = addr_to_rva(Address); // convert to RVA
         traceLog.logCpuid(0, rva, Param);
     }
-    if (m_Settings.followShellcode && !IMG_Valid(currModule))
-    {
+    if (m_Settings.followShellcode && !IMG_Valid(currModule)) {
         const ADDRINT start = query_region_base(Address);
         ADDRINT rva = Address - start;
-        if (start != UNKNOWN_ADDR)
-        {
+        if (start != UNKNOWN_ADDR) {
             traceLog.logCpuid(start, rva, Param);
         }
     }
@@ -257,23 +235,19 @@ ADDRINT _setTimer(const CONTEXT* ctxt, bool isEax)
     static UINT64 Timer = 0;
     UINT64 result = 0;
 
-    if (Timer == 0)
-    {
+    if (Timer == 0) {
         ADDRINT edx = (ADDRINT)PIN_GetContextReg(ctxt, REG_GDX);
         ADDRINT eax = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
         Timer = (UINT64(edx) << 32) | eax;
     }
-    else
-    {
+    else {
         Timer += 100;
     }
 
-    if (isEax)
-    {
+    if (isEax) {
         result = (Timer << 32) >> 32;
     }
-    else
-    {
+    else {
         result = (Timer) >> 32;
     }
     return (ADDRINT)result;
@@ -309,104 +283,99 @@ bool isWatchedAddress(const ADDRINT Address)
 {
     IMG currModule = IMG_FindByAddress(Address);
     const bool isCurrMy = pInfo.isMyAddress(Address);
-    if (isCurrMy)
-    {
+    if (isCurrMy) {
         return true;
     }
     const BOOL isShellcode = !IMG_Valid(currModule);
-    if (m_Settings.followShellcode && isShellcode)
-    {
-        if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY)
-        {
+    if (m_Settings.followShellcode && isShellcode) {
+        if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY) {
             return true;
         }
         const ADDRINT callerRegion = query_region_base(Address);
         // trace calls from the monitored shellcode only:
-        if (callerRegion != UNKNOWN_ADDR && isTracedShellc(callerRegion))
-        {
+        if (callerRegion != UNKNOWN_ADDR && isTracedShellc(callerRegion)) {
             return true;
         }
     }
     return false;
 }
 
-std::wstring paramToStr(VOID* arg1)
+std::wstring paramToStr(VOID *arg1)
 {
-    if (arg1 == NULL)
-    {
+    if (arg1 == NULL) {
         return L"0";
     }
     const size_t kMaxStr = 300;
     const BOOL isReadableAddr = PIN_CheckReadAccess(arg1);
     std::wstringstream ss;
 
-    if (!isReadableAddr)
-    {
+    if (!isReadableAddr) {
         // single value
         ss << std::hex << (arg1)
             << " = "
             << std::dec << ((uint64_t)arg1);
         return ss.str();
     }
+	
 
-    // possible pointer:
-	ss << "ptr " << std::hex << (arg1);
+    // Check if UNICODE_STRING
+    typedef struct _T_UNICODE_STRING
+    {
+        uint16_t Length;
+        uint16_t MaximumLength;
+        wchar_t* Buffer;
+    } T_UNICODE_STRING, *P_T_UNICODE_STRING;
 
-	//
-	// Check if UNICODE_STRING
-	//
-	wchar_t* pUnicodeStr = (wchar_t*)((uint8_t*)arg1 + sizeof(void*));
-    if (PIN_CheckReadAccess(pUnicodeStr))
+    P_T_UNICODE_STRING unicodeS = (T_UNICODE_STRING*)arg1;
+    if (PIN_CheckReadAccess(unicodeS->Buffer))
 	{
         bool isString = false;
-		const char* val = *(char**)pUnicodeStr;
-		size_t len = util::getAsciiLen(val, kMaxStr);
+        const char* val = (char*)unicodeS->Buffer;
+        size_t len = util::getAsciiLen(val, kMaxStr);
         if (len > 0)
-		{
-			ss << " -> ";
-		}
+        {
+            ss << " -> ";
+        }
         if (len == 1)
-		{ // Must be wide string
-			wchar_t* val = *(wchar_t**)pUnicodeStr;
-			size_t wLen = util::getAsciiLenW(val, kMaxStr);
+        { // Must be a wide string
+            wchar_t* val = (wchar_t*)unicodeS->Buffer;
+            size_t wLen = util::getAsciiLenW(val, kMaxStr);
             if (wLen >= len)
-			{
+            {
                 uint16_t Length = *(uint16_t*)arg1;
-				uint16_t MaximumLength = *((uint16_t*)arg1 + 1);
+                uint16_t MaximumLength = *((uint16_t*)arg1 + 1);
                 if ((Length / sizeof(wchar_t)) == wLen && MaximumLength >= Length) // An extra check, just to make sure
-				{
-					ss << "U\"" << val << "\""; // Just made the U up to denote a UNICODE_STRING
-					isString = true;
-					return ss.str();
-				}
-			}
-		}
-	}
+                {
+                    ss << "U\"" << val << "\""; // Just made the U up to denote a UNICODE_STRING
+                    isString = true;
+                    return ss.str();
+                }
+            }
+        }
+    }
 
-	bool isString = false;
+    // possible pointer:
+    ss << "ptr " << std::hex << (arg1);
+
+    bool isString = false;
     const char* val = (char*)arg1;
     size_t len = util::getAsciiLen(val, kMaxStr);
-    if (len > 0)
-    {
+    if (len > 0) {
         ss << " -> ";
     }
-    if (len == 1)
-    { // Possible wideString
+    if (len == 1) { // Possible wideString
         wchar_t* val = (wchar_t*)arg1;
         size_t wLen = util::getAsciiLenW(val, kMaxStr);
-        if (wLen >= len)
-        {
+        if (wLen >= len) {
             ss << "L\"" << val << "\"";
             isString = true;
         }
     }
-    else if (len > 1)
-    { // ASCII string
+    else if (len > 1) { // ASCII string
         ss << "\"" << val << "\"";
         isString = true;
     }
-    if (!isString)
-    {
+    if (!isString) {
         ss << " -> {";
         ss << util::hexdump((const uint8_t*)val, m_Settings.hexdumpSize);
         ss << "}";
@@ -414,15 +383,14 @@ std::wstring paramToStr(VOID* arg1)
     return ss.str();
 }
 
-VOID _LogFunctionArgs(const ADDRINT Address, CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10)
+VOID _LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
 {
     if (!isWatchedAddress(Address)) return;
 
     const size_t argsMax = 10;
     VOID* args[argsMax] = { arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10 };
     std::wstringstream ss;
-    for (size_t i = 0; i < argCount && i < argsMax; i++)
-    {
+    for (size_t i = 0; i < argCount && i < argsMax; i++) {
         ss << "\tArg[" << i << "] = ";
         ss << paramToStr(args[i]);
         ss << "\n";
@@ -433,14 +401,14 @@ VOID _LogFunctionArgs(const ADDRINT Address, CHAR* name, uint32_t argCount, VOID
     traceLog.logLine(s);
 }
 
-VOID LogFunctionArgs(const ADDRINT Address, CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10)
+VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
 {
     PIN_LockClient();
     _LogFunctionArgs(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
     PIN_UnlockClient();
 }
 
-VOID MonitorFunctionArgs(IMG Image, const WFuncInfo& funcInfo)
+VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
 {
     const CHAR* fName = funcInfo.funcName.c_str();
     size_t argNum = funcInfo.paramCount;
@@ -476,10 +444,9 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo& funcInfo)
 // Instrumentation callbacks
 /* ===================================================================== */
 
-VOID InstrumentInstruction(INS ins, VOID* v)
+VOID InstrumentInstruction(INS ins, VOID *v)
 {
-    if (isStrEqualI(INS_Mnemonic(ins), "cpuid"))
-    {
+    if (isStrEqualI(INS_Mnemonic(ins), "cpuid")) {
         INS_InsertCall(
             ins,
             IPOINT_BEFORE, (AFUNPTR)CpuidCalled,
@@ -488,10 +455,8 @@ VOID InstrumentInstruction(INS ins, VOID* v)
         );
     }
 
-    if (INS_IsRDTSC(ins))
-    {
-        if (m_Settings.traceRDTSC)
-        {
+    if (INS_IsRDTSC(ins)) {
+        if (m_Settings.traceRDTSC) {
             INS_InsertCall(
                 ins,
                 IPOINT_BEFORE, (AFUNPTR)RdtscCalled,
@@ -501,14 +466,14 @@ VOID InstrumentInstruction(INS ins, VOID* v)
         }
 
         INS_InsertCall(
-            ins,
+            ins, 
             IPOINT_AFTER, (AFUNPTR)AlterRdtscValueEdx,
             IARG_CONTEXT,
-            IARG_RETURN_REGS,
+            IARG_RETURN_REGS, 
             REG_GDX,
             IARG_END);
 
-        INS_InsertCall(ins,
+        INS_InsertCall(ins, 
             IPOINT_AFTER, (AFUNPTR)AlterRdtscValueEax,
             IARG_CONTEXT,
             IARG_RETURN_REGS,
@@ -516,10 +481,9 @@ VOID InstrumentInstruction(INS ins, VOID* v)
             IARG_END);
     }
 
-    if ((INS_IsControlFlow(ins) || INS_IsFarJump(ins)))
-    {
+    if ((INS_IsControlFlow(ins) || INS_IsFarJump(ins))) {
         INS_InsertCall(
-            ins,
+            ins, 
             IPOINT_BEFORE, (AFUNPTR)SaveTransitions,
             IARG_INST_PTR,
             IARG_BRANCH_TARGET_ADDR,
@@ -528,15 +492,13 @@ VOID InstrumentInstruction(INS ins, VOID* v)
     }
 }
 
-VOID ImageLoad(IMG Image, VOID* v)
+VOID ImageLoad(IMG Image, VOID *v)
 {
     PIN_LockClient();
     pInfo.addModule(Image);
-    for (size_t i = 0; i < g_Watch.funcs.size(); i++)
-    {
+    for (size_t i = 0; i < g_Watch.funcs.size(); i++) {
         const std::string dllName = util::getDllName(IMG_Name(Image));
-        if (util::iequals(dllName, g_Watch.funcs[i].dllName))
-        {
+        if (util::iequals(dllName, g_Watch.funcs[i].dllName)) {
             MonitorFunctionArgs(Image, g_Watch.funcs[i]);
         }
     }
@@ -545,10 +507,10 @@ VOID ImageLoad(IMG Image, VOID* v)
 
 static void OnCtxChange(THREADID threadIndex,
     CONTEXT_CHANGE_REASON reason,
-    const CONTEXT* ctxtFrom,
-    CONTEXT* ctxtTo,
+    const CONTEXT *ctxtFrom,
+    CONTEXT *ctxtTo,
     INT32 info,
-    VOID* v)
+    VOID *v)
 {
     if (ctxtTo == NULL || ctxtFrom == NULL) return;
 
@@ -567,7 +529,7 @@ static void OnCtxChange(THREADID threadIndex,
 *                              including pin -t <toolname> -- ...
 */
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
     // Initialize PIN library. Print help message if -h(elp) is specified
     // in the command line or the command line is invalid 
@@ -579,13 +541,10 @@ int main(int argc, char* argv[])
     }
 
     std::string app_name = KnobModuleName.Value();
-    if (app_name.length() == 0)
-    {
+    if (app_name.length() == 0) {
         // init App Name:
-        for (int i = 1; i < (argc - 1); i++)
-        {
-            if (strcmp(argv[i], "--") == 0)
-            {
+        for (int i = 1; i < (argc - 1); i++) {
+            if (strcmp(argv[i], "--") == 0) {
                 app_name = argv[i + 1];
                 break;
             }
@@ -595,17 +554,14 @@ int main(int argc, char* argv[])
     pInfo.init(app_name);
 
     const std::string iniFilename = KnobIniFile.ValueString();
-    if (!m_Settings.loadINI(iniFilename))
-    {
+    if (!m_Settings.loadINI(iniFilename)) {
         std::cerr << "Coud not load the INI file: " << iniFilename << std::endl;
         m_Settings.saveINI(iniFilename);
     }
 
-    if (KnobWatchListFile.Enabled())
-    {
+    if (KnobWatchListFile.Enabled()) {
         std::string watchListFile = KnobWatchListFile.ValueString();
-        if (watchListFile.length())
-        {
+        if (watchListFile.length()) {
             size_t loaded = g_Watch.loadList(watchListFile.c_str());
             std::cout << "Watch " << loaded << " functions\n";
         }
@@ -640,4 +596,3 @@ int main(int argc, char* argv[])
 /* ===================================================================== */
 /* eof */
 /* ===================================================================== */
-
