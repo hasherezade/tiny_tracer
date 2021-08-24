@@ -316,6 +316,43 @@ std::wstring paramToStr(VOID *arg1)
             << std::dec << ((uint64_t)arg1);
         return ss.str();
     }
+	
+
+    // Check if UNICODE_STRING
+    typedef struct _T_UNICODE_STRING
+    {
+        uint16_t Length;
+        uint16_t MaximumLength;
+        wchar_t* Buffer;
+    } T_UNICODE_STRING, *P_T_UNICODE_STRING;
+
+    P_T_UNICODE_STRING unicodeS = (T_UNICODE_STRING*)arg1;
+    if (PIN_CheckReadAccess(unicodeS->Buffer))
+	{
+        bool isString = false;
+        const char* val = (char*)unicodeS->Buffer;
+        size_t len = util::getAsciiLen(val, kMaxStr);
+        if (len > 0)
+        {
+            ss << " -> ";
+        }
+        if (len == 1)
+        { // Must be a wide string
+            wchar_t* val = (wchar_t*)unicodeS->Buffer;
+            size_t wLen = util::getAsciiLenW(val, kMaxStr);
+            if (wLen >= len)
+            {
+                uint16_t Length = *(uint16_t*)arg1;
+                uint16_t MaximumLength = *((uint16_t*)arg1 + 1);
+                if ((Length / sizeof(wchar_t)) == wLen && MaximumLength >= Length) // An extra check, just to make sure
+                {
+                    ss << "U\"" << val << "\""; // Just made the U up to denote a UNICODE_STRING
+                    isString = true;
+                    return ss.str();
+                }
+            }
+        }
+    }
 
     // possible pointer:
     ss << "ptr " << std::hex << (arg1);
@@ -559,4 +596,3 @@ int main(int argc, char *argv[])
 /* ===================================================================== */
 /* eof */
 /* ===================================================================== */
-
