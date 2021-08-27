@@ -20,7 +20,7 @@
 #include "FuncWatch.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "1.7"
+#define VERSION "1.8"
 
 #include "Util.h"
 #include "Settings.h"
