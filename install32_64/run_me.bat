@@ -1,8 +1,21 @@
 @echo off
+rem This script is to be used from the context menu
 
 set TARGET_APP=%~1
 set PE_TYPE=%~2
 set IS_ADMIN=%~3
+
+if "%TARGET_APP%"=="" goto display_args
+if "%PE_TYPE%"=="" goto display_args
+goto run_it
+:display_args
+echo Run a process with TinyTracer, and trace the selected module
+echo It is recommended to run this script via installed context menu
+echo Required args: [target app] [pe type: dll or exe]
+pause
+goto finish
+
+:run_it
 echo PIN is trying to run the app:
 echo "%TARGET_APP%"
 
@@ -13,6 +26,7 @@ rem PIN_TOOLS_DIR is your directory with this script and the Pin Tools
 set PIN_TOOLS_DIR=C:\pin\source\tools\tiny_tracer\install32_64\
 
 set PINTOOL32=%PIN_TOOLS_DIR%\TinyTracer32.dll
+rem This script is to be used from the context menu
 set PINTOOL64=%PIN_TOOLS_DIR%\TinyTracer64.dll
 set PINTOOL=%PINTOOL32%
 
@@ -89,5 +103,4 @@ if [%IS_ADMIN%] == [A] (
 	rem Pausing script after the application is executed is useful to see all eventual printed messages and for troubleshooting
 	pause
 )
-
-
+:finish

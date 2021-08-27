@@ -1,4 +1,5 @@
 @echo off
+rem This script is to be used from the command line
 
 set TARGET_APP=%~1
 set TARGET_PID=%~2
