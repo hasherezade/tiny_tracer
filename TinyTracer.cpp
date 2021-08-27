@@ -313,7 +313,7 @@ std::wstring paramToStr(VOID *arg1)
         // single value
         ss << std::hex << (arg1)
             << " = "
-            << std::dec << ((uint64_t)arg1);
+            << std::dec << ((size_t)arg1);
         return ss.str();
     }
 
