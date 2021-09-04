@@ -12,7 +12,7 @@
 #define KEY_LOG_SECTIONS_TRANSITIONS    "LOG_SECTIONS_TRANSITIONS"
 #define KEY_LOG_SHELLCODES_TRANSITIONS  "LOG_SHELLCODES_TRANSITIONS"
 #define KEY_SHORT_LOGGING               "ENABLE_SHORT_LOGGING"
-#define HEXDUMP_SIZE                     "HEXDUMP_SIZE"
+#define HEXDUMP_SIZE                    "HEXDUMP_SIZE"
 
 t_shellc_options ConvertShcOption(int value)
 {
