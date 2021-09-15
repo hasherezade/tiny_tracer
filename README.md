@@ -30,7 +30,7 @@ i.e.
 How to build?
 -
 🚧 To compile the prepared project you need to use [Visual Studio >= 2012](https://visualstudio.microsoft.com/downloads/). It was tested with [Intel Pin 3.19 and 3.20](https://software.intel.com/en-us/articles/pin-a-binary-instrumentation-tool-downloads).<br/>
-Clone this repo into `\source\tools` that is inside your Pin root directory. Open the project in Visual Studio and build. Detailed description available [here](https://github.com/hasherezade/tiny_tracer/wiki/Installation).
+Clone this repo into `\source\tools` that is inside your Pin root directory. Open the project in Visual Studio and build. Detailed description available [here](https://github.com/hasherezade/tiny_tracer/wiki/Installation). You might need to [exclude](https://support.microsoft.com/en-us/windows/add-an-exclusion-to-windows-security-811816c0-4dfd-af4a-47e4-c301afe13b26) the installation directory from windows defender because it might detect 'kdb_check.exe' as malware, to check whether that is the case, try running 'kdb_check.exe' if it does not run, defender is the culprit.
 
 📖 More details about the usage you will find on [the project's Wiki](https://github.com/hasherezade/tiny_tracer/wiki).<br/>
 
