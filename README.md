@@ -3,7 +3,7 @@
 [![GitHub release](https://img.shields.io/github/release/hasherezade/tiny_tracer.svg)](https://github.com/hasherezade/tiny_tracer/releases)
 
 A Pin Tool for tracing:
-+ API calls
++ API calls, including [parameters of functions](https://github.com/hasherezade/tiny_tracer/wiki/Tracing-parameters-of-functions)
 + selected instructions: [RDTSC](https://c9x.me/x86/html/file_module_x86_id_278.html), [CPUID](https://c9x.me/x86/html/file_module_x86_id_45.html)
 + transition between sections of the traced module (helpful in finding OEP of the packed module)
 
