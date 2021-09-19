@@ -25,6 +25,7 @@
 #include "Util.h"
 #include "Settings.h"
 
+#define SLEEP "Sleep"
 
 /* ================================================================== */
 // Global variables 
@@ -427,7 +428,6 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
     RTN_Close(funcRtn);
 }
 
-
 /* ===================================================================== */
 // Instrumentation callbacks
 /* ===================================================================== */
@@ -480,6 +480,17 @@ VOID InstrumentInstruction(INS ins, VOID *v)
     }
 }
 
+/* ===================================================================== */
+
+VOID AlterSleep(CHAR* name, ADDRINT* sleeptime)
+{
+    PIN_LockClient();
+    (*sleeptime) = m_Settings.sleepTime;
+    PIN_UnlockClient();
+}
+
+/* ===================================================================== */
+
 VOID ImageLoad(IMG Image, VOID *v)
 {
     PIN_LockClient();
@@ -488,6 +499,14 @@ VOID ImageLoad(IMG Image, VOID *v)
         const std::string dllName = util::getDllName(IMG_Name(Image));
         if (util::iequals(dllName, g_Watch.funcs[i].dllName)) {
             MonitorFunctionArgs(Image, g_Watch.funcs[i]);
+        }
+    }
+    if (m_Settings.hookSleep) {
+        RTN sleepRtn = RTN_FindByName(Image, SLEEP);
+        if (RTN_Valid(sleepRtn)) {
+            RTN_Open(sleepRtn);
+            RTN_InsertCall(sleepRtn, IPOINT_BEFORE, (AFUNPTR)AlterSleep, IARG_ADDRINT, SLEEP, IARG_FUNCARG_ENTRYPOINT_REFERENCE, 0, IARG_END);
+            RTN_Close(sleepRtn);
         }
     }
     PIN_UnlockClient();

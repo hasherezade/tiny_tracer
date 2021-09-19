@@ -35,4 +35,6 @@ public:
     bool logShelcTrans; // watch transitions between shellcodes
     bool shortLogging; // Use short call logging (without a full DLL path)
     size_t hexdumpSize;
+    bool hookSleep;
+    size_t sleepTime;
 };
