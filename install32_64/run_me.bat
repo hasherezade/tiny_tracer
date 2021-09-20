@@ -67,6 +67,9 @@ if %errorlevel% == 64 (
 rem The exports that you want to call from a dll, in format: [name1];[name2] or [#ordinal1];[#ordinal2]
 set DLL_EXPORTS=""
 
+rem The arguments that you want to pass to the run executable
+set EXE_ARGS=""
+
 echo Target module: "%TRACED_MODULE%"
 echo Tag file: %TAG_FILE%
 if [%IS_ADMIN%] == [A] (
@@ -76,7 +79,7 @@ if [%IS_ADMIN%] == [A] (
 set ADMIN_CMD=%PIN_TOOLS_DIR%\sudo.vbs
 
 set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -- "%DLL_LOAD%" "%TARGET_APP%" %DLL_EXPORTS%
-set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -- "%TARGET_APP%" 
+set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -- "%TARGET_APP%" "%EXE_ARGS%"
 
 ;rem "Trace EXE"
 if [%PE_TYPE%] == [exe] (
