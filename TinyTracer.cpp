@@ -25,8 +25,6 @@
 #include "Util.h"
 #include "Settings.h"
 
-#define SLEEP "Sleep"
-
 /* ================================================================== */
 // Global variables 
 /* ================================================================== */
@@ -500,13 +498,18 @@ VOID ImageLoad(IMG Image, VOID *v)
         if (util::iequals(dllName, g_Watch.funcs[i].dllName)) {
             MonitorFunctionArgs(Image, g_Watch.funcs[i]);
         }
+
     }
     if (m_Settings.hookSleep) {
-        RTN sleepRtn = RTN_FindByName(Image, SLEEP);
-        if (RTN_Valid(sleepRtn)) {
-            RTN_Open(sleepRtn);
-            RTN_InsertCall(sleepRtn, IPOINT_BEFORE, (AFUNPTR)AlterSleep, IARG_ADDRINT, SLEEP, IARG_FUNCARG_ENTRYPOINT_REFERENCE, 0, IARG_END);
-            RTN_Close(sleepRtn);
+        const std::string dllName = util::getDllName(IMG_Name(Image));
+        if (util::iequals(dllName, "ntdll")) {
+            const char SLEEP[] = "NtDelayExecution";
+            RTN sleepRtn = RTN_FindByName(Image, SLEEP);
+            if (RTN_Valid(sleepRtn)) {
+                RTN_Open(sleepRtn);
+                RTN_InsertCall(sleepRtn, IPOINT_BEFORE, (AFUNPTR)AlterSleep, IARG_ADDRINT, SLEEP, IARG_FUNCARG_ENTRYPOINT_REFERENCE, 1, IARG_END);
+                RTN_Close(sleepRtn);
+            }
         }
     }
     PIN_UnlockClient();
