@@ -13,6 +13,8 @@
 #define KEY_LOG_SHELLCODES_TRANSITIONS  "LOG_SHELLCODES_TRANSITIONS"
 #define KEY_SHORT_LOGGING               "ENABLE_SHORT_LOGGING"
 #define HEXDUMP_SIZE                    "HEXDUMP_SIZE"
+#define SLEEP_TIME                      "SLEEP_TIME"
+#define HOOK_SLEEP                      "HOOK_SLEEP"
 
 t_shellc_options ConvertShcOption(int value)
 {
@@ -77,6 +79,14 @@ bool fillSettings(Settings &s, std::string line)
         s.hexdumpSize = util::loadInt(valStr);
         isFilled = true;
     }
+    if (util::iequals(valName, HOOK_SLEEP)) {
+        s.hookSleep = loadBoolean(valStr, s.hookSleep);
+        isFilled = true;
+    }
+    if (util::iequals(valName, SLEEP_TIME)) {
+        s.sleepTime = util::loadInt(valStr);
+        isFilled = true;
+    }
     return isFilled;
 }
 
@@ -101,6 +111,9 @@ bool Settings::saveINI(const std::string filename)
     myfile << KEY_LOG_SHELLCODES_TRANSITIONS << DELIM << this->logShelcTrans << "\r\n";
     myfile << KEY_SHORT_LOGGING << DELIM << this->shortLogging << "\r\n";
     myfile << HEXDUMP_SIZE << DELIM << this->hexdumpSize << "\r\n";
+
+    myfile << HOOK_SLEEP << DELIM << this->hookSleep << "\r\n";
+    myfile << SLEEP_TIME << DELIM << this->sleepTime << "\r\n";
     myfile.close();
     return true;
 }
