@@ -20,7 +20,7 @@
 #include "FuncWatch.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "1.8"
+#define VERSION "1.9"
 
 #include "Util.h"
 #include "Settings.h"
@@ -480,10 +480,14 @@ VOID InstrumentInstruction(INS ins, VOID *v)
 
 /* ===================================================================== */
 
-VOID AlterSleep(CHAR* name, ADDRINT* sleeptime)
+VOID HookNtDelayExecution(CHAR* name, ADDRINT sleeptime)
 {
     PIN_LockClient();
-    (*sleeptime) = m_Settings.sleepTime;
+    int64_t *sleepTimePtr = (int64_t*)sleeptime;
+    if (PIN_CheckReadAccess(sleepTimePtr)) {
+        std::cout << "Overwriting Sleep. New Sleep: " << std::dec << m_Settings.sleepTime << "\n";
+        (*sleepTimePtr) = -(m_Settings.sleepTime * 10000);
+    }
     PIN_UnlockClient();
 }
 
@@ -507,7 +511,9 @@ VOID ImageLoad(IMG Image, VOID *v)
             RTN sleepRtn = RTN_FindByName(Image, SLEEP);
             if (RTN_Valid(sleepRtn)) {
                 RTN_Open(sleepRtn);
-                RTN_InsertCall(sleepRtn, IPOINT_BEFORE, (AFUNPTR)AlterSleep, IARG_ADDRINT, SLEEP, IARG_FUNCARG_ENTRYPOINT_REFERENCE, 1, IARG_END);
+                RTN_InsertCall(sleepRtn, IPOINT_BEFORE, (AFUNPTR)HookNtDelayExecution, IARG_ADDRINT, SLEEP,
+                    IARG_FUNCARG_ENTRYPOINT_VALUE, 1, 
+                    IARG_END);
                 RTN_Close(sleepRtn);
             }
         }
