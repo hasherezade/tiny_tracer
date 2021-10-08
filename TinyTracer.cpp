@@ -485,7 +485,8 @@ VOID HookNtDelayExecution(CHAR* name, ADDRINT* sleepTimePtr)
     PIN_LockClient();
     if (PIN_CheckReadAccess(sleepTimePtr)) {
         std::cout << "Overwriting Sleep. New Sleep: " << std::dec << m_Settings.sleepTime << "\n";
-        (*sleepTimePtr) = -(m_Settings.sleepTime * 10000);
+        INT sleepVal = (m_Settings.sleepTime != 0) ? (m_Settings.sleepTime * 10000) : 1;
+        (*sleepTimePtr) = -(sleepVal);
     }
     PIN_UnlockClient();
 }
