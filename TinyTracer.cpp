@@ -480,10 +480,9 @@ VOID InstrumentInstruction(INS ins, VOID *v)
 
 /* ===================================================================== */
 
-VOID HookNtDelayExecution(CHAR* name, ADDRINT sleeptime)
+VOID HookNtDelayExecution(CHAR* name, ADDRINT* sleepTimePtr)
 {
     PIN_LockClient();
-    int64_t *sleepTimePtr = (int64_t*)sleeptime;
     if (PIN_CheckReadAccess(sleepTimePtr)) {
         std::cout << "Overwriting Sleep. New Sleep: " << std::dec << m_Settings.sleepTime << "\n";
         (*sleepTimePtr) = -(m_Settings.sleepTime * 10000);
