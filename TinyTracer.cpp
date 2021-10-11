@@ -95,8 +95,16 @@ BOOL isTracedShellc(ADDRINT addr)
     return FALSE;
 }
 
-VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
+VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEXT *ctx)
 {
+    ADDRINT returnAddr = UNKNOWN_ADDR;
+    if (ctx) {
+        const ADDRINT stackPtr = (ADDRINT)PIN_GetContextReg(ctx, REG_STACK_PTR);
+        if (PIN_CheckReadAccess((ADDRINT*)stackPtr)) {
+            returnAddr = *(ADDRINT*)stackPtr;
+        }
+    }
+
     const bool isTargetMy = pInfo.isMyAddress(addrTo);
     const bool isCallerMy = pInfo.isMyAddress(addrFrom);
 
@@ -126,7 +134,9 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
         if (callerPage != UNKNOWN_ADDR) {
 
             if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY
-                || isTracedShellc(callerPage))
+                || isTracedShellc(callerPage)
+                || (returnAddr != UNKNOWN_ADDR && isTracedShellc(query_region_base(returnAddr)))
+                )
             {
                 const ADDRINT pageTo = query_region_base(addrTo);
                 if (IMG_Valid(targetModule)) { // it is a call to a module
@@ -176,10 +186,10 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo)
     }
 }
 
-VOID SaveTransitions(const ADDRINT prevVA, const ADDRINT Address)
+VOID SaveTransitions(const ADDRINT prevVA, const ADDRINT Address, const CONTEXT *ctx)
 {
     PIN_LockClient();
-    _SaveTransitions(prevVA, Address);
+    _SaveTransitions(prevVA, Address, ctx);
     PIN_UnlockClient();
 }
 
@@ -473,6 +483,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
             IPOINT_BEFORE, (AFUNPTR)SaveTransitions,
             IARG_INST_PTR,
             IARG_BRANCH_TARGET_ADDR,
+            IARG_CONTEXT,
             IARG_END
         );
     }
@@ -533,7 +544,7 @@ static void OnCtxChange(THREADID threadIndex,
     PIN_LockClient();
     const ADDRINT addrFrom = (ADDRINT)PIN_GetContextReg(ctxtFrom, REG_INST_PTR);
     const ADDRINT addrTo = (ADDRINT)PIN_GetContextReg(ctxtTo, REG_INST_PTR);
-    _SaveTransitions(addrFrom, addrTo);
+    _SaveTransitions(addrFrom, addrTo, NULL);
     PIN_UnlockClient();
 }
 
