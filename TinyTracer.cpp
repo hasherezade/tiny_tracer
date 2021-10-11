@@ -83,8 +83,9 @@ bool isStrEqualI(const std::string &str1, const std::string &str2)
     return true;
 }
 
+
 /* ===================================================================== */
-// Analysis routines
+// Analysis utilities
 /* ===================================================================== */
 
 BOOL isTracedShellc(ADDRINT addr)
@@ -94,6 +95,36 @@ BOOL isTracedShellc(ADDRINT addr)
     }
     return FALSE;
 }
+
+bool isWatchedAddress(const ADDRINT Address)
+{
+    if (Address == UNKNOWN_ADDR) {
+        return false;
+    }
+    IMG currModule = IMG_FindByAddress(Address);
+    const bool isCurrMy = pInfo.isMyAddress(Address);
+    if (isCurrMy) {
+        return true;
+    }
+    const BOOL isShellcode = !IMG_Valid(currModule);
+    if (m_Settings.followShellcode && isShellcode) {
+        if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY) {
+            return true;
+        }
+        const ADDRINT callerRegion = query_region_base(Address);
+        // trace calls from the monitored shellcode only:
+        if (callerRegion != UNKNOWN_ADDR && isTracedShellc(callerRegion)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+/* ===================================================================== */
+// Analysis routines
+/* ===================================================================== */
+
 
 VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEXT *ctx)
 {
@@ -287,27 +318,6 @@ ADDRINT AlterRdtscValueEax(const CONTEXT* ctxt)
 /* ===================================================================== */
 // Instrument functions arguments
 /* ===================================================================== */
-
-bool isWatchedAddress(const ADDRINT Address)
-{
-    IMG currModule = IMG_FindByAddress(Address);
-    const bool isCurrMy = pInfo.isMyAddress(Address);
-    if (isCurrMy) {
-        return true;
-    }
-    const BOOL isShellcode = !IMG_Valid(currModule);
-    if (m_Settings.followShellcode && isShellcode) {
-        if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY) {
-            return true;
-        }
-        const ADDRINT callerRegion = query_region_base(Address);
-        // trace calls from the monitored shellcode only:
-        if (callerRegion != UNKNOWN_ADDR && isTracedShellc(callerRegion)) {
-            return true;
-        }
-    }
-    return false;
-}
 
 std::wstring paramToStr(VOID *arg1)
 {
