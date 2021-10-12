@@ -44,6 +44,30 @@ void TraceLog::logCall(const ADDRINT prevBase, const ADDRINT prevAddr, const ADD
     m_traceFile.flush();
 }
 
+void TraceLog::logCallRet(const ADDRINT prevBase, const ADDRINT prevAddr, const ADDRINT retPageBase, const ADDRINT retAddr, const std::string module, const std::string func)
+{
+    if (!createFile()) return;
+
+    ADDRINT retRva = retAddr;
+    if (retPageBase) {
+        retRva -= retPageBase;
+        m_traceFile << "> " << retPageBase << "+";
+    }
+    m_traceFile
+        << std::hex << retRva
+        << DELIMITER
+        << "RET from: "
+        << "[" << prevBase << "+" << prevAddr << "] -> "
+        << util::getDllName(module);
+
+    if (func.length() > 0) {
+        m_traceFile << "." << func;
+    }
+    m_traceFile << std::endl;
+    m_traceFile.flush();
+}
+
+
 void TraceLog::logSectionChange(const ADDRINT prevAddr, std::string name)
 {
     if (!createFile()) return;
