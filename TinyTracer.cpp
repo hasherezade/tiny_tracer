@@ -195,6 +195,15 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEX
                     traceLog.logCall(base, RvaFrom, pageTo, addrTo);
                 }
             }
+
+            if (!isFromTraced && isRetToTraced) {
+                // save the transition when a shellcode returns to another from a call
+                const ADDRINT base = get_base(addrFrom);
+                const ADDRINT RvaFrom = addrFrom - base;
+
+                const ADDRINT pageRet = query_region_base(returnAddr);
+                traceLog.logCallRet(base, RvaFrom, pageRet, returnAddr, pageTo, addrTo);
+            }
         }
 
     }

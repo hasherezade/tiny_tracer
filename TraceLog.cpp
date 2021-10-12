@@ -44,6 +44,26 @@ void TraceLog::logCall(const ADDRINT prevBase, const ADDRINT prevAddr, const ADD
     m_traceFile.flush();
 }
 
+void TraceLog::logCallRet(const ADDRINT prevBase, const ADDRINT prevAddr, const ADDRINT retPageBase, const ADDRINT retAddr, const ADDRINT calledPageBase, const ADDRINT callAddr)
+{
+    if (!createFile()) return;
+
+    ADDRINT retRva = retAddr;
+    if (retPageBase) {
+        retRva -= retPageBase;
+        m_traceFile << "> " << retPageBase << "+";
+    }
+    const ADDRINT callRva = callAddr - calledPageBase;
+    m_traceFile <<
+        std::hex << retRva
+        << DELIMITER
+        << "returns from the call to: ?? [" << calledPageBase << "+" << callRva << "] "
+        << "via: [" << prevBase << "+" << prevAddr << "]"
+        << std::endl;
+    m_traceFile.flush();
+}
+
+
 void TraceLog::logSectionChange(const ADDRINT prevAddr, std::string name)
 {
     if (!createFile()) return;
