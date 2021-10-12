@@ -172,16 +172,18 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEX
         if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY || isFromTraced || isRetToTraced) {
             const ADDRINT pageFrom = query_region_base(addrFrom);
             const ADDRINT pageTo = query_region_base(addrTo);
+            bool isLogged = false;
 
             if (IMG_Valid(targetModule)) { // it is a call to a module
-
                 const std::string func = get_func_at(addrTo);
                 const std::string dll_name = IMG_Name(targetModule);
                 
                 traceLog.logCall(pageFrom, addrFrom, false, dll_name, func);
+                isLogged = true;
             }
             else if (pageFrom != pageTo) // it is a call to another shellcode
             {
+
                 // add the new shellcode to the set of traced
                 if (m_Settings.followShellcode != SHELLC_FOLLOW_FIRST) {
                     m_tracedShellc.insert(pageTo);
@@ -193,10 +195,11 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEX
                     ADDRINT base = get_base(addrFrom);
                     ADDRINT RvaFrom = addrFrom - base;
                     traceLog.logCall(base, RvaFrom, pageTo, addrTo);
+                    isLogged = true;
                 }
             }
 
-            if (!isFromTraced && isRetToTraced) {
+            if (isLogged && !isFromTraced && isRetToTraced) {
                 // save the transition when a shellcode returns to another from a call
                 const ADDRINT base = get_base(addrFrom);
                 const ADDRINT RvaFrom = addrFrom - base;
@@ -204,6 +207,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEX
                 const ADDRINT pageRet = query_region_base(returnAddr);
                 traceLog.logCallRet(base, RvaFrom, pageRet, returnAddr, pageTo, addrTo);
             }
+
         }
 
     }
