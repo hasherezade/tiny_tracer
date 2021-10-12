@@ -56,8 +56,8 @@ void TraceLog::logCallRet(const ADDRINT prevBase, const ADDRINT prevAddr, const 
     m_traceFile
         << std::hex << retRva
         << DELIMITER
-        << "returns from the call to: "
-        << " [" << prevBase << "+" << prevAddr << "] -> "
+        << "RET from: "
+        << "[" << prevBase << "+" << prevAddr << "] -> "
         << util::getDllName(module);
 
     if (func.length() > 0) {
