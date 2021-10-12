@@ -151,10 +151,15 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEX
     const bool isTargetMy = pInfo.isMyAddress(addrTo);
     const bool isCallerMy = pInfo.isMyAddress(addrFrom);
 
+    bool isFromTraced = isWatchedAddress(addrFrom); // is the call from the traced shellcode?
+    bool isRetToTraced = isWatchedAddress(returnAddr); // does it return into the traced area?
+
     IMG targetModule = IMG_FindByAddress(addrTo);
     IMG callerModule = IMG_FindByAddress(addrFrom);
 
-    //is it a transition from the traced module to a foreign module?
+    /**
+    is it a transition from the traced module to a foreign module?
+    */
     if (isCallerMy && !isTargetMy) {
         ADDRINT RvaFrom = addr_to_rva(addrFrom);
         if (IMG_Valid(targetModule)) {
@@ -169,11 +174,11 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEX
             traceLog.logCall(0, RvaFrom, pageTo, addrTo);
         }
     }
-    // trace calls from witin a shellcode:
-    if (m_Settings.followShellcode && !IMG_Valid(callerModule)) {
 
-        bool isFromTraced = isInTracedShellc(addrFrom); // is the call from the traced shellcode?
-        bool isRetToTraced = isInTracedShellc(returnAddr); // does it return into the traced shellcode?
+    /**
+    trace calls from witin a shellcode:
+    */
+    if (m_Settings.followShellcode && !IMG_Valid(callerModule)) {
 
         if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY || isFromTraced || isRetToTraced) {
             const ADDRINT pageFrom = query_region_base(addrFrom);
@@ -184,15 +189,6 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEX
                 const std::string dll_name = IMG_Name(targetModule);
                 
                 traceLog.logCall(pageFrom, addrFrom, false, dll_name, func);
-
-                if (!isFromTraced && isRetToTraced) {
-                    // save the transition when a shellcode returns to another from a call
-                    const ADDRINT base = get_base(addrFrom);
-                    const ADDRINT RvaFrom = addrFrom - base;
-                    const ADDRINT pageRet = query_region_base(returnAddr);
-                    traceLog.logCallRet(base, RvaFrom, pageRet, returnAddr, dll_name, func);
-                }
-
             }
             else if (pageFrom != pageTo) // it is a call to another shellcode
             {
@@ -210,11 +206,33 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEX
                     traceLog.logCall(base, RvaFrom, pageTo, addrTo);
                 }
             }
-
         }
     }
 
-    // is the address within the traced module?
+    /**
+    save the transition when a shellcode returns to a traced area from an API call:
+    */
+    if (isRetToTraced //returns to the traced area
+        && !isFromTraced && !IMG_Valid(callerModule) // from an untraced shellcode...
+        && IMG_Valid(targetModule) // ...which was was a proxy for making an API call
+        )
+    {
+        const std::string func = get_func_at(addrTo);
+        const std::string dll_name = IMG_Name(targetModule);
+        const ADDRINT pageRet = get_base(returnAddr);
+
+        ADDRINT base = get_base(addrFrom);
+        ADDRINT RvaFrom = addrFrom - base;
+        if (!isTargetMy) {
+            RvaFrom = addr_to_rva(addrFrom);
+            base = 0;
+        }
+        traceLog.logCallRet(base, RvaFrom, pageRet, returnAddr, dll_name, func);
+    }
+
+    /**
+    trace transitions between the sections of the traced module:
+    */
     if (isTargetMy) {
         ADDRINT rva = addr_to_rva(addrTo); // convert to RVA
 
@@ -224,7 +242,6 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEX
                 const s_module* sec = pInfo.getSecByAddr(rva);
                 std::string curr_name = (sec) ? sec->name : "?";
                 if (isCallerMy) {
-
                     ADDRINT rvaFrom = addr_to_rva(addrFrom); // convert to RVA
                     const s_module* prev_sec = pInfo.getSecByAddr(rvaFrom);
                     std::string prev_name = (prev_sec) ? prev_sec->name : "?";
