@@ -88,9 +88,16 @@ bool isStrEqualI(const std::string &str1, const std::string &str2)
 // Analysis utilities
 /* ===================================================================== */
 
-BOOL isTracedShellc(ADDRINT addr)
+BOOL isInTracedShellc(ADDRINT addr)
 {
-    if (m_tracedShellc.find(addr) != m_tracedShellc.end()) {
+    if (addr == UNKNOWN_ADDR) {
+        return FALSE;
+    }
+    const ADDRINT regionBase = query_region_base(addr);
+    if (regionBase == UNKNOWN_ADDR) {
+        return FALSE;
+    }
+    if (m_tracedShellc.find(regionBase) != m_tracedShellc.end()) {
         return TRUE;
     }
     return FALSE;
@@ -106,14 +113,13 @@ bool isWatchedAddress(const ADDRINT Address)
     if (isCurrMy) {
         return true;
     }
+
     const BOOL isShellcode = !IMG_Valid(currModule);
     if (m_Settings.followShellcode && isShellcode) {
         if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY) {
             return true;
         }
-        const ADDRINT callerRegion = query_region_base(Address);
-        // trace calls from the monitored shellcode only:
-        if (callerRegion != UNKNOWN_ADDR && isTracedShellc(callerRegion)) {
+        if (isInTracedShellc(Address)){
             return true;
         }
     }
@@ -160,39 +166,37 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEX
     // trace calls from witin a shellcode:
     if (m_Settings.followShellcode && !IMG_Valid(callerModule)) {
 
-        const ADDRINT pageFrom = query_region_base(addrFrom);
-        const ADDRINT callerPage = pageFrom;
-        if (callerPage != UNKNOWN_ADDR) {
+        bool isFromTraced = isInTracedShellc(addrFrom); // is the call from the traced shellcode?
+        bool isRetToTraced = isInTracedShellc(returnAddr); // does it return into the traced shellcode?
 
-            if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY
-                || isTracedShellc(callerPage)
-                || (returnAddr != UNKNOWN_ADDR && isTracedShellc(query_region_base(returnAddr)))
-                )
+        if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY || isFromTraced || isRetToTraced) {
+            const ADDRINT pageFrom = query_region_base(addrFrom);
+            const ADDRINT pageTo = query_region_base(addrTo);
+
+            if (IMG_Valid(targetModule)) { // it is a call to a module
+
+                const std::string func = get_func_at(addrTo);
+                const std::string dll_name = IMG_Name(targetModule);
+                
+                traceLog.logCall(pageFrom, addrFrom, false, dll_name, func);
+            }
+            else if (pageFrom != pageTo) // it is a call to another shellcode
             {
-                const ADDRINT pageTo = query_region_base(addrTo);
-                if (IMG_Valid(targetModule)) { // it is a call to a module
-
-                    const std::string func = get_func_at(addrTo);
-                    const std::string dll_name = IMG_Name(targetModule);
-                    traceLog.logCall(callerPage, addrFrom, false, dll_name, func);
+                // add the new shellcode to the set of traced
+                if (m_Settings.followShellcode != SHELLC_FOLLOW_FIRST) {
+                    m_tracedShellc.insert(pageTo);
                 }
-                else if (pageFrom != pageTo) // it is a call to another shellcode
-                {
-                    // add the new shellcode to the set of traced
-                    if (m_Settings.followShellcode != SHELLC_FOLLOW_FIRST) {
-                        m_tracedShellc.insert(pageTo);
-                    }
 
-                    // register the transition
-                    if (m_Settings.logShelcTrans) {
-                        // save the transition from one shellcode to the other
-                        ADDRINT base = get_base(addrFrom);
-                        ADDRINT RvaFrom = addrFrom - base;
-                        traceLog.logCall(base, RvaFrom, pageTo, addrTo);
-                    }
+                // register the transition
+                if (m_Settings.logShelcTrans) {
+                    // save the transition from one shellcode to the other
+                    ADDRINT base = get_base(addrFrom);
+                    ADDRINT RvaFrom = addrFrom - base;
+                    traceLog.logCall(base, RvaFrom, pageTo, addrTo);
                 }
             }
         }
+
     }
 
     // is the address within the traced module?
