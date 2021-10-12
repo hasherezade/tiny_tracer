@@ -180,7 +180,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEX
     */
     if (m_Settings.followShellcode && !IMG_Valid(callerModule)) {
 
-        if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY || isFromTraced || isRetToTraced) {
+        if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY || isFromTraced) {
             const ADDRINT pageFrom = query_region_base(addrFrom);
             const ADDRINT pageTo = query_region_base(addrTo);
 
