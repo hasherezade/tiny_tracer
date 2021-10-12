@@ -220,13 +220,9 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEX
         const std::string func = get_func_at(addrTo);
         const std::string dll_name = IMG_Name(targetModule);
         const ADDRINT pageRet = get_base(returnAddr);
+        const ADDRINT RvaFrom = addr_to_rva(addrFrom);
+        const ADDRINT base = isTargetMy ? 0 : get_base(addrFrom);
 
-        ADDRINT base = get_base(addrFrom);
-        ADDRINT RvaFrom = addrFrom - base;
-        if (!isTargetMy) {
-            RvaFrom = addr_to_rva(addrFrom);
-            base = 0;
-        }
         traceLog.logCallRet(base, RvaFrom, pageRet, returnAddr, dll_name, func);
     }
 
