@@ -126,6 +126,18 @@ bool isWatchedAddress(const ADDRINT Address)
     return false;
 }
 
+ADDRINT getReturnFromTheStack(const CONTEXT *ctx)
+{
+    if (!ctx) return UNKNOWN_ADDR;
+
+    ADDRINT returnAddr = UNKNOWN_ADDR;
+    const ADDRINT stackPtr = (ADDRINT)PIN_GetContextReg(ctx, REG_STACK_PTR);
+    if (PIN_CheckReadAccess((ADDRINT*)stackPtr)) {
+        returnAddr = *(ADDRINT*)stackPtr;
+    }
+    return returnAddr;
+
+}
 
 /* ===================================================================== */
 // Analysis routines
@@ -134,13 +146,7 @@ bool isWatchedAddress(const ADDRINT Address)
 
 VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEXT *ctx)
 {
-    ADDRINT returnAddr = UNKNOWN_ADDR;
-    if (ctx) {
-        const ADDRINT stackPtr = (ADDRINT)PIN_GetContextReg(ctx, REG_STACK_PTR);
-        if (PIN_CheckReadAccess((ADDRINT*)stackPtr)) {
-            returnAddr = *(ADDRINT*)stackPtr;
-        }
-    }
+    const ADDRINT returnAddr = getReturnFromTheStack(ctx);
 
     const bool isTargetMy = pInfo.isMyAddress(addrTo);
     const bool isCallerMy = pInfo.isMyAddress(addrFrom);
@@ -172,14 +178,21 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEX
         if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY || isFromTraced || isRetToTraced) {
             const ADDRINT pageFrom = query_region_base(addrFrom);
             const ADDRINT pageTo = query_region_base(addrTo);
-            bool isLogged = false;
 
             if (IMG_Valid(targetModule)) { // it is a call to a module
                 const std::string func = get_func_at(addrTo);
                 const std::string dll_name = IMG_Name(targetModule);
                 
                 traceLog.logCall(pageFrom, addrFrom, false, dll_name, func);
-                isLogged = true;
+
+                if (!isFromTraced && isRetToTraced) {
+                    // save the transition when a shellcode returns to another from a call
+                    const ADDRINT base = get_base(addrFrom);
+                    const ADDRINT RvaFrom = addrFrom - base;
+                    const ADDRINT pageRet = query_region_base(returnAddr);
+                    traceLog.logCallRet(base, RvaFrom, pageRet, returnAddr, dll_name, func);
+                }
+
             }
             else if (pageFrom != pageTo) // it is a call to another shellcode
             {
@@ -195,21 +208,10 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEX
                     ADDRINT base = get_base(addrFrom);
                     ADDRINT RvaFrom = addrFrom - base;
                     traceLog.logCall(base, RvaFrom, pageTo, addrTo);
-                    isLogged = true;
                 }
             }
 
-            if (isLogged && !isFromTraced && isRetToTraced) {
-                // save the transition when a shellcode returns to another from a call
-                const ADDRINT base = get_base(addrFrom);
-                const ADDRINT RvaFrom = addrFrom - base;
-
-                const ADDRINT pageRet = query_region_base(returnAddr);
-                traceLog.logCallRet(base, RvaFrom, pageRet, returnAddr, pageTo, addrTo);
-            }
-
         }
-
     }
 
     // is the address within the traced module?
