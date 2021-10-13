@@ -58,6 +58,23 @@ KNOB<std::string> KnobWatchListFile(KNOB_MODE_WRITEONCE, "pintool",
 /* ===================================================================== */
 
 /*!
+*  A locker class.
+*/
+class PinLocker
+{
+public:
+    PinLocker()
+    {
+        PIN_LockClient();
+    }
+
+    ~PinLocker()
+    {
+        PIN_UnlockClient();
+    }
+};
+
+/*!
 *  Print out help message.
 */
 INT32 Usage()
@@ -251,14 +268,13 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEX
 
 VOID SaveTransitions(const ADDRINT prevVA, const ADDRINT Address, const CONTEXT *ctx)
 {
-    PIN_LockClient();
+    PinLocker locker;
     _SaveTransitions(prevVA, Address, ctx);
-    PIN_UnlockClient();
 }
 
 VOID RdtscCalled(const CONTEXT* ctxt)
 {
-    PIN_LockClient();
+    PinLocker locker;
 
     ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
     IMG currModule = IMG_FindByAddress(Address);
@@ -274,13 +290,11 @@ VOID RdtscCalled(const CONTEXT* ctxt)
             traceLog.logRdtsc(start, rva);
         }
     }
-
-    PIN_UnlockClient();
 }
 
 VOID CpuidCalled(const CONTEXT* ctxt)
 {
-    PIN_LockClient();
+    PinLocker locker;
 
     ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
     ADDRINT Param = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
@@ -298,8 +312,6 @@ VOID CpuidCalled(const CONTEXT* ctxt)
             traceLog.logCpuid(start, rva, Param);
         }
     }
-
-    PIN_UnlockClient();
 }
 
 ADDRINT _setTimer(const CONTEXT* ctxt, bool isEax)
@@ -327,24 +339,14 @@ ADDRINT _setTimer(const CONTEXT* ctxt, bool isEax)
 
 ADDRINT AlterRdtscValueEdx(const CONTEXT* ctxt)
 {
-    ADDRINT result = 0;
-
-    PIN_LockClient();
-    result = _setTimer(ctxt, false);
-    PIN_UnlockClient();
-
-    return result;
+    PinLocker locker;
+    return _setTimer(ctxt, false);
 }
 
 ADDRINT AlterRdtscValueEax(const CONTEXT* ctxt)
 {
-    ADDRINT result = 0;
-
-    PIN_LockClient();
-    result = _setTimer(ctxt, true);
-    PIN_UnlockClient();
-
-    return result;
+    PinLocker locker;
+    return _setTimer(ctxt, true);
 }
 
 /* ===================================================================== */
@@ -442,9 +444,8 @@ VOID _LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID
 
 VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
 {
-    PIN_LockClient();
+    PinLocker locker;
     _LogFunctionArgs(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
-    PIN_UnlockClient();
 }
 
 VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
@@ -535,20 +536,21 @@ VOID InstrumentInstruction(INS ins, VOID *v)
 
 VOID HookNtDelayExecution(CHAR* name, ADDRINT* sleepTimePtr)
 {
-    PIN_LockClient();
+    PinLocker locker;
+
     if (PIN_CheckReadAccess(sleepTimePtr)) {
         std::cout << "Overwriting Sleep. New Sleep: " << std::dec << m_Settings.sleepTime << "\n";
         INT sleepVal = (m_Settings.sleepTime != 0) ? (m_Settings.sleepTime * 10000) : 1;
         (*sleepTimePtr) = -(sleepVal);
     }
-    PIN_UnlockClient();
 }
 
 /* ===================================================================== */
 
 VOID ImageLoad(IMG Image, VOID *v)
 {
-    PIN_LockClient();
+    PinLocker locker;
+
     pInfo.addModule(Image);
     for (size_t i = 0; i < g_Watch.funcs.size(); i++) {
         const std::string dllName = util::getDllName(IMG_Name(Image));
@@ -571,7 +573,6 @@ VOID ImageLoad(IMG Image, VOID *v)
             }
         }
     }
-    PIN_UnlockClient();
 }
 
 static void OnCtxChange(THREADID threadIndex,
@@ -583,11 +584,11 @@ static void OnCtxChange(THREADID threadIndex,
 {
     if (ctxtTo == NULL || ctxtFrom == NULL) return;
 
-    PIN_LockClient();
+    PinLocker locker;
+
     const ADDRINT addrFrom = (ADDRINT)PIN_GetContextReg(ctxtFrom, REG_INST_PTR);
     const ADDRINT addrTo = (ADDRINT)PIN_GetContextReg(ctxtTo, REG_INST_PTR);
     _SaveTransitions(addrFrom, addrTo, NULL);
-    PIN_UnlockClient();
 }
 
 /*!
