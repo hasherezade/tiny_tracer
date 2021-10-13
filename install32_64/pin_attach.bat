@@ -58,7 +58,7 @@ if %errorlevel% == 64 (
 )
 
 rem The exports that you want to call from a dll, in format: [name1];[name2] or [#ordinal1];[#ordinal2]
-set DLL_EXPORTS="ServiceMain"
+set DLL_EXPORTS=""
 
 echo Target module: "%TRACED_MODULE%"
 echo Tag file: %TAG_FILE%
