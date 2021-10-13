@@ -130,7 +130,6 @@ bool isWatchedAddress(const ADDRINT Address)
     if (isCurrMy) {
         return true;
     }
-
     const BOOL isShellcode = !IMG_Valid(currModule);
     if (m_Settings.followShellcode && isShellcode) {
         if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY) {
@@ -143,28 +142,17 @@ bool isWatchedAddress(const ADDRINT Address)
     return false;
 }
 
-ADDRINT getReturnFromTheStack(const CONTEXT *ctx)
-{
-    if (!ctx) return UNKNOWN_ADDR;
-
-    ADDRINT returnAddr = UNKNOWN_ADDR;
-    const ADDRINT stackPtr = (ADDRINT)PIN_GetContextReg(ctx, REG_STACK_PTR);
-    if (PIN_CheckReadAccess((ADDRINT*)stackPtr)) {
-        returnAddr = *(ADDRINT*)stackPtr;
-    }
-    return returnAddr;
-
-}
-
 /* ===================================================================== */
 // Analysis routines
 /* ===================================================================== */
 
 
-VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEXT *ctx)
+VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, ADDRINT returnAddr = UNKNOWN_ADDR)
 {
-    const ADDRINT returnAddr = getReturnFromTheStack(ctx);
-
+    // validate the return address:
+    if (returnAddr != UNKNOWN_ADDR && !PIN_CheckReadAccess((void*)returnAddr)) {
+        returnAddr = UNKNOWN_ADDR;
+    }
     const bool isTargetMy = pInfo.isMyAddress(addrTo);
     const bool isCallerMy = pInfo.isMyAddress(addrFrom);
 
@@ -266,10 +254,10 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, const CONTEX
     }
 }
 
-VOID SaveTransitions(const ADDRINT prevVA, const ADDRINT Address, const CONTEXT *ctx)
+VOID SaveTransitions(const ADDRINT prevVA, const ADDRINT Address, const ADDRINT RetAddress)
 {
     PinLocker locker;
-    _SaveTransitions(prevVA, Address, ctx);
+    _SaveTransitions(prevVA, Address, RetAddress);
 }
 
 VOID RdtscCalled(const CONTEXT* ctxt)
@@ -522,13 +510,14 @@ VOID InstrumentInstruction(INS ins, VOID *v)
 
     if ((INS_IsControlFlow(ins) || INS_IsFarJump(ins))) {
         INS_InsertCall(
-            ins, 
+            ins,
             IPOINT_BEFORE, (AFUNPTR)SaveTransitions,
             IARG_INST_PTR,
             IARG_BRANCH_TARGET_ADDR,
-            IARG_CONTEXT,
+            IARG_RETURN_IP,
             IARG_END
         );
+
     }
 }
 
@@ -588,7 +577,7 @@ static void OnCtxChange(THREADID threadIndex,
 
     const ADDRINT addrFrom = (ADDRINT)PIN_GetContextReg(ctxtFrom, REG_INST_PTR);
     const ADDRINT addrTo = (ADDRINT)PIN_GetContextReg(ctxtTo, REG_INST_PTR);
-    _SaveTransitions(addrFrom, addrTo, NULL);
+    _SaveTransitions(addrFrom, addrTo);
 }
 
 /*!
