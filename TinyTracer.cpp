@@ -234,6 +234,19 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     }
 
     /**
+    trace indirect calls to your own functions
+    */
+    if (isCallerMy && isTargetMy && m_Settings.logIndirect && isIndirect) {
+        const ADDRINT baseTo = get_base(addrTo);
+        ADDRINT base = get_base(addrFrom);
+        if (base != UNKNOWN_ADDR && baseTo != UNKNOWN_ADDR) {
+            const ADDRINT RvaFrom = addrFrom - base;
+            const ADDRINT calledRVA = addrTo - baseTo;
+            traceLog.logIndirectCall(0, RvaFrom, true, baseTo, calledRVA);
+        }
+    }
+
+    /**
     trace transitions between the sections of the traced module:
     */
     if (isTargetMy) {
@@ -252,19 +265,6 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
                 }
                 traceLog.logSectionChange(rva, curr_name);
             }
-        }
-    }
-
-    /**
-    trace indirect calls to your own functions
-    */
-    if (isCallerMy && isTargetMy && m_Settings.logIndirect && isIndirect) {
-        const ADDRINT pageTo = get_base(addrTo);
-        ADDRINT base = get_base(addrFrom);
-        if (base != UNKNOWN_ADDR && pageTo != UNKNOWN_ADDR) {
-            const ADDRINT RvaFrom = addrFrom - base;
-            const ADDRINT calledRVA = addrTo - pageTo;
-            traceLog.logIndirectCall(0, RvaFrom, true, pageTo, calledRVA);
         }
     }
 }
