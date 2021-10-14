@@ -56,6 +56,9 @@ std::string get_func_at(ADDRINT callAddr)
 
 ADDRINT get_mod_base(ADDRINT Address)
 {
+    if (Address == UNKNOWN_ADDR) {
+        return UNKNOWN_ADDR;
+    }
     IMG img = IMG_FindByAddress(Address);
     if (IMG_Valid(img)) {
         const ADDRINT base = IMG_LoadOffset(img);
@@ -84,6 +87,9 @@ ADDRINT addr_to_rva(ADDRINT Address)
 
 ADDRINT query_region_base(ADDRINT memoryAddr)
 {
+    if (memoryAddr == UNKNOWN_ADDR) {
+        return UNKNOWN_ADDR;
+    }
     NATIVE_PID processId = (NATIVE_PID)PIN_GetPid();
     OS_MEMORY_AT_ADDR_INFORMATION  info = { 0 };
     OS_RETURN_CODE ret = OS_QueryMemory(processId,
