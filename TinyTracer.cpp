@@ -147,7 +147,7 @@ bool isWatchedAddress(const ADDRINT Address)
 /* ===================================================================== */
 
 
-VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, ADDRINT returnAddr = UNKNOWN_ADDR)
+VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndirect, ADDRINT returnAddr = UNKNOWN_ADDR)
 {
     // validate the return address:
     if (returnAddr != UNKNOWN_ADDR && !PIN_CheckReadAccess((void*)returnAddr)) {
@@ -234,6 +234,19 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, ADDRINT retu
     }
 
     /**
+    trace indirect calls to your own functions
+    */
+    if (isCallerMy && isTargetMy && m_Settings.logIndirect && isIndirect) {
+        const ADDRINT baseTo = get_base(addrTo);
+        ADDRINT base = get_base(addrFrom);
+        if (base != UNKNOWN_ADDR && baseTo != UNKNOWN_ADDR) {
+            const ADDRINT RvaFrom = addrFrom - base;
+            const ADDRINT calledRVA = addrTo - baseTo;
+            traceLog.logIndirectCall(0, RvaFrom, true, baseTo, calledRVA);
+        }
+    }
+
+    /**
     trace transitions between the sections of the traced module:
     */
     if (isTargetMy) {
@@ -256,10 +269,10 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, ADDRINT retu
     }
 }
 
-VOID SaveTransitions(const ADDRINT prevVA, const ADDRINT Address, const ADDRINT RetAddress)
+VOID SaveTransitions(const ADDRINT prevVA, const ADDRINT Address, BOOL isIndirect, const ADDRINT RetAddress)
 {
     PinLocker locker;
-    _SaveTransitions(prevVA, Address, RetAddress);
+    _SaveTransitions(prevVA, Address, isIndirect, RetAddress);
 }
 
 VOID RdtscCalled(const CONTEXT* ctxt)
@@ -511,11 +524,13 @@ VOID InstrumentInstruction(INS ins, VOID *v)
     }
 
     if ((INS_IsControlFlow(ins) || INS_IsFarJump(ins))) {
+        BOOL isIndirect = INS_IsIndirectBranchOrCall(ins) && !INS_IsRet(ins);
         INS_InsertCall(
             ins,
             IPOINT_BEFORE, (AFUNPTR)SaveTransitions,
             IARG_INST_PTR,
             IARG_BRANCH_TARGET_ADDR,
+            IARG_BOOL, isIndirect,
             IARG_RETURN_IP,
             IARG_END
         );
@@ -584,7 +599,7 @@ static void OnCtxChange(THREADID threadIndex,
 
     const ADDRINT addrFrom = (ADDRINT)PIN_GetContextReg(ctxtFrom, REG_INST_PTR);
     const ADDRINT addrTo = (ADDRINT)PIN_GetContextReg(ctxtTo, REG_INST_PTR);
-    _SaveTransitions(addrFrom, addrTo);
+    _SaveTransitions(addrFrom, addrTo, FALSE);
 }
 
 /*!

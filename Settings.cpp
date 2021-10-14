@@ -15,6 +15,7 @@
 #define HEXDUMP_SIZE                    "HEXDUMP_SIZE"
 #define SLEEP_TIME                      "SLEEP_TIME"
 #define HOOK_SLEEP                      "HOOK_SLEEP"
+#define LOG_INDIRECT                    "LOG_INDIRECT_CALLS"
 
 t_shellc_options ConvertShcOption(int value)
 {
@@ -79,6 +80,10 @@ bool fillSettings(Settings &s, std::string line)
         s.hexdumpSize = util::loadInt(valStr);
         isFilled = true;
     }
+    if (util::iequals(valName, LOG_INDIRECT)) {
+        s.logIndirect = loadBoolean(valStr, s.logIndirect);
+        isFilled = true;
+    }
     if (util::iequals(valName, HOOK_SLEEP)) {
         s.hookSleep = loadBoolean(valStr, s.hookSleep);
         isFilled = true;
@@ -114,6 +119,7 @@ bool Settings::saveINI(const std::string filename)
 
     myfile << HOOK_SLEEP << DELIM << this->hookSleep << "\r\n";
     myfile << SLEEP_TIME << DELIM << this->sleepTime << "\r\n";
+    myfile << LOG_INDIRECT << DELIM << this->logIndirect << "\r\n";
     myfile.close();
     return true;
 }
