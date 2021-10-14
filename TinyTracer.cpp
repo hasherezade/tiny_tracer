@@ -156,18 +156,20 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, ADDRINT retu
     const bool isTargetMy = pInfo.isMyAddress(addrTo);
     const bool isCallerMy = pInfo.isMyAddress(addrFrom);
 
+
     bool isFromTraced = isWatchedAddress(addrFrom); // is the call from the traced shellcode?
     bool isRetToTraced = isWatchedAddress(returnAddr); // does it return into the traced area?
 
     IMG targetModule = IMG_FindByAddress(addrTo);
     IMG callerModule = IMG_FindByAddress(addrFrom);
+    const bool isTargetPeModule = IMG_Valid(targetModule);
 
     /**
     is it a transition from the traced module to a foreign module?
     */
     if (isCallerMy && !isTargetMy) {
         ADDRINT RvaFrom = addr_to_rva(addrFrom);
-        if (IMG_Valid(targetModule)) {
+        if (isTargetPeModule) {
             const std::string func = get_func_at(addrTo);
             const std::string dll_name = IMG_Name(targetModule);
             traceLog.logCall(0, RvaFrom, true, dll_name, func);
@@ -189,7 +191,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, ADDRINT retu
             const ADDRINT pageFrom = query_region_base(addrFrom);
             const ADDRINT pageTo = query_region_base(addrTo);
 
-            if (IMG_Valid(targetModule)) { // it is a call to a module
+            if (isTargetPeModule) { // it is a call to a module
                 const std::string func = get_func_at(addrTo);
                 const std::string dll_name = IMG_Name(targetModule);
                 
@@ -219,7 +221,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, ADDRINT retu
     */
     if (isRetToTraced //returns to the traced area
         && !isFromTraced && !IMG_Valid(callerModule) // from an untraced shellcode...
-        && IMG_Valid(targetModule) // ...which was was a proxy for making an API call
+        && isTargetPeModule // ...which was was a proxy for making an API call
         )
     {
         const std::string func = get_func_at(addrTo);
