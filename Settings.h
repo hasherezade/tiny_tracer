@@ -20,6 +20,7 @@ public:
         traceRDTSC(false),
         logSectTrans(true),
         logShelcTrans(true),
+        logIndirect(false),
         shortLogging(true),
         hexdumpSize(8)
     {
@@ -34,6 +35,7 @@ public:
     bool logSectTrans; // watch transitions between sections
     bool logShelcTrans; // watch transitions between shellcodes
     bool shortLogging; // Use short call logging (without a full DLL path)
+    bool logIndirect;
     size_t hexdumpSize;
     bool hookSleep;
     size_t sleepTime;

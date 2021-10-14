@@ -31,6 +31,7 @@ public:
     void logCallRet(const ADDRINT prevBase, const ADDRINT prevAddr, const ADDRINT retPageBase, const ADDRINT retAddr, const std::string module, const std::string func);
     void logSectionChange(const ADDRINT addr, std::string sectionName);
     void logNewSectionCalled(const ADDRINT addFrom, std::string prevSection, std::string currSection);
+    void logIndirectCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, bool isRVA, const ADDRINT calledBase, const ADDRINT callRVA);
     void logRdtsc(const ADDRINT base, const ADDRINT rva);
     void logCpuid(const ADDRINT base, const ADDRINT rva, const ADDRINT param);
 
