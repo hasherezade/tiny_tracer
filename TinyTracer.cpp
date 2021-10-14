@@ -523,14 +523,18 @@ VOID InstrumentInstruction(INS ins, VOID *v)
 
 /* ===================================================================== */
 
-VOID HookNtDelayExecution(CHAR* name, ADDRINT* sleepTimePtr)
+VOID HookNtDelayExecution(CHAR* name, UINT64* sleepTimePtr)
 {
     PinLocker locker;
 
     if (PIN_CheckReadAccess(sleepTimePtr)) {
-        std::cout << "Overwriting Sleep. New Sleep: " << std::dec << m_Settings.sleepTime << "\n";
-        INT sleepVal = (m_Settings.sleepTime != 0) ? (m_Settings.sleepTime * 10000) : 1;
-        (*sleepTimePtr) = -(sleepVal);
+
+        INT64 sleepVal = (m_Settings.sleepTime != 0) ? (m_Settings.sleepTime * 10000) : 1;
+        sleepVal = -(sleepVal);
+        std::stringstream ss;
+        ss << "\tNtDelayExecution hooked. Overwriting DelayInterval: " << std::hex << (*sleepTimePtr) << " -> " << sleepVal << std::endl;
+        traceLog.logLine(ss.str());
+        (*sleepTimePtr) = sleepVal;
     }
 }
 
@@ -555,7 +559,7 @@ VOID ImageLoad(IMG Image, VOID *v)
             RTN sleepRtn = RTN_FindByName(Image, SLEEP);
             if (RTN_Valid(sleepRtn)) {
                 RTN_Open(sleepRtn);
-                RTN_InsertCall(sleepRtn, IPOINT_BEFORE, (AFUNPTR)HookNtDelayExecution, IARG_ADDRINT, SLEEP,
+                RTN_InsertCall(sleepRtn, IPOINT_BEFORE, (AFUNPTR)HookNtDelayExecution, IARG_PTR, SLEEP,
                     IARG_FUNCARG_ENTRYPOINT_VALUE, 1, 
                     IARG_END);
                 RTN_Close(sleepRtn);
