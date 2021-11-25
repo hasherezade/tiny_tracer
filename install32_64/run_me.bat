@@ -26,9 +26,7 @@ rem PIN_TOOLS_DIR is your directory with this script and the Pin Tools
 set PIN_TOOLS_DIR=C:\pin\source\tools\tiny_tracer\install32_64\
 
 set PINTOOL32=%PIN_TOOLS_DIR%\TinyTracer32.dll
-rem This script is to be used from the context menu
 set PINTOOL64=%PIN_TOOLS_DIR%\TinyTracer64.dll
-set PINTOOL=%PINTOOL32%
 
 rem TRACED_MODULE - by default it is the main module, but it can be also a DLL within the traced process
 set TRACED_MODULE=%TARGET_APP%
@@ -57,12 +55,10 @@ if exist %PIN_TOOLS_DIR%\kdb_check.exe (
 %PIN_TOOLS_DIR%\pe_check.exe "%TARGET_APP%"
 if %errorlevel% == 32 (
 	echo 32bit selected
-	set PINTOOL=%PINTOOL32%
 	set DLL_LOAD=%DLL_LOAD32%
 )
 if %errorlevel% == 64 (
 	echo 64bit selected
-	set PINTOOL=%PINTOOL64%
 	set DLL_LOAD=%DLL_LOAD64%
 )
 
@@ -80,8 +76,8 @@ if [%IS_ADMIN%] == [A] (
 
 set ADMIN_CMD=%PIN_TOOLS_DIR%\sudo.vbs
 
-set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -- "%DLL_LOAD%" "%TARGET_APP%" %DLL_EXPORTS%
-set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -- "%TARGET_APP%" "%EXE_ARGS%"
+set DLL_CMD=%PIN_DIR%\pin.exe -t64 %PINTOOL64% -t %PINTOOL32% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -- "%DLL_LOAD%" "%TARGET_APP%" %DLL_EXPORTS%
+set EXE_CMD=%PIN_DIR%\pin.exe -t64 %PINTOOL64% -t %PINTOOL32% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -- "%TARGET_APP%" "%EXE_ARGS%"
 
 ;rem "Trace EXE"
 if [%PE_TYPE%] == [exe] (
