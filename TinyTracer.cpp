@@ -20,7 +20,7 @@
 #include "FuncWatch.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.0"
+#define VERSION "2.0-a"
 
 #include "Util.h"
 #include "Settings.h"
@@ -160,15 +160,10 @@ ADDRINT getReturnFromTheStack(const CONTEXT* ctx)
 
 VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndirect, const CONTEXT* ctx = NULL)
 {
-    // validate the return address:
-    const ADDRINT returnAddr = getReturnFromTheStack(ctx);
-
     const bool isTargetMy = pInfo.isMyAddress(addrTo);
     const bool isCallerMy = pInfo.isMyAddress(addrFrom);
 
-
     bool isFromTraced = isWatchedAddress(addrFrom); // is the call from the traced shellcode?
-    bool isRetToTraced = isWatchedAddress(returnAddr); // does it return into the traced area?
 
     IMG targetModule = IMG_FindByAddress(addrTo);
     IMG callerModule = IMG_FindByAddress(addrFrom);
@@ -229,20 +224,23 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     /**
     save the transition when a shellcode returns to a traced area from an API call:
     */
-    if (isRetToTraced //returns to the traced area
-        && !isFromTraced && !IMG_Valid(callerModule) // from an untraced shellcode...
-        && isTargetPeModule // ...which was was a proxy for making an API call
+    if (!isFromTraced && !IMG_Valid(callerModule) // from an untraced shellcode...
+        && isTargetPeModule // ...into an API call
         )
     {
-        const std::string func = get_func_at(addrTo);
-        const std::string dll_name = IMG_Name(targetModule);
-        const ADDRINT pageRet = get_base(returnAddr);
-        const ADDRINT RvaFrom = addr_to_rva(addrFrom);
-        const ADDRINT base = isTargetMy ? 0 : get_base(addrFrom);
+        // was the shellcode a proxy for making an API call?
+        const ADDRINT returnAddr = getReturnFromTheStack(ctx);
+        bool isRetToTraced = isWatchedAddress(returnAddr); // does it return into the traced area?
+        if (isRetToTraced) {
+            const std::string func = get_func_at(addrTo);
+            const std::string dll_name = IMG_Name(targetModule);
+            const ADDRINT pageRet = get_base(returnAddr);
+            const ADDRINT RvaFrom = addr_to_rva(addrFrom);
+            const ADDRINT base = isTargetMy ? 0 : get_base(addrFrom);
 
-        traceLog.logCallRet(base, RvaFrom, pageRet, returnAddr, dll_name, func);
+            traceLog.logCallRet(base, RvaFrom, pageRet, returnAddr, dll_name, func);
+        }
     }
-
     /**
     trace indirect calls to your own functions
     */
