@@ -20,7 +20,7 @@
 #include "FuncWatch.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.0"
+#define VERSION "2.0-a"
 
 #include "Util.h"
 #include "Settings.h"
@@ -146,22 +146,28 @@ bool isWatchedAddress(const ADDRINT Address)
 // Analysis routines
 /* ===================================================================== */
 
-
-VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndirect, ADDRINT returnAddr = UNKNOWN_ADDR)
+ADDRINT getReturnFromTheStack(const CONTEXT* ctx)
 {
-    // validate the return address:
-    if (returnAddr != UNKNOWN_ADDR && !PIN_CheckReadAccess((void*)returnAddr)) {
-        returnAddr = UNKNOWN_ADDR;
+    if (!ctx) return UNKNOWN_ADDR;
+
+    ADDRINT returnAddr = UNKNOWN_ADDR;
+    const ADDRINT stackPtr = (ADDRINT)PIN_GetContextReg(ctx, REG_STACK_PTR);
+    if (PIN_CheckReadAccess((ADDRINT*)stackPtr)) {
+        returnAddr = *(ADDRINT*)stackPtr;
     }
+    return returnAddr;
+}
+
+VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndirect, const CONTEXT* ctx = NULL)
+{
     const bool isTargetMy = pInfo.isMyAddress(addrTo);
     const bool isCallerMy = pInfo.isMyAddress(addrFrom);
 
-
     bool isFromTraced = isWatchedAddress(addrFrom); // is the call from the traced shellcode?
-    bool isRetToTraced = isWatchedAddress(returnAddr); // does it return into the traced area?
 
     IMG targetModule = IMG_FindByAddress(addrTo);
     IMG callerModule = IMG_FindByAddress(addrFrom);
+    const bool isCallerPeModule = IMG_Valid(callerModule);
     const bool isTargetPeModule = IMG_Valid(targetModule);
 
     /**
@@ -185,7 +191,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     /**
     trace calls from witin a shellcode:
     */
-    if (m_Settings.followShellcode && !IMG_Valid(callerModule)) {
+    if (m_Settings.followShellcode && !isCallerPeModule) {
 
         if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY || isFromTraced) {
             const ADDRINT pageFrom = query_region_base(addrFrom);
@@ -219,20 +225,24 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     /**
     save the transition when a shellcode returns to a traced area from an API call:
     */
-    if (isRetToTraced //returns to the traced area
-        && !isFromTraced && !IMG_Valid(callerModule) // from an untraced shellcode...
-        && isTargetPeModule // ...which was was a proxy for making an API call
+    if (!isFromTraced && !isCallerPeModule // from an untraced shellcode...
+        && isTargetPeModule // ...into an API call
+        && ctx //the context was passed: we can check the return
         )
     {
-        const std::string func = get_func_at(addrTo);
-        const std::string dll_name = IMG_Name(targetModule);
-        const ADDRINT pageRet = get_base(returnAddr);
-        const ADDRINT RvaFrom = addr_to_rva(addrFrom);
-        const ADDRINT base = isTargetMy ? 0 : get_base(addrFrom);
+        // was the shellcode a proxy for making an API call?
+        const ADDRINT returnAddr = getReturnFromTheStack(ctx);
+        bool isRetToTraced = isWatchedAddress(returnAddr); // does it return into the traced area?
+        if (isRetToTraced) {
+            const std::string func = get_func_at(addrTo);
+            const std::string dll_name = IMG_Name(targetModule);
+            const ADDRINT pageRet = get_base(returnAddr);
+            const ADDRINT RvaFrom = addr_to_rva(addrFrom);
+            const ADDRINT base = isTargetMy ? 0 : get_base(addrFrom);
 
-        traceLog.logCallRet(base, RvaFrom, pageRet, returnAddr, dll_name, func);
+            traceLog.logCallRet(base, RvaFrom, pageRet, returnAddr, dll_name, func);
+        }
     }
-
     /**
     trace indirect calls to your own functions
     */
@@ -269,10 +279,10 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     }
 }
 
-VOID SaveTransitions(const ADDRINT prevVA, const ADDRINT Address, BOOL isIndirect, const ADDRINT RetAddress)
+VOID SaveTransitions(const ADDRINT prevVA, const ADDRINT Address, BOOL isIndirect, const CONTEXT* ctx)
 {
     PinLocker locker;
-    _SaveTransitions(prevVA, Address, isIndirect, RetAddress);
+    _SaveTransitions(prevVA, Address, isIndirect, ctx);
 }
 
 VOID RdtscCalled(const CONTEXT* ctxt)
@@ -531,7 +541,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
             IARG_INST_PTR,
             IARG_BRANCH_TARGET_ADDR,
             IARG_BOOL, isIndirect,
-            IARG_RETURN_IP,
+            IARG_CONTEXT,
             IARG_END
         );
 
