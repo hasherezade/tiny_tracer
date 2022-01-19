@@ -167,6 +167,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
 
     IMG targetModule = IMG_FindByAddress(addrTo);
     IMG callerModule = IMG_FindByAddress(addrFrom);
+    const bool isCallerPeModule = IMG_Valid(callerModule);
     const bool isTargetPeModule = IMG_Valid(targetModule);
 
     /**
@@ -190,7 +191,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     /**
     trace calls from witin a shellcode:
     */
-    if (m_Settings.followShellcode && !IMG_Valid(callerModule)) {
+    if (m_Settings.followShellcode && !isCallerPeModule) {
 
         if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY || isFromTraced) {
             const ADDRINT pageFrom = query_region_base(addrFrom);
@@ -224,8 +225,9 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     /**
     save the transition when a shellcode returns to a traced area from an API call:
     */
-    if (!isFromTraced && !IMG_Valid(callerModule) // from an untraced shellcode...
+    if (!isFromTraced && !isCallerPeModule // from an untraced shellcode...
         && isTargetPeModule // ...into an API call
+        && ctx //the context was passed: we can check the return
         )
     {
         // was the shellcode a proxy for making an API call?
