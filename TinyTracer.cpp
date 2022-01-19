@@ -146,13 +146,23 @@ bool isWatchedAddress(const ADDRINT Address)
 // Analysis routines
 /* ===================================================================== */
 
+ADDRINT getReturnFromTheStack(const CONTEXT* ctx)
+{
+    if (!ctx) return UNKNOWN_ADDR;
 
-VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndirect, ADDRINT returnAddr = UNKNOWN_ADDR)
+    ADDRINT returnAddr = UNKNOWN_ADDR;
+    const ADDRINT stackPtr = (ADDRINT)PIN_GetContextReg(ctx, REG_STACK_PTR);
+    if (PIN_CheckReadAccess((ADDRINT*)stackPtr)) {
+        returnAddr = *(ADDRINT*)stackPtr;
+    }
+    return returnAddr;
+}
+
+VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndirect, const CONTEXT* ctx = NULL)
 {
     // validate the return address:
-    if (returnAddr != UNKNOWN_ADDR && !PIN_CheckReadAccess((void*)returnAddr)) {
-        returnAddr = UNKNOWN_ADDR;
-    }
+    const ADDRINT returnAddr = getReturnFromTheStack(ctx);
+
     const bool isTargetMy = pInfo.isMyAddress(addrTo);
     const bool isCallerMy = pInfo.isMyAddress(addrFrom);
 
@@ -269,10 +279,10 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     }
 }
 
-VOID SaveTransitions(const ADDRINT prevVA, const ADDRINT Address, BOOL isIndirect, const ADDRINT RetAddress)
+VOID SaveTransitions(const ADDRINT prevVA, const ADDRINT Address, BOOL isIndirect, const CONTEXT* ctx)
 {
     PinLocker locker;
-    _SaveTransitions(prevVA, Address, isIndirect, RetAddress);
+    _SaveTransitions(prevVA, Address, isIndirect, ctx);
 }
 
 VOID RdtscCalled(const CONTEXT* ctxt)
@@ -531,7 +541,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
             IARG_INST_PTR,
             IARG_BRANCH_TARGET_ADDR,
             IARG_BOOL, isIndirect,
-            IARG_RETURN_IP,
+            IARG_CONTEXT,
             IARG_END
         );
 
