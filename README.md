@@ -1,6 +1,9 @@
 # tiny_tracer
+[![Commit activity](https://img.shields.io/github/commit-activity/m/hasherezade/tiny_tracer)](https://github.com/hasherezade/tiny_tracer/commits)
+[![Last Commit](https://img.shields.io/github/last-commit/hasherezade/tiny_tracer/master)](https://github.com/hasherezade/tiny_tracer/commits)
 
 [![GitHub release](https://img.shields.io/github/release/hasherezade/tiny_tracer.svg)](https://github.com/hasherezade/tiny_tracer/releases)
+[![GitHub release date](https://img.shields.io/github/release-date/hasherezade/tiny_tracer?color=blue)](https://github.com/hasherezade/tiny_tracer/releases)
 
 A Pin Tool for tracing:
 + API calls, including [parameters of selected functions](https://github.com/hasherezade/tiny_tracer/wiki/Tracing-parameters-of-functions)
