@@ -18,6 +18,7 @@ public:
     Settings() 
         : followShellcode(SHELLC_FOLLOW_FIRST),
         traceRDTSC(false),
+        traceSYSCALL(false),
         logSectTrans(true),
         logShelcTrans(true),
         logIndirect(false),
@@ -32,6 +33,7 @@ public:
     t_shellc_options followShellcode;
 
     bool traceRDTSC; // Trace RDTSC
+    bool traceSYSCALL; // Trace syscall instructions (i.e., syscall, int 2Eh, sysenter)
     bool logSectTrans; // watch transitions between sections
     bool logShelcTrans; // watch transitions between shellcodes
     bool shortLogging; // Use short call logging (without a full DLL path)

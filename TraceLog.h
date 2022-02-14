@@ -34,6 +34,7 @@ public:
     void logIndirectCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, bool isRVA, const ADDRINT calledBase, const ADDRINT callRVA);
     void logRdtsc(const ADDRINT base, const ADDRINT rva);
     void logCpuid(const ADDRINT base, const ADDRINT rva, const ADDRINT param);
+    void logSyscall(const ADDRINT base, const ADDRINT rva, const ADDRINT param);
 
     void logLine(std::string str);
 

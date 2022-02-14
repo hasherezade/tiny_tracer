@@ -327,6 +327,47 @@ VOID CpuidCalled(const CONTEXT* ctxt)
     }
 }
 
+VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
+{
+    PinLocker locker;
+   
+    const auto address = [&]() -> ADDRINT {
+        if (std == SYSCALL_STANDARD_WOW64) {
+            // Note: In this case, the current instruction address is in a 64-bit
+            // code portion. The address that we're interested in is the return
+            // address, which is in a 32-bit code portion.
+            const auto* stackPtr = reinterpret_cast<ADDRINT*>(PIN_GetContextReg(ctxt, REG_STACK_PTR));
+            ADDRINT retAddr = 0;
+            PIN_SafeCopy(&retAddr, stackPtr, sizeof(retAddr));
+            return retAddr;
+        }
+        return PIN_GetContextReg(ctxt, REG_INST_PTR);
+    }();
+
+    const auto syscallNum = [&]() -> ADDRINT {
+        if (std == SYSCALL_STANDARD_WINDOWS_INT) {
+            // Note: Somehow `PIN_GetSyscallNumber` doesn't return the correct
+            // result in this case.
+            return PIN_GetContextReg(ctxt, REG_GAX);
+        }
+        return PIN_GetSyscallNumber(ctxt, std);
+    }();
+    
+    const IMG currModule = IMG_FindByAddress(address);
+    const bool isCurrMy = pInfo.isMyAddress(address);
+    if (isCurrMy) {
+        ADDRINT rva = addr_to_rva(address); // convert to RVA
+        traceLog.logSyscall(0, rva, syscallNum);
+    }
+    if (m_Settings.followShellcode && !IMG_Valid(currModule)) {
+        const ADDRINT start = query_region_base(address);
+        ADDRINT rva = address - start;
+        if (start != UNKNOWN_ADDR) {
+            traceLog.logSyscall(start, rva, syscallNum);
+        }
+    }
+}
+
 ADDRINT _setTimer(const CONTEXT* ctxt, bool isEax)
 {
     static UINT64 Timer = 0;
@@ -666,6 +707,12 @@ int main(int argc, char *argv[])
 
     // Register function to be called before every instruction
     INS_AddInstrumentFunction(InstrumentInstruction, NULL);
+
+    if (m_Settings.traceSYSCALL) {
+        // Register function to be called before every syscall instruction
+        // (i.e., syscall, sysenter, int 2Eh)
+        PIN_AddSyscallEntryFunction(SyscallCalled, NULL);
+    }
 
     // Register context changes
     PIN_AddContextChangeFunction(OnCtxChange, NULL);
