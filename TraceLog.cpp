@@ -133,7 +133,7 @@ void TraceLog::logSyscall(const ADDRINT base, const ADDRINT rva, const ADDRINT p
     m_traceFile
         << std::hex << rva
         << DELIMITER
-        << "SYSCALL:"
+        << "SYSCALL:0x"
         << std::hex << param
         << std::endl;
     m_traceFile.flush();
