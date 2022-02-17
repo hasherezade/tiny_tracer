@@ -354,6 +354,22 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
 {
     PinLocker locker;
    
+#ifdef _WIN64
+    // Since Windows 10 TH2, NTDLL's syscall routines have changed: syscalls can
+    // now be performed with the SYSCALL instruction, and with the INT 2E
+    // instruction. The ABI is the same in both cases.
+    if (std == SYSCALL_STANDARD_WINDOWS_INT) {
+        const auto* insPtr = reinterpret_cast<ADDRINT*>(PIN_GetContextReg(ctxt, REG_INST_PTR));
+        uint16_t instruction = 0;
+        PIN_SafeCopy(&instruction, insPtr, sizeof(instruction));
+        if (instruction != 0x2ECD) { // INT 2E
+            // Not a relevant interrupt, return now.
+            return;
+        }
+        std = SYSCALL_STANDARD_IA32E_WINDOWS_FAST;
+    }
+#endif
+
     const auto address = [&]() -> ADDRINT {
         if (std == SYSCALL_STANDARD_WOW64) {
             // Note: In this case, the current instruction address is in a 64-bit
@@ -367,14 +383,7 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
         return PIN_GetContextReg(ctxt, REG_INST_PTR);
     }();
 
-    const auto syscallNum = [&]() -> ADDRINT {
-        if (std == SYSCALL_STANDARD_WINDOWS_INT) {
-            // Note: Somehow `PIN_GetSyscallNumber` doesn't return the correct
-            // result in this case.
-            return PIN_GetContextReg(ctxt, REG_GAX);
-        }
-        return PIN_GetSyscallNumber(ctxt, std);
-    }();
+    const ADDRINT syscallNum = PIN_GetSyscallNumber(ctxt, std);
 
     const IMG currModule = IMG_FindByAddress(address);
     const bool isCurrMy = pInfo.isMyAddress(address);
