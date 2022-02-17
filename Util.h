@@ -28,5 +28,5 @@ namespace util {
     // trim from both ends (in place)
     void trim(std::string &s);
 
-    int loadInt(const std::string &str);
+    int loadInt(const std::string &str, bool as_hex = false);
 };
