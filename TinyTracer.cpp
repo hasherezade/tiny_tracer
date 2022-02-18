@@ -57,6 +57,8 @@ KNOB<std::string> KnobWatchListFile(KNOB_MODE_WRITEONCE, "pintool",
 // Utilities
 /* ===================================================================== */
 
+VOID _LogFunctionArgs(const ADDRINT Address, CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10);
+
 /*!
 *  A locker class.
 */
@@ -327,10 +329,47 @@ VOID CpuidCalled(const CONTEXT* ctxt)
     }
 }
 
+VOID LogSyscallsArgs(const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address, uint32_t argCount)
+{
+    VOID* syscall_args[10] = { 0 };
+    for (size_t i = 0; i < sizeof(syscall_args) / sizeof(syscall_args[0]); i++) {
+        syscall_args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
+    }
+
+    _LogFunctionArgs(Address,
+        "SYSCALL", argCount,
+        syscall_args[0],
+        syscall_args[1],
+        syscall_args[2],
+        syscall_args[3],
+        syscall_args[4],
+        syscall_args[5],
+        syscall_args[6],
+        syscall_args[7],
+        syscall_args[8],
+        syscall_args[9]);
+}
+
 VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
 {
     PinLocker locker;
    
+#ifdef _WIN64
+    // Since Windows 10 TH2, NTDLL's syscall routines have changed: syscalls can
+    // now be performed with the SYSCALL instruction, and with the INT 2E
+    // instruction. The ABI is the same in both cases.
+    if (std == SYSCALL_STANDARD_WINDOWS_INT) {
+        const auto* insPtr = reinterpret_cast<ADDRINT*>(PIN_GetContextReg(ctxt, REG_INST_PTR));
+        uint16_t instruction = 0;
+        PIN_SafeCopy(&instruction, insPtr, sizeof(instruction));
+        if (instruction != 0x2ECD) { // INT 2E
+            // Not a relevant interrupt, return now.
+            return;
+        }
+        std = SYSCALL_STANDARD_IA32E_WINDOWS_FAST;
+    }
+#endif
+
     const auto address = [&]() -> ADDRINT {
         if (std == SYSCALL_STANDARD_WOW64) {
             // Note: In this case, the current instruction address is in a 64-bit
@@ -344,15 +383,8 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
         return PIN_GetContextReg(ctxt, REG_INST_PTR);
     }();
 
-    const auto syscallNum = [&]() -> ADDRINT {
-        if (std == SYSCALL_STANDARD_WINDOWS_INT) {
-            // Note: Somehow `PIN_GetSyscallNumber` doesn't return the correct
-            // result in this case.
-            return PIN_GetContextReg(ctxt, REG_GAX);
-        }
-        return PIN_GetSyscallNumber(ctxt, std);
-    }();
-    
+    const ADDRINT syscallNum = PIN_GetSyscallNumber(ctxt, std);
+
     const IMG currModule = IMG_FindByAddress(address);
     const bool isCurrMy = pInfo.isMyAddress(address);
     if (isCurrMy) {
@@ -365,6 +397,12 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
         if (start != UNKNOWN_ADDR) {
             traceLog.logSyscall(start, rva, syscallNum);
         }
+    }
+
+    // Log arguments if needed
+    const auto& it = g_Watch.syscalls.find(syscallNum);
+    if (it != g_Watch.syscalls.end()) {
+        LogSyscallsArgs(ctxt, std, address, it->second.paramCount);
     }
 }
 
@@ -694,8 +732,9 @@ int main(int argc, char *argv[])
     if (KnobWatchListFile.Enabled()) {
         std::string watchListFile = KnobWatchListFile.ValueString();
         if (watchListFile.length()) {
-            size_t loaded = g_Watch.loadList(watchListFile.c_str());
-            std::cout << "Watch " << loaded << " functions\n";
+            g_Watch.loadList(watchListFile.c_str());
+            std::cout << "Watch " << g_Watch.funcs.size() << " functions\n";
+            std::cout << "Watch " << g_Watch.syscalls.size() << " syscalls\n";
         }
     }
 

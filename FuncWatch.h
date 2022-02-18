@@ -5,11 +5,11 @@
 #include <iostream>
 #include <cstring>
 #include <cstdio>
+#include <map>
 #include <vector>
 
-class WFuncInfo 
+struct WFuncInfo 
 {
-public:
     WFuncInfo() : paramCount(0)
     {
     }
@@ -27,14 +27,25 @@ public:
 
     bool isValid() const
     {
-        if (dllName.length() > 0 && funcName.length() > 0) {
-            return true;
-        }
-        return false;
+        return dllName.length() > 0 && funcName.length() > 0;
     }
 
     std::string dllName;
     std::string funcName;
+    size_t paramCount;
+};
+
+struct WSyscallInfo
+{
+    WSyscallInfo() : syscallId(0), paramCount(0)
+    {
+    }
+
+    bool load(const std::string& line, char delimiter);
+
+    bool update(const WSyscallInfo& syscall_info);
+
+    uint32_t syscallId;
     size_t paramCount;
 };
 
@@ -49,10 +60,14 @@ public:
     }
 
     size_t loadList(const char* filename);
-    bool appendFunc(WFuncInfo &info);
-
-    WFuncInfo* findFunc(const std::string& dllName, const std::string &funcName);
 
     std::vector<WFuncInfo> funcs;
+    std::map<uint32_t, WSyscallInfo> syscalls;
+
+private:
+    bool appendFunc(WFuncInfo& info);
+    void appendSyscall(WSyscallInfo& syscall_info);
+
+    WFuncInfo* findFunc(const std::string& dllName, const std::string& funcName);
 };
 
