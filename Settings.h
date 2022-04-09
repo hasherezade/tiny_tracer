@@ -21,8 +21,8 @@ public:
         traceSYSCALL(false),
         logSectTrans(true),
         logShelcTrans(true),
-        logIndirect(false),
         shortLogging(true),
+        logIndirect(false),
         hexdumpSize(8)
     {
     }

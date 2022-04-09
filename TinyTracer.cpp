@@ -57,7 +57,7 @@ KNOB<std::string> KnobWatchListFile(KNOB_MODE_WRITEONCE, "pintool",
 // Utilities
 /* ===================================================================== */
 
-VOID _LogFunctionArgs(const ADDRINT Address, CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10);
+VOID _LogFunctionArgs(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10);
 
 /*!
 *  A locker class.
@@ -335,9 +335,9 @@ VOID LogSyscallsArgs(const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Ad
     for (size_t i = 0; i < sizeof(syscall_args) / sizeof(syscall_args[0]); i++) {
         syscall_args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
     }
-
+    char syscall_str[] = "SYSCALL";
     _LogFunctionArgs(Address,
-        "SYSCALL", argCount,
+        syscall_str, argCount,
         syscall_args[0],
         syscall_args[1],
         syscall_args[2],
@@ -516,7 +516,7 @@ std::wstring paramToStr(VOID *arg1)
     return ss.str();
 }
 
-VOID _LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
+VOID _LogFunctionArgs(const ADDRINT Address, const CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
 {
     if (!isWatchedAddress(Address)) return;
 
@@ -613,7 +613,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
     }
 
     if ((INS_IsControlFlow(ins) || INS_IsFarJump(ins))) {
-        BOOL isIndirect = INS_IsIndirectBranchOrCall(ins) && !INS_IsRet(ins);
+        BOOL isIndirect = INS_IsIndirectControlFlow(ins) && !INS_IsRet(ins);
         INS_InsertCall(
             ins,
             IPOINT_BEFORE, (AFUNPTR)SaveTransitions,
