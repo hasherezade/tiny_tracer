@@ -3,7 +3,7 @@
 << 'MULTILINE-COMMENT'
 Linux runner for Tiny Tracer
 1. Download the latest Intel Pin, and unpack it into your home directory, under the name "pin"
-2. Compile tiny_tracer in both 64 and 32 bit version.
+2. Compile tiny_tracer in both 64 and 32 bit version:
    + Make sure that tiny_tracer source is in ~/pin/source/tools/tiny_tracer
    + Go to tiny_tracer directory
    + Issue: `make all TARGET=ia32` (to compile the 32-bit version). If everything went fine, you will obtain: obj-ia32/TinyTracer.so
