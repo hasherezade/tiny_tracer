@@ -93,7 +93,7 @@ bool FuncWatchList::appendFunc(WFuncInfo &func_info)
 
 void FuncWatchList::appendSyscall(WSyscallInfo& syscall_info)
 {
-    auto& it = syscalls.find(syscall_info.syscallId);
+    std::map<uint32_t, WSyscallInfo>::iterator it = syscalls.find(syscall_info.syscallId);
     if (it == syscalls.end()) {
         syscalls[syscall_info.syscallId] = syscall_info;
     }

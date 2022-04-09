@@ -335,9 +335,9 @@ VOID LogSyscallsArgs(const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Ad
     for (size_t i = 0; i < sizeof(syscall_args) / sizeof(syscall_args[0]); i++) {
         syscall_args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
     }
-
+    char syscall_str[] = "SYSCALL";
     _LogFunctionArgs(Address,
-        "SYSCALL", argCount,
+        syscall_str, argCount,
         syscall_args[0],
         syscall_args[1],
         syscall_args[2],
@@ -613,7 +613,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
     }
 
     if ((INS_IsControlFlow(ins) || INS_IsFarJump(ins))) {
-        BOOL isIndirect = INS_IsIndirectBranchOrCall(ins) && !INS_IsRet(ins);
+        BOOL isIndirect = INS_IsIndirectControlFlow(ins) && !INS_IsRet(ins);
         INS_InsertCall(
             ins,
             IPOINT_BEFORE, (AFUNPTR)SaveTransitions,
