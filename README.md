@@ -36,11 +36,12 @@ i.e.
 ## On Windows 
 
 🚧 To compile the prepared project you need to use [Visual Studio >= 2012](https://visualstudio.microsoft.com/downloads/). It was tested with [Intel Pin 3.19 - 3.22](https://software.intel.com/en-us/articles/pin-a-binary-instrumentation-tool-downloads).<br/>
-Clone this repo into `\source\tools` that is inside your Pin root directory. Open the project in Visual Studio and build. Detailed description available [here](https://github.com/hasherezade/tiny_tracer/wiki/Installation).
+Clone this repo into `\source\tools` that is inside your Pin root directory. Open the project in Visual Studio and build. Detailed description available [here](https://github.com/hasherezade/tiny_tracer/wiki/Installation#on-windows).
 
 ## On Linux
 
 For now the support for Linux is experimental. Yet it is possible to build and use Tiny Tracer on Linux as well. Please refer [tiny_runner.sh](https://github.com/hasherezade/tiny_tracer/blob/master/tiny_runner.sh) for more information.
+Detailed description available [here](https://github.com/hasherezade/tiny_tracer/wiki/Installation#on-linux).
 
 # Usage
 
