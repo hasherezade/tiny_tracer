@@ -66,6 +66,7 @@ then
     PIN_INSTALL_DIR=$PIN_INSTALL_DIR32
 else
     echo "ERROR: Not supported file type."
+    exit
 fi
 
 PIN_CONFIGS_DIR=$PIN_TOOLS_DIR"/install32_64/"
