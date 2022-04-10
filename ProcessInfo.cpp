@@ -1,16 +1,38 @@
 #include "ProcessInfo.h"
+#include <algorithm>
+#include <cstring>
 
-//----
+std::string to_lowercase(std::string _str)
+{
+    std::string str = _str;
+    std::transform(str.begin(), str.end(), str.begin(), tolower);
+    return str;
+}
+
 
 bool is_my_name(const std::string &module_name, std::string my_name)
 {
-    std::size_t found = module_name.find(my_name);
-    if (found != std::string::npos) {
+    std::string mod1 = to_lowercase(module_name);
+    std::string mod2 = to_lowercase(my_name);
+    if (mod1 == mod2) {
+        return true;
+    }
+    std::size_t found1 = mod1.find_last_of("/\\");
+    if (found1 != std::string::npos) {
+            mod1 = mod1.substr(found1+1);
+    }
+    std::size_t found2 = mod2.find_last_of("/\\");
+    if (found2 != std::string::npos) {
+            mod2 = mod2.substr(found2+1);
+    }    
+
+    if (mod1 == mod2) {
         return true;
     }
     return false;
 }
 
+//----
 void ProcessInfo::addModuleSections(IMG Image, ADDRINT ImageBase)
 {
     // enumerate sections within the analysed module
