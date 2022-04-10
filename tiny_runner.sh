@@ -1,6 +1,7 @@
  #!/bin/bash
  
 << 'MULTILINE-COMMENT'
+
 Linux runner for Tiny Tracer
 1. Download the latest Intel Pin, and unpack it into your home directory, under the name "pin"
 2. Compile tiny_tracer in both 64 and 32 bit version:
@@ -9,8 +10,8 @@ Linux runner for Tiny Tracer
    + Issue `make_linux.sh` to compile both 32-bit and 64-bit version. If everything went fine, you will obtain: `obj-ia32/TinyTracer.so` and: `obj-intel64/TinyTracer.so`
 3. Now you can use the current script (`tiny_runner.sh`) to run your apps via TinyTracer.
 4. To make the script runnable from any directory, you can add a symbolic link to your local `bin` directory. Example:
-   ln -s /home/tester/pin/source/tools/tiny_tracer/tiny_runner.sh ~/bin/tiny_runner.sh
-
+   ln -s $HOME/pin/source/tools/tiny_tracer/tiny_runner.sh ~/bin/tiny_runner.sh
+   
 MULTILINE-COMMENT
 
 echo "Linux runner for Tiny Tracer"
