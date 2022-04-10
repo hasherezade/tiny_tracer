@@ -331,8 +331,11 @@ VOID CpuidCalled(const CONTEXT* ctxt)
 
 VOID LogSyscallsArgs(const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address, uint32_t argCount)
 {
-    VOID* syscall_args[10] = { 0 };
-    for (size_t i = 0; i < sizeof(syscall_args) / sizeof(syscall_args[0]); i++) {
+    const size_t args_max = 10;
+    VOID* syscall_args[args_max] = { 0 };
+
+    for (size_t i = 0; i < args_max; i++) {
+        if (i == argCount) break;
         syscall_args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
     }
     char syscall_str[] = "SYSCALL";
