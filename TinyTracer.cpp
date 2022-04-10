@@ -356,11 +356,6 @@ VOID LogSyscallsArgs(const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Ad
 VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
 {
     PinLocker locker;
-    
-    const ADDRINT syscallNum = PIN_GetSyscallNumber(ctxt, std);
-    if (syscallNum == 0) {
-        return;
-    }
    
 #ifdef _WIN64
     // Since Windows 10 TH2, NTDLL's syscall routines have changed: syscalls can
@@ -390,6 +385,8 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
         }
         return PIN_GetContextReg(ctxt, REG_INST_PTR);
     }();
+
+    const ADDRINT syscallNum = PIN_GetSyscallNumber(ctxt, std);
 
     const IMG currModule = IMG_FindByAddress(address);
     const bool isCurrMy = pInfo.isMyAddress(address);
