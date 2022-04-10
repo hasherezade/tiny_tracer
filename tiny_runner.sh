@@ -9,6 +9,9 @@ Linux runner for Tiny Tracer
    + Issue: `make all TARGET=ia32` (to compile the 32-bit version). If everything went fine, you will obtain: obj-ia32/TinyTracer.so
    + Issue: `make all TARGET=intel64` (to compile the 64-bit version). If everything went fine, you will obtain: obj-intel64/TinyTracer.so
 3. Now you can use this script to run your apps via TinyTracer.
+4. To make the script runnable from any directory, you can add a symbolic link to your local `bin` directory. Example:
+   ln -s /home/tester/pin/source/tools/tiny_tracer/tiny_runner.sh ~/bin/tiny_runner.sh
+
 MULTILINE-COMMENT
 
 echo "Linux runner for Tiny Tracer"
