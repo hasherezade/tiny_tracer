@@ -61,7 +61,10 @@ ADDRINT get_mod_base(ADDRINT Address)
     }
     IMG img = IMG_FindByAddress(Address);
     if (IMG_Valid(img)) {
-        const ADDRINT base = IMG_LoadOffset(img);
+        ADDRINT base = IMG_LoadOffset(img);
+        if (base == 0) {
+            base = IMG_LowAddress(img);
+        }
         return base;
     }
     return UNKNOWN_ADDR;

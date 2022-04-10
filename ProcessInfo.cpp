@@ -49,6 +49,9 @@ bool ProcessInfo::addModule(IMG Image)
     if (m_myPid == 0 && is_my_name(IMG_Name(Image), m_AnalysedApp)) {
         m_myPid = PIN_GetPid();
         myModuleBase = IMG_LoadOffset(Image);
+        if (myModuleBase == 0) {
+            myModuleBase = IMG_LowAddress(Image);
+        }
         addModuleSections(Image, myModuleBase);
     }
     return true;
