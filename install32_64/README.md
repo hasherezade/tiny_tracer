@@ -1,3 +1,5 @@
+# Installation on Windows
+
 0. Put the compiled tools in this directory, renamed accordingly:
 - TinyTracer32.dll (32-bit build)
 - TinyTracer64.dll (64-bit build)
