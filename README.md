@@ -8,7 +8,7 @@
 A Pin Tool for tracing:
 + API calls, including [parameters of selected functions](https://github.com/hasherezade/tiny_tracer/wiki/Tracing-parameters-of-functions)
 + selected instructions: [RDTSC](https://c9x.me/x86/html/file_module_x86_id_278.html), [CPUID](https://c9x.me/x86/html/file_module_x86_id_45.html)
-+ inline system calls, including parameters of selected syscalls
++ [inline system calls, including parameters of selected syscalls](https://github.com/hasherezade/tiny_tracer/wiki/Tracing-syscalls)
 + transition between sections of the traced module (helpful in finding OEP of the packed module)
 
 Bypasses the anti-tracing check based on RDTSC.
