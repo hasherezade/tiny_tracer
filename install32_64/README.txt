@@ -11,6 +11,6 @@
 4. Now you can trace any EXE by clicking "Run with PIN" from the context menu.
 5. Whenever you want to uninstall it, just run "delete_menu.reg"
 
-#Installation on Linux
+# Installation on Linux
 
 Read the instructions inside `tiny_runner.sh`
