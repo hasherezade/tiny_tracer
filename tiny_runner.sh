@@ -11,7 +11,8 @@ Linux runner for Tiny Tracer
 3. Now you can use the current script (`tiny_runner.sh`) to run your apps via TinyTracer.
 4. To make the script runnable from any directory, you can add a symbolic link to your local `bin` directory. Example:
    ln -s $HOME/pin/source/tools/tiny_tracer/tiny_runner.sh ~/bin/tiny_runner.sh
-   
+5. Optionally, you can also create a link to the directory with `tiny_tracer` configuration, to have an easy access to them. For example:
+   ln -s $HOME/pin/source/tools/tiny_tracer/install32_64/ $HOME/Desktop/install32_64
 MULTILINE-COMMENT
 
 echo "Linux runner for Tiny Tracer"
