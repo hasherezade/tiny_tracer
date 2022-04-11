@@ -10,7 +10,7 @@ Linux runner for Tiny Tracer
    + Issue `make_linux.sh` to compile both 32-bit and 64-bit version. If everything went fine, you will obtain: `obj-ia32/TinyTracer.so` and: `obj-intel64/TinyTracer.so`
 3. Now you can use the current script (`tiny_runner.sh`) to run your apps via TinyTracer.
 4. To make the script runnable from any directory, you can add a symbolic link to your local `bin` directory. Example:
-   ln -s $HOME/pin/source/tools/tiny_tracer/tiny_runner.sh ~/bin/tiny_runner.sh
+   ln -s $HOME/pin/source/tools/tiny_tracer/install32_64/tiny_runner.sh ~/bin/tiny_runner.sh
 5. Optionally, you can also create a link to the directory with `tiny_tracer` configuration, to have an easy access to them. For example:
    ln -s $HOME/pin/source/tools/tiny_tracer/install32_64/ $HOME/Desktop/install32_64
 MULTILINE-COMMENT
