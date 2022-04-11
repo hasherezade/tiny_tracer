@@ -40,7 +40,7 @@ Clone this repo into `\source\tools` that is inside your Pin root directory. Ope
 
 ### On Linux
 
-For now the support for Linux is experimental. Yet it is possible to build and use Tiny Tracer on Linux as well. Please refer [tiny_runner.sh](https://github.com/hasherezade/tiny_tracer/blob/master/tiny_runner.sh) for more information.
+For now the support for Linux is experimental. Yet it is possible to build and use Tiny Tracer on Linux as well. Please refer [tiny_runner.sh](https://github.com/hasherezade/tiny_tracer/blob/master/install32_64/tiny_runner.sh) for more information.
 Detailed description available [here](https://github.com/hasherezade/tiny_tracer/wiki/Installation#on-linux).
 
 ## ⚙ Usage
