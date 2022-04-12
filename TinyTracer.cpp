@@ -181,7 +181,9 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     /**
     is it a transition from the traced module to a foreign module?
     */
-    if (isCallerMy && !isTargetMy) {
+    if (fromWType == WatchedType::WATCHED_MY_MODULE
+        && !isTargetMy)
+    {
         ADDRINT RvaFrom = addr_to_rva(addrFrom);
         if (isTargetPeModule) {
             const std::string func = get_func_at(addrTo);
@@ -199,35 +201,33 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     /**
     trace calls from witin a shellcode:
     */
-    if (m_Settings.followShellcode && !isCallerPeModule) {
+    if (fromWType == WatchedType::WATCHED_SHELLCODE) {
 
-        if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY || fromWType == WatchedType::WATCHED_SHELLCODE) {
-            const ADDRINT pageFrom = query_region_base(addrFrom);
-            const ADDRINT pageTo = query_region_base(addrTo);
+        const ADDRINT pageFrom = query_region_base(addrFrom);
+        const ADDRINT pageTo = query_region_base(addrTo);
 
-            if (isTargetPeModule) { // it is a call to a module
-                const std::string func = get_func_at(addrTo);
-                const std::string dll_name = IMG_Name(targetModule);
-                
-                traceLog.logCall(pageFrom, addrFrom, false, dll_name, func);
+        if (isTargetPeModule) { // it is a call to a module
+            const std::string func = get_func_at(addrTo);
+            const std::string dll_name = IMG_Name(targetModule);
+
+            traceLog.logCall(pageFrom, addrFrom, false, dll_name, func);
+        }
+        else if (pageFrom != pageTo) // it is a call to another shellcode
+        {
+            // add the new shellcode to the set of traced
+            if (m_Settings.followShellcode == SHELLC_FOLLOW_RECURSIVE) {
+                m_tracedShellc.insert(pageTo);
             }
-            else if (pageFrom != pageTo) // it is a call to another shellcode
-            {
 
-                // add the new shellcode to the set of traced
-                if (m_Settings.followShellcode != SHELLC_FOLLOW_FIRST) {
-                    m_tracedShellc.insert(pageTo);
-                }
-
-                // register the transition
-                if (m_Settings.logShelcTrans) {
-                    // save the transition from one shellcode to the other
-                    ADDRINT base = get_base(addrFrom);
-                    ADDRINT RvaFrom = addrFrom - base;
-                    traceLog.logCall(base, RvaFrom, pageTo, addrTo);
-                }
+            // register the transition
+            if (m_Settings.logShelcTrans) {
+                // save the transition from one shellcode to the other
+                ADDRINT base = get_base(addrFrom);
+                ADDRINT RvaFrom = addrFrom - base;
+                traceLog.logCall(base, RvaFrom, pageTo, addrTo);
             }
         }
+
     }
 
     /**
@@ -240,7 +240,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     {
         // was the shellcode a proxy for making an API call?
         const ADDRINT returnAddr = getReturnFromTheStack(ctx);
-        WatchedType toWType = isWatchedAddress(returnAddr); // does it return into the traced area?
+        const WatchedType toWType = isWatchedAddress(returnAddr); // does it return into the traced area?
         if (toWType != WatchedType::NOT_WATCHED) {
             const std::string func = get_func_at(addrTo);
             const std::string dll_name = IMG_Name(targetModule);
@@ -254,7 +254,9 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     /**
     trace indirect calls to your own functions
     */
-    if (isCallerMy && isTargetMy && m_Settings.logIndirect && isIndirect) {
+    if (fromWType == WatchedType::WATCHED_MY_MODULE
+        && isTargetMy && m_Settings.logIndirect && isIndirect)
+    {
         const ADDRINT baseTo = get_base(addrTo);
         ADDRINT base = get_base(addrFrom);
         if (base != UNKNOWN_ADDR && baseTo != UNKNOWN_ADDR) {
