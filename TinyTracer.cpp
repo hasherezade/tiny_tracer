@@ -122,42 +122,49 @@ BOOL isInTracedShellc(ADDRINT addr)
     return FALSE;
 }
 
-bool isWatchedAddress(const ADDRINT Address)
+enum class WatchedType {
+    NOT_WATCHED = 0,
+    WATCHED_MY_MODULE,
+    WATCHED_SHELLCODE
+};
+
+WatchedType isWatchedAddress(const ADDRINT Address)
 {
     if (Address == UNKNOWN_ADDR) {
-        return false;
+        return WatchedType::NOT_WATCHED;
     }
-    IMG currModule = IMG_FindByAddress(Address);
+    const IMG currModule = IMG_FindByAddress(Address);
     const bool isCurrMy = pInfo.isMyAddress(Address);
     if (isCurrMy) {
-        return true;
+        return WatchedType::WATCHED_MY_MODULE;
     }
     const BOOL isShellcode = !IMG_Valid(currModule);
     if (m_Settings.followShellcode && isShellcode) {
         if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY) {
-            return true;
+            return WatchedType::WATCHED_SHELLCODE;
         }
         if (isInTracedShellc(Address)){
-            return true;
+            return WatchedType::WATCHED_SHELLCODE;
         }
     }
-    return false;
+    return WatchedType::NOT_WATCHED;;
 }
 
 /* ===================================================================== */
 // Analysis routines
 /* ===================================================================== */
 
-ADDRINT getReturnFromTheStack(const CONTEXT* ctx)
+inline ADDRINT getReturnFromTheStack(const CONTEXT* ctx)
 {
     if (!ctx) return UNKNOWN_ADDR;
 
-    ADDRINT returnAddr = UNKNOWN_ADDR;
-    const ADDRINT stackPtr = (ADDRINT)PIN_GetContextReg(ctx, REG_STACK_PTR);
-    if (PIN_CheckReadAccess((ADDRINT*)stackPtr)) {
-        returnAddr = *(ADDRINT*)stackPtr;
+    ADDRINT retAddr = UNKNOWN_ADDR;
+    const ADDRINT* stackPtr = reinterpret_cast<ADDRINT*>(PIN_GetContextReg(ctx, REG_STACK_PTR));
+    size_t copiedSize = PIN_SafeCopy(&retAddr, stackPtr, sizeof(retAddr));
+    if (copiedSize != sizeof(retAddr)) {
+        return UNKNOWN_ADDR;
     }
-    return returnAddr;
+    return retAddr;
 }
 
 VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndirect, const CONTEXT* ctx = NULL)
@@ -165,7 +172,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     const bool isTargetMy = pInfo.isMyAddress(addrTo);
     const bool isCallerMy = pInfo.isMyAddress(addrFrom);
 
-    bool isFromTraced = isWatchedAddress(addrFrom); // is the call from the traced shellcode?
+    const WatchedType fromWType = isWatchedAddress(addrFrom); // is the call from the traced area?
 
     IMG targetModule = IMG_FindByAddress(addrTo);
     IMG callerModule = IMG_FindByAddress(addrFrom);
@@ -175,7 +182,9 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     /**
     is it a transition from the traced module to a foreign module?
     */
-    if (isCallerMy && !isTargetMy) {
+    if (fromWType == WatchedType::WATCHED_MY_MODULE
+        && !isTargetMy)
+    {
         ADDRINT RvaFrom = addr_to_rva(addrFrom);
         if (isTargetPeModule) {
             const std::string func = get_func_at(addrTo);
@@ -193,49 +202,47 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     /**
     trace calls from witin a shellcode:
     */
-    if (m_Settings.followShellcode && !isCallerPeModule) {
+    if (fromWType == WatchedType::WATCHED_SHELLCODE) {
 
-        if (m_Settings.followShellcode == SHELLC_FOLLOW_ANY || isFromTraced) {
-            const ADDRINT pageFrom = query_region_base(addrFrom);
-            const ADDRINT pageTo = query_region_base(addrTo);
+        const ADDRINT pageFrom = query_region_base(addrFrom);
+        const ADDRINT pageTo = query_region_base(addrTo);
 
-            if (isTargetPeModule) { // it is a call to a module
-                const std::string func = get_func_at(addrTo);
-                const std::string dll_name = IMG_Name(targetModule);
-                
-                traceLog.logCall(pageFrom, addrFrom, false, dll_name, func);
+        if (isTargetPeModule) { // it is a call to a module
+            const std::string func = get_func_at(addrTo);
+            const std::string dll_name = IMG_Name(targetModule);
+
+            traceLog.logCall(pageFrom, addrFrom, false, dll_name, func);
+        }
+        else if (pageFrom != pageTo) // it is a call to another shellcode
+        {
+            // add the new shellcode to the set of traced
+            if (m_Settings.followShellcode == SHELLC_FOLLOW_RECURSIVE) {
+                m_tracedShellc.insert(pageTo);
             }
-            else if (pageFrom != pageTo) // it is a call to another shellcode
-            {
 
-                // add the new shellcode to the set of traced
-                if (m_Settings.followShellcode != SHELLC_FOLLOW_FIRST) {
-                    m_tracedShellc.insert(pageTo);
-                }
-
-                // register the transition
-                if (m_Settings.logShelcTrans) {
-                    // save the transition from one shellcode to the other
-                    ADDRINT base = get_base(addrFrom);
-                    ADDRINT RvaFrom = addrFrom - base;
-                    traceLog.logCall(base, RvaFrom, pageTo, addrTo);
-                }
+            // register the transition
+            if (m_Settings.logShelcTrans) {
+                // save the transition from one shellcode to the other
+                ADDRINT base = get_base(addrFrom);
+                ADDRINT RvaFrom = addrFrom - base;
+                traceLog.logCall(base, RvaFrom, pageTo, addrTo);
             }
         }
+
     }
 
     /**
     save the transition when a shellcode returns to a traced area from an API call:
     */
-    if (!isFromTraced && !isCallerPeModule // from an untraced shellcode...
+    if (fromWType == WatchedType::NOT_WATCHED && !isCallerPeModule // from an untraced shellcode...
         && isTargetPeModule // ...into an API call
         && ctx //the context was passed: we can check the return
         )
     {
         // was the shellcode a proxy for making an API call?
         const ADDRINT returnAddr = getReturnFromTheStack(ctx);
-        bool isRetToTraced = isWatchedAddress(returnAddr); // does it return into the traced area?
-        if (isRetToTraced) {
+        const WatchedType toWType = isWatchedAddress(returnAddr); // does it return into the traced area?
+        if (toWType != WatchedType::NOT_WATCHED) {
             const std::string func = get_func_at(addrTo);
             const std::string dll_name = IMG_Name(targetModule);
             const ADDRINT pageRet = get_base(returnAddr);
@@ -248,7 +255,9 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     /**
     trace indirect calls to your own functions
     */
-    if (isCallerMy && isTargetMy && m_Settings.logIndirect && isIndirect) {
+    if (fromWType == WatchedType::WATCHED_MY_MODULE
+        && isTargetMy && m_Settings.logIndirect && isIndirect)
+    {
         const ADDRINT baseTo = get_base(addrTo);
         ADDRINT base = get_base(addrFrom);
         if (base != UNKNOWN_ADDR && baseTo != UNKNOWN_ADDR) {
@@ -291,14 +300,16 @@ VOID RdtscCalled(const CONTEXT* ctxt)
 {
     PinLocker locker;
 
-    ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
-    IMG currModule = IMG_FindByAddress(Address);
-    const bool isCurrMy = pInfo.isMyAddress(Address);
-    if (isCurrMy) {
+    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    if (wType == WatchedType::WATCHED_MY_MODULE) {
         ADDRINT rva = addr_to_rva(Address); // convert to RVA
         traceLog.logRdtsc(0, rva);
     }
-    if (m_Settings.followShellcode && !IMG_Valid(currModule)) {
+    if (wType == WatchedType::WATCHED_SHELLCODE) {
         const ADDRINT start = query_region_base(Address);
         ADDRINT rva = Address - start;
         if (start != UNKNOWN_ADDR) {
@@ -311,16 +322,17 @@ VOID CpuidCalled(const CONTEXT* ctxt)
 {
     PinLocker locker;
 
-    ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
-    ADDRINT Param = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
+    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
 
-    IMG currModule = IMG_FindByAddress(Address);
-    const bool isCurrMy = pInfo.isMyAddress(Address);
-    if (isCurrMy) {
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    ADDRINT Param = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
+    if (wType == WatchedType::WATCHED_MY_MODULE) {
         ADDRINT rva = addr_to_rva(Address); // convert to RVA
         traceLog.logCpuid(0, rva, Param);
     }
-    if (m_Settings.followShellcode && !IMG_Valid(currModule)) {
+    if (wType == WatchedType::WATCHED_SHELLCODE) {
         const ADDRINT start = query_region_base(Address);
         ADDRINT rva = Address - start;
         if (start != UNKNOWN_ADDR) {
@@ -338,9 +350,8 @@ VOID LogSyscallsArgs(const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Ad
         if (i == argCount) break;
         syscall_args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
     }
-    char syscall_str[] = "SYSCALL";
     _LogFunctionArgs(Address,
-        syscall_str, argCount,
+        "SYSCALL", argCount,
         syscall_args[0],
         syscall_args[1],
         syscall_args[2],
@@ -377,25 +388,21 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
             // Note: In this case, the current instruction address is in a 64-bit
             // code portion. The address that we're interested in is the return
             // address, which is in a 32-bit code portion.
-            const auto* stackPtr = reinterpret_cast<ADDRINT*>(PIN_GetContextReg(ctxt, REG_STACK_PTR));
-            ADDRINT retAddr = 0;
-            PIN_SafeCopy(&retAddr, stackPtr, sizeof(retAddr));
-            return retAddr;
+            return getReturnFromTheStack(ctxt);
         }
         return PIN_GetContextReg(ctxt, REG_INST_PTR);
     }();
     
-    if (!isWatchedAddress(address)) return;
+    const WatchedType wType = isWatchedAddress(address);
+    if (wType == WatchedType::NOT_WATCHED) return;
     
     const ADDRINT syscallNum = PIN_GetSyscallNumber(ctxt, std);
 
-    const IMG currModule = IMG_FindByAddress(address);
-    const bool isCurrMy = pInfo.isMyAddress(address);
-    if (isCurrMy) {
+    if (wType == WatchedType::WATCHED_MY_MODULE) {
         ADDRINT rva = addr_to_rva(address); // convert to RVA
         traceLog.logSyscall(0, rva, syscallNum);
     }
-    if (m_Settings.followShellcode && !IMG_Valid(currModule)) {
+    else if (wType == WatchedType::WATCHED_SHELLCODE) {
         const ADDRINT start = query_region_base(address);
         ADDRINT rva = address - start;
         if (start != UNKNOWN_ADDR) {
@@ -522,7 +529,7 @@ std::wstring paramToStr(VOID *arg1)
 
 VOID _LogFunctionArgs(const ADDRINT Address, const CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
 {
-    if (!isWatchedAddress(Address)) return;
+    if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
 
     const size_t argsMax = 10;
     VOID* args[argsMax] = { arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10 };
