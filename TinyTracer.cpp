@@ -154,16 +154,17 @@ WatchedType isWatchedAddress(const ADDRINT Address)
 // Analysis routines
 /* ===================================================================== */
 
-ADDRINT getReturnFromTheStack(const CONTEXT* ctx)
+inline ADDRINT getReturnFromTheStack(const CONTEXT* ctx)
 {
     if (!ctx) return UNKNOWN_ADDR;
 
-    ADDRINT returnAddr = UNKNOWN_ADDR;
-    const ADDRINT stackPtr = (ADDRINT)PIN_GetContextReg(ctx, REG_STACK_PTR);
-    if (PIN_CheckReadAccess((ADDRINT*)stackPtr)) {
-        returnAddr = *(ADDRINT*)stackPtr;
+    ADDRINT retAddr = UNKNOWN_ADDR;
+    const ADDRINT* stackPtr = reinterpret_cast<ADDRINT*>(PIN_GetContextReg(ctx, REG_STACK_PTR));
+    size_t copiedSize = PIN_SafeCopy(&retAddr, stackPtr, sizeof(retAddr));
+    if (copiedSize != sizeof(retAddr)) {
+        return UNKNOWN_ADDR;
     }
-    return returnAddr;
+    return retAddr;
 }
 
 VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndirect, const CONTEXT* ctx = NULL)
@@ -388,10 +389,7 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
             // Note: In this case, the current instruction address is in a 64-bit
             // code portion. The address that we're interested in is the return
             // address, which is in a 32-bit code portion.
-            const auto* stackPtr = reinterpret_cast<ADDRINT*>(PIN_GetContextReg(ctxt, REG_STACK_PTR));
-            ADDRINT retAddr = 0;
-            PIN_SafeCopy(&retAddr, stackPtr, sizeof(retAddr));
-            return retAddr;
+            return getReturnFromTheStack(ctxt);
         }
         return PIN_GetContextReg(ctxt, REG_INST_PTR);
     }();
