@@ -350,9 +350,8 @@ VOID LogSyscallsArgs(const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Ad
         if (i == argCount) break;
         syscall_args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
     }
-    char syscall_str[] = "SYSCALL";
     _LogFunctionArgs(Address,
-        syscall_str, argCount,
+        "SYSCALL", argCount,
         syscall_args[0],
         syscall_args[1],
         syscall_args[2],
@@ -403,7 +402,7 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
         ADDRINT rva = addr_to_rva(address); // convert to RVA
         traceLog.logSyscall(0, rva, syscallNum);
     }
-    if (wType == WatchedType::WATCHED_SHELLCODE) {
+    else if (wType == WatchedType::WATCHED_SHELLCODE) {
         const ADDRINT start = query_region_base(address);
         ADDRINT rva = address - start;
         if (start != UNKNOWN_ADDR) {
