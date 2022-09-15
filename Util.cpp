@@ -16,7 +16,7 @@ std::wstring util::hexdump(const uint8_t* in_buf, const size_t max_size)
             ss << char(in_buf[i]);
         }
         else {
-            ss << "\\x" << std::setfill('0') << std::setw(2) << std::hex << (unsigned int)in_buf[i];
+            ss << "\\x" << std::setfill(L'0') << std::setw(2) << std::hex << (unsigned int)in_buf[i];
         }
     }
     return ss.str();
@@ -58,7 +58,7 @@ std::string util::getDllName(const std::string& str)
     if (ext >= len) return "";
 
     std::string name = str.substr(found + 1, ext - (found + 1));
-    std::transform(name.begin(), name.end(), name.begin(), std::tolower);
+    std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c){ return std::tolower(c); });
     return name;
 }
 
