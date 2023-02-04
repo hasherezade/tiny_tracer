@@ -36,7 +36,8 @@ i.e.
 ### On Windows 
 
 To compile the prepared project you need to use [Visual Studio >= 2012](https://visualstudio.microsoft.com/downloads/). It was tested with [Intel Pin 3.19 - 3.25](https://software.intel.com/en-us/articles/pin-a-binary-instrumentation-tool-downloads).<br/>
-Clone this repo into `\source\tools` that is inside your Pin root directory. Open the project in Visual Studio and build. Detailed description available [here](https://github.com/hasherezade/tiny_tracer/wiki/Installation#on-windows).
+Clone this repo into `\source\tools` that is inside your Pin root directory. Open the project in Visual Studio and build. Detailed description available [here](https://github.com/hasherezade/tiny_tracer/wiki/Installation#on-windows).<br/>
+When using Intel Pin >= 3.26, `pinipc.lib` needs to be added as an additional dependency in the project settings.
 
 ### On Linux
 
