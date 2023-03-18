@@ -431,6 +431,7 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
                 if (syscallFuncName == funcName) {
                     LogSyscallsArgs(ctxt, std, address, g_Watch.funcs[i].paramCount);
                     isSyscallWatched = true;
+                    break;
                 }
             }
         }
