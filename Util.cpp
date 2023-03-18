@@ -113,3 +113,10 @@ static inline void rtrim(std::string &s)
 
      return intVal;
  }
+
+ std::string util::stripQuotes(const std::string& str)
+ {
+     std::string s = str;
+     s.erase(std::remove(s.begin(), s.end(), '\"'), s.end());
+     return s;
+ }

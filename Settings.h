@@ -1,6 +1,8 @@
 #pragma once
 
 #include <iostream>
+#include <string>
+#include <map>
 
 typedef enum {
     SHELLC_DO_NOT_FOLLOW = 0,    // trace only the main target module
@@ -11,6 +13,16 @@ typedef enum {
 } t_shellc_options;
 
 t_shellc_options ConvertShcOption(int value);
+
+class SyscallsTable {
+public:
+    size_t load(const std::string& file);
+    std::string getName(int syscallID);
+    size_t count() { return syscallToFuncName.size(); }
+
+protected:
+    std::map<int, std::string> syscallToFuncName;
+};
 
 class Settings {
 
@@ -41,4 +53,7 @@ public:
     size_t hexdumpSize;
     bool hookSleep;
     size_t sleepTime;
+
+    std::string syscallsFile; // The file containing syscalls table: mapping the syscall ID to the function name
+    SyscallsTable syscallsTable;
 };
