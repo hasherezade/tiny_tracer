@@ -136,7 +136,7 @@ void TraceLog::logSyscall(const ADDRINT base, const ADDRINT rva, const ADDRINT p
         << "SYSCALL:0x"
         << std::hex << param;
     if (!funcName.empty()) {
-        m_traceFile << DELIMITER << funcName;
+        m_traceFile << "(" << funcName << ")";
     }
     m_traceFile << std::endl;
     m_traceFile.flush();
