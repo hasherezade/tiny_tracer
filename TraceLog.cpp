@@ -124,7 +124,7 @@ void TraceLog::logCpuid(const ADDRINT base, const ADDRINT rva, const ADDRINT par
     m_traceFile.flush();
 }
 
-void TraceLog::logSyscall(const ADDRINT base, const ADDRINT rva, const ADDRINT param)
+void TraceLog::logSyscall(const ADDRINT base, const ADDRINT rva, const ADDRINT param, const std::string& funcName)
 {
     if (!createFile()) return;
     if (base) {
@@ -134,8 +134,11 @@ void TraceLog::logSyscall(const ADDRINT base, const ADDRINT rva, const ADDRINT p
         << std::hex << rva
         << DELIMITER
         << "SYSCALL:0x"
-        << std::hex << param
-        << std::endl;
+        << std::hex << param;
+    if (!funcName.empty()) {
+        m_traceFile << "(" << funcName << ")";
+    }
+    m_traceFile << std::endl;
     m_traceFile.flush();
 }
 

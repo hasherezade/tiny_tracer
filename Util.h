@@ -29,4 +29,6 @@ namespace util {
     void trim(std::string &s);
 
     int loadInt(const std::string &str, bool as_hex = false);
+
+    std::string stripQuotes(const std::string& str);
 };

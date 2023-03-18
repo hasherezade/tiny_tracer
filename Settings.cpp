@@ -10,6 +10,7 @@
 #define KEY_FOLLOW_SHELLCODES           "FOLLOW_SHELLCODES"
 #define KEY_LOG_RTDSC                   "TRACE_RDTSC"
 #define KEY_LOG_SYSCALL                 "TRACE_SYSCALL"
+#define KEY_SYSCALLS_TABLE              "SYSCALLS_TABLE"
 #define KEY_LOG_SECTIONS_TRANSITIONS    "LOG_SECTIONS_TRANSITIONS"
 #define KEY_LOG_SHELLCODES_TRANSITIONS  "LOG_SHELLCODES_TRANSITIONS"
 #define KEY_SHORT_LOGGING               "ENABLE_SHORT_LOGGING"
@@ -27,6 +28,43 @@ t_shellc_options ConvertShcOption(int value)
     return (t_shellc_options)value;
 }
 
+//----
+
+std::string SyscallsTable::getName(int syscallID)
+{
+    auto found = syscallToFuncName.find(syscallID);
+    if (found == syscallToFuncName.end()) {
+        return "";
+    }
+    return found->second;
+}
+
+size_t SyscallsTable::load(const std::string& filename)
+{
+    std::ifstream myfile(util::stripQuotes(filename));
+    if (!myfile.is_open()) {
+        return 0;
+    }
+    const size_t MAX_LINE = 300;
+    char line[MAX_LINE] = { 0 };
+    bool filledAny = false;
+
+    while (!myfile.eof()) {
+        myfile.getline(line, MAX_LINE);
+        std::string lineStr = line;
+        size_t found = lineStr.find_first_of(",");
+        if (found != std::string::npos) {
+
+            std::string numId = lineStr.substr(0, found);
+            std::string funcName = lineStr.substr(found + 1);
+            int syscallId = util::loadInt(numId, true);
+
+            syscallToFuncName[syscallId] = funcName;
+        }
+    }
+    myfile.close();
+    return syscallToFuncName.size();
+}
 //----
 
 bool loadBoolean(const std::string &str, bool defaultVal)
@@ -67,6 +105,11 @@ bool fillSettings(Settings &s, std::string line)
     }
     if (util::iequals(valName, KEY_LOG_SYSCALL)) {
         s.traceSYSCALL = loadBoolean(valStr, s.traceSYSCALL);
+        isFilled = true;
+    }
+    if (util::iequals(valName, KEY_SYSCALLS_TABLE)) {
+        s.syscallsFile = valStr;
+        s.syscallsTable.load(valStr);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_LOG_SECTIONS_TRANSITIONS)) {
@@ -116,7 +159,8 @@ bool Settings::saveINI(const std::string filename)
     }
     myfile << KEY_FOLLOW_SHELLCODES << DELIM << this->followShellcode << "\r\n";
     myfile << KEY_LOG_RTDSC << DELIM << this->traceRDTSC << "\r\n";
-
+    myfile << KEY_LOG_SYSCALL << DELIM << this->traceSYSCALL << "\r\n";
+    myfile << KEY_SYSCALLS_TABLE << DELIM << this->syscallsFile << "\r\n";
     myfile << KEY_LOG_SECTIONS_TRANSITIONS << DELIM << this->logSectTrans << "\r\n";
     myfile << KEY_LOG_SHELLCODES_TRANSITIONS << DELIM << this->logShelcTrans << "\r\n";
     myfile << KEY_SHORT_LOGGING << DELIM << this->shortLogging << "\r\n";
@@ -148,5 +192,6 @@ bool Settings::loadINI(const std::string filename)
             filledAny = true;
         }
     }
+    myfile.close();
     return filledAny;
 }

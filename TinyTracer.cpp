@@ -397,16 +397,17 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
     if (wType == WatchedType::NOT_WATCHED) return;
     
     const ADDRINT syscallNum = PIN_GetSyscallNumber(ctxt, std);
+    std::string funcName = m_Settings.syscallsTable.getName(syscallNum);
 
     if (wType == WatchedType::WATCHED_MY_MODULE) {
         ADDRINT rva = addr_to_rva(address); // convert to RVA
-        traceLog.logSyscall(0, rva, syscallNum);
+        traceLog.logSyscall(0, rva, syscallNum, funcName);
     }
     else if (wType == WatchedType::WATCHED_SHELLCODE) {
         const ADDRINT start = query_region_base(address);
         ADDRINT rva = address - start;
         if (start != UNKNOWN_ADDR) {
-            traceLog.logSyscall(start, rva, syscallNum);
+            traceLog.logSyscall(start, rva, syscallNum, funcName);
         }
     }
 
@@ -746,6 +747,7 @@ int main(int argc, char *argv[])
             g_Watch.loadList(watchListFile.c_str());
             std::cout << "Watch " << g_Watch.funcs.size() << " functions\n";
             std::cout << "Watch " << g_Watch.syscalls.size() << " syscalls\n";
+            std::cout << "SyscallTable size: " << m_Settings.syscallsTable.count() << "\n";
         }
     }
 
