@@ -412,9 +412,28 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
     }
 
     // Log arguments if needed
+    bool isSyscallWatched = false;
+    // check if it is watched by the syscall number:
     const auto& it = g_Watch.syscalls.find(syscallNum);
     if (it != g_Watch.syscalls.end()) {
         LogSyscallsArgs(ctxt, std, address, it->second.paramCount);
+        isSyscallWatched = true;
+    }
+
+    if (!isSyscallWatched) {
+        // check if it is watched by the function name:
+        std::string syscallFuncName = SyscallsTable::convertNameToNt(m_Settings.syscallsTable.getName(syscallNum));
+        for (size_t i = 0; i < g_Watch.funcs.size(); i++) {
+            if (util::iequals("ntdll", g_Watch.funcs[i].dllName) 
+                || util::iequals("win32u", g_Watch.funcs[i].dllName))
+            {
+                std::string funcName = SyscallsTable::convertNameToNt(g_Watch.funcs[i].funcName);
+                if (syscallFuncName == funcName) {
+                    LogSyscallsArgs(ctxt, std, address, g_Watch.funcs[i].paramCount);
+                    isSyscallWatched = true;
+                }
+            }
+        }
     }
 }
 
@@ -668,7 +687,6 @@ VOID ImageLoad(IMG Image, VOID *v)
         if (util::iequals(dllName, g_Watch.funcs[i].dllName)) {
             MonitorFunctionArgs(Image, g_Watch.funcs[i]);
         }
-
     }
     if (m_Settings.hookSleep) {
         const std::string dllName = util::getDllName(IMG_Name(Image));

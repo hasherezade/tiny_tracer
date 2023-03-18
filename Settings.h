@@ -16,6 +16,17 @@ t_shellc_options ConvertShcOption(int value);
 
 class SyscallsTable {
 public:
+    
+    static std::string convertNameToNt(std::string funcName)
+    {
+        std::string prefix1("Nt");
+        std::string prefix2("Zw");
+        if (!funcName.compare(0, prefix2.size(), prefix2)) {
+            funcName.replace(0, 2, prefix1); // replace with Zw prefix
+        }
+        return funcName;
+    }
+
     size_t load(const std::string& file);
     std::string getName(int syscallID);
     size_t count() { return syscallToFuncName.size(); }
