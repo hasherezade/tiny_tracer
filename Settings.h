@@ -47,7 +47,7 @@ public:
     Settings() 
         : followShellcode(SHELLC_FOLLOW_FIRST),
         traceRDTSC(false),
-        traceSYSCALL(false),
+        traceSYSCALL(true),
         logSectTrans(true),
         logShelcTrans(true),
         shortLogging(true),
