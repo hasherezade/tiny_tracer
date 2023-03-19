@@ -47,7 +47,6 @@ size_t SyscallsTable::load(const std::string& filename)
     }
     const size_t MAX_LINE = 300;
     char line[MAX_LINE] = { 0 };
-    bool filledAny = false;
 
     while (!myfile.eof()) {
         myfile.getline(line, MAX_LINE);
