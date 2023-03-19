@@ -53,6 +53,9 @@ KNOB<std::string> KnobModuleName(KNOB_MODE_WRITEONCE, "pintool",
 KNOB<std::string> KnobWatchListFile(KNOB_MODE_WRITEONCE, "pintool",
     "b", "", "A list of watched functions (dump parameters before the execution)");
 
+KNOB<std::string> KnobSyscallsTable(KNOB_MODE_WRITEONCE, "pintool",
+    "l", "", "Syscall table: a CSV file mapping a syscall ID (in hex) to a function name");
+
 /* ===================================================================== */
 // Utilities
 /* ===================================================================== */
@@ -766,6 +769,13 @@ int main(int argc, char *argv[])
             g_Watch.loadList(watchListFile.c_str());
             std::cout << "Watch " << g_Watch.funcs.size() << " functions\n";
             std::cout << "Watch " << g_Watch.syscalls.size() << " syscalls\n";
+        }
+    }
+
+    if (KnobSyscallsTable.Enabled()) {
+        std::string syscallsTableFile = KnobSyscallsTable.ValueString();
+        if (syscallsTableFile.length()) {
+            m_Settings.syscallsTable.load(syscallsTableFile);
             std::cout << "SyscallTable size: " << m_Settings.syscallsTable.count() << "\n";
         }
     }

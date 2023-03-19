@@ -10,7 +10,6 @@
 #define KEY_FOLLOW_SHELLCODES           "FOLLOW_SHELLCODES"
 #define KEY_LOG_RTDSC                   "TRACE_RDTSC"
 #define KEY_LOG_SYSCALL                 "TRACE_SYSCALL"
-#define KEY_SYSCALLS_TABLE              "SYSCALLS_TABLE"
 #define KEY_LOG_SECTIONS_TRANSITIONS    "LOG_SECTIONS_TRANSITIONS"
 #define KEY_LOG_SHELLCODES_TRANSITIONS  "LOG_SHELLCODES_TRANSITIONS"
 #define KEY_SHORT_LOGGING               "ENABLE_SHORT_LOGGING"
@@ -106,11 +105,6 @@ bool fillSettings(Settings &s, std::string line)
         s.traceSYSCALL = loadBoolean(valStr, s.traceSYSCALL);
         isFilled = true;
     }
-    if (util::iequals(valName, KEY_SYSCALLS_TABLE)) {
-        s.syscallsFile = valStr;
-        s.syscallsTable.load(valStr);
-        isFilled = true;
-    }
     if (util::iequals(valName, KEY_LOG_SECTIONS_TRANSITIONS)) {
         s.logSectTrans = loadBoolean(valStr, s.logSectTrans);
         isFilled = true;
@@ -159,7 +153,6 @@ bool Settings::saveINI(const std::string filename)
     myfile << KEY_FOLLOW_SHELLCODES << DELIM << this->followShellcode << "\r\n";
     myfile << KEY_LOG_RTDSC << DELIM << this->traceRDTSC << "\r\n";
     myfile << KEY_LOG_SYSCALL << DELIM << this->traceSYSCALL << "\r\n";
-    myfile << KEY_SYSCALLS_TABLE << DELIM << this->syscallsFile << "\r\n";
     myfile << KEY_LOG_SECTIONS_TRANSITIONS << DELIM << this->logSectTrans << "\r\n";
     myfile << KEY_LOG_SHELLCODES_TRANSITIONS << DELIM << this->logShelcTrans << "\r\n";
     myfile << KEY_SHORT_LOGGING << DELIM << this->shortLogging << "\r\n";

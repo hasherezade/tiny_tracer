@@ -14,6 +14,8 @@ typedef enum {
 
 t_shellc_options ConvertShcOption(int value);
 
+//---
+
 class SyscallsTable {
 public:
     
@@ -34,6 +36,8 @@ public:
 protected:
     std::map<int, std::string> syscallToFuncName;
 };
+
+//---
 
 class Settings {
 
@@ -65,6 +69,5 @@ public:
     bool hookSleep;
     size_t sleepTime;
 
-    std::string syscallsFile; // The file containing syscalls table: mapping the syscall ID to the function name
-    SyscallsTable syscallsTable;
+    SyscallsTable syscallsTable; //Syscalls table: mapping the syscall ID to the function name
 };

@@ -42,6 +42,9 @@ rem WATCH_BEFORE - a file with a list of functions which's parameters will be lo
 rem The file must be a list of records in a format: [dll_name];[func_name];[parameters_count]
 set WATCH_BEFORE=%PIN_TOOLS_DIR%\params.txt
 
+rem SYSCALLS_TABLE - a CSV file, mapping syscall ID to a function name. Format: [syscallID:hex],[functionName]
+set SYSCALLS_TABLE=%PIN_TOOLS_DIR%\syscalls.txt
+
 set DLL_LOAD32=%PIN_TOOLS_DIR%\dll_load32.exe
 set DLL_LOAD64=%PIN_TOOLS_DIR%\dll_load64.exe
 
@@ -51,6 +54,12 @@ if exist %PIN_TOOLS_DIR%\kdb_check.exe (
 		echo Disable Kernel Mode Debugger before running the PIN tool!
 		pause
 		exit
+	)
+)
+
+if NOT exist %SYSCALLS_TABLE% (
+	if exist %PIN_TOOLS_DIR%\syscall_extract.exe (
+		%PIN_TOOLS_DIR%\syscall_extract.exe %SYSCALLS_TABLE%
 	)
 )
 
@@ -80,8 +89,8 @@ if [%IS_ADMIN%] == [A] (
 
 set ADMIN_CMD=%PIN_TOOLS_DIR%\sudo.vbs
 
-set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -- "%DLL_LOAD%" "%TARGET_APP%" %DLL_EXPORTS%
-set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -- "%TARGET_APP%" %EXE_ARGS%
+set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -l %SYSCALLS_TABLE% -- "%DLL_LOAD%" "%TARGET_APP%" %DLL_EXPORTS%
+set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -l %SYSCALLS_TABLE% -- "%TARGET_APP%" %EXE_ARGS%
 
 ;rem "Trace EXE"
 if [%PE_TYPE%] == [exe] (
