@@ -4,6 +4,8 @@
 #include <string>
 #include <map>
 
+#include "FuncWatch.h"
+
 typedef enum {
     SHELLC_DO_NOT_FOLLOW = 0,    // trace only the main target module
     SHELLC_FOLLOW_FIRST = 1,     // follow only the first shellcode called from the main module
@@ -70,4 +72,5 @@ public:
     size_t sleepTime;
 
     SyscallsTable syscallsTable; //Syscalls table: mapping the syscall ID to the function name
+    FuncWatchList funcWatch; //List of functions, arguments of which are going to be logged
 };

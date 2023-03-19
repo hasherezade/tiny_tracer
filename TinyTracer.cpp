@@ -17,7 +17,6 @@
 
 #include "ProcessInfo.h"
 #include "TraceLog.h"
-#include "FuncWatch.h"
 
 #define TOOL_NAME "TinyTracer"
 #define VERSION "2.2"
@@ -32,8 +31,6 @@
 Settings m_Settings;
 ProcessInfo pInfo;
 TraceLog traceLog;
-
-FuncWatchList g_Watch;
 
 // last shellcode to which the transition got redirected:
 std::set<ADDRINT> m_tracedShellc;
@@ -417,8 +414,8 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
     // Log arguments if needed
     bool isSyscallWatched = false;
     // check if it is watched by the syscall number:
-    const auto& it = g_Watch.syscalls.find(syscallNum);
-    if (it != g_Watch.syscalls.end()) {
+    const auto& it = m_Settings.funcWatch.syscalls.find(syscallNum);
+    if (it != m_Settings.funcWatch.syscalls.end()) {
         LogSyscallsArgs(ctxt, std, address, it->second.paramCount);
         isSyscallWatched = true;
     }
@@ -426,13 +423,13 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
     if (!isSyscallWatched) {
         // check if it is watched by the function name:
         std::string syscallFuncName = SyscallsTable::convertNameToNt(m_Settings.syscallsTable.getName(syscallNum));
-        for (size_t i = 0; i < g_Watch.funcs.size(); i++) {
-            if (util::iequals("ntdll", g_Watch.funcs[i].dllName) 
-                || util::iequals("win32u", g_Watch.funcs[i].dllName))
+        for (size_t i = 0; i < m_Settings.funcWatch.funcs.size(); i++) {
+            if (util::iequals("ntdll", m_Settings.funcWatch.funcs[i].dllName)
+                || util::iequals("win32u", m_Settings.funcWatch.funcs[i].dllName))
             {
-                std::string funcName = SyscallsTable::convertNameToNt(g_Watch.funcs[i].funcName);
+                std::string funcName = SyscallsTable::convertNameToNt(m_Settings.funcWatch.funcs[i].funcName);
                 if (syscallFuncName == funcName) {
-                    LogSyscallsArgs(ctxt, std, address, g_Watch.funcs[i].paramCount);
+                    LogSyscallsArgs(ctxt, std, address, m_Settings.funcWatch.funcs[i].paramCount);
                     isSyscallWatched = true;
                     break;
                 }
@@ -686,10 +683,10 @@ VOID ImageLoad(IMG Image, VOID *v)
     PinLocker locker;
 
     pInfo.addModule(Image);
-    for (size_t i = 0; i < g_Watch.funcs.size(); i++) {
+    for (size_t i = 0; i < m_Settings.funcWatch.funcs.size(); i++) {
         const std::string dllName = util::getDllName(IMG_Name(Image));
-        if (util::iequals(dllName, g_Watch.funcs[i].dllName)) {
-            MonitorFunctionArgs(Image, g_Watch.funcs[i]);
+        if (util::iequals(dllName, m_Settings.funcWatch.funcs[i].dllName)) {
+            MonitorFunctionArgs(Image, m_Settings.funcWatch.funcs[i]);
         }
     }
     if (m_Settings.hookSleep) {
@@ -766,9 +763,9 @@ int main(int argc, char *argv[])
     if (KnobWatchListFile.Enabled()) {
         std::string watchListFile = KnobWatchListFile.ValueString();
         if (watchListFile.length()) {
-            g_Watch.loadList(watchListFile.c_str());
-            std::cout << "Watch " << g_Watch.funcs.size() << " functions\n";
-            std::cout << "Watch " << g_Watch.syscalls.size() << " syscalls\n";
+            m_Settings.funcWatch.loadList(watchListFile.c_str());
+            std::cout << "Watch " << m_Settings.funcWatch.funcs.size() << " functions\n";
+            std::cout << "Watch " << m_Settings.funcWatch.syscalls.size() << " syscalls\n";
         }
     }
 
