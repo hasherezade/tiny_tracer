@@ -19,7 +19,7 @@
 #include "TraceLog.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.2"
+#define VERSION "2.3"
 
 #include "Util.h"
 #include "Settings.h"
