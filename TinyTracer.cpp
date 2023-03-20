@@ -341,7 +341,7 @@ VOID CpuidCalled(const CONTEXT* ctxt)
     }
 }
 
-VOID LogSyscallsArgs(const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address, uint32_t argCount)
+VOID LogSyscallsArgs(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address, uint32_t argCount)
 {
     const size_t args_max = 10;
     VOID* syscall_args[args_max] = { 0 };
@@ -351,7 +351,7 @@ VOID LogSyscallsArgs(const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Ad
         syscall_args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
     }
     _LogFunctionArgs(Address,
-        "SYSCALL", argCount,
+        name, argCount,
         syscall_args[0],
         syscall_args[1],
         syscall_args[2],
@@ -362,6 +362,13 @@ VOID LogSyscallsArgs(const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Ad
         syscall_args[7],
         syscall_args[8],
         syscall_args[9]);
+}
+
+std::string formatSyscallName(int syscallID)
+{
+    std::stringstream ss;
+    ss << "SYSCALL:0x" << std::hex << (syscallID);
+    return ss.str();
 }
 
 VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
@@ -416,7 +423,7 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
     // check if it is watched by the syscall number:
     const auto& it = m_Settings.funcWatch.syscalls.find(syscallNum);
     if (it != m_Settings.funcWatch.syscalls.end()) {
-        LogSyscallsArgs(ctxt, std, address, it->second.paramCount);
+        LogSyscallsArgs(formatSyscallName(syscallNum).c_str(), ctxt, std, address, it->second.paramCount);
         isSyscallWatched = true;
     }
 
@@ -429,7 +436,7 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
             {
                 std::string funcName = SyscallsTable::convertNameToNt(m_Settings.funcWatch.funcs[i].funcName);
                 if (syscallFuncName == funcName) {
-                    LogSyscallsArgs(ctxt, std, address, m_Settings.funcWatch.funcs[i].paramCount);
+                    LogSyscallsArgs(funcName.c_str(), ctxt, std, address, m_Settings.funcWatch.funcs[i].paramCount);
                     isSyscallWatched = true;
                     break;
                 }
@@ -555,6 +562,7 @@ VOID _LogFunctionArgs(const ADDRINT Address, const CHAR *name, uint32_t argCount
     const size_t argsMax = 10;
     VOID* args[argsMax] = { arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10 };
     std::wstringstream ss;
+    ss << name << ":\n";
     for (size_t i = 0; i < argCount && i < argsMax; i++) {
         ss << "\tArg[" << i << "] = ";
         ss << paramToStr(args[i]);
