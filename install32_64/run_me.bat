@@ -89,8 +89,8 @@ if [%IS_ADMIN%] == [A] (
 
 set ADMIN_CMD=%PIN_TOOLS_DIR%\sudo.vbs
 
-set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -l "%SYSCALLS_TABLE%" -- "%DLL_LOAD%" "%TARGET_APP%" %DLL_EXPORTS%
-set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -l "%SYSCALLS_TABLE%" -- "%TARGET_APP%" %EXE_ARGS%
+set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o "%TAG_FILE%" -s "%SETTINGS_FILE%" -b "%WATCH_BEFORE%" -l "%SYSCALLS_TABLE%" -- "%DLL_LOAD%" "%TARGET_APP%" "%DLL_EXPORTS%"
+set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o "%TAG_FILE%" -s "%SETTINGS_FILE%" -b "%WATCH_BEFORE%" -l "%SYSCALLS_TABLE%" -- "%TARGET_APP%" "%EXE_ARGS%"
 
 ;rem "Trace EXE"
 if [%PE_TYPE%] == [exe] (
