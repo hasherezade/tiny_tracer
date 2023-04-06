@@ -40,7 +40,7 @@ std::string SyscallsTable::getName(int syscallID)
 
 size_t SyscallsTable::load(const std::string& filename)
 {
-    std::ifstream myfile(util::stripQuotes(filename));
+    std::ifstream myfile(util::stripQuotes(filename).c_str());
     if (!myfile.is_open()) {
         return 0;
     }
