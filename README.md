@@ -1,4 +1,5 @@
 # tiny_tracer
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/f988180bfb4d45ebbe4764bde1058c2f)](https://app.codacy.com/gh/hasherezade/tiny_tracer/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Commit activity](https://img.shields.io/github/commit-activity/m/hasherezade/tiny_tracer)](https://github.com/hasherezade/tiny_tracer/commits)
 [![Last Commit](https://img.shields.io/github/last-commit/hasherezade/tiny_tracer/master)](https://github.com/hasherezade/tiny_tracer/commits)
 
