@@ -18,7 +18,7 @@ const s_module* get_by_addr(ADDRINT Address, std::map<ADDRINT, s_module> &module
     std::map<ADDRINT, s_module>::iterator bound = modules.upper_bound(Address);
     std::map<ADDRINT, s_module>::iterator itr = modules.begin();
 
-    for (; itr != bound; itr++) {
+    for (; itr != bound; ++itr) {
         s_module &mod = itr->second;
         if (Address >= mod.start && Address < mod.end) {
             return &mod;

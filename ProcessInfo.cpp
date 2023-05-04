@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <cstring>
 
-std::string to_lowercase(std::string _str)
+std::string to_lowercase(const std::string &_str)
 {
     std::string str = _str;
     std::transform(str.begin(), str.end(), str.begin(), tolower);
@@ -10,7 +10,7 @@ std::string to_lowercase(std::string _str)
 }
 
 
-bool is_my_name(const std::string &module_name, std::string my_name)
+bool is_my_name(const std::string &module_name, const std::string &my_name)
 {
     std::string mod1 = to_lowercase(module_name);
     std::string mod2 = to_lowercase(my_name);

@@ -56,8 +56,8 @@ public:
     {
     }
 
-    bool loadINI(const std::string filename);
-    bool saveINI(const std::string filename);
+    bool loadINI(const std::string &filename);
+    bool saveINI(const std::string &filename);
 
     t_shellc_options followShellcode;
 

@@ -4,7 +4,7 @@
 
 #include "Util.h"
 
-void TraceLog::logCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, bool isRVA, const std::string module, const std::string func)
+void TraceLog::logCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, bool isRVA, const std::string module, const std::string &func)
 {
     if (!createFile()) return;
     ADDRINT rva = (isRVA) ? prevAddr : prevAddr - prevModuleBase;
@@ -44,7 +44,7 @@ void TraceLog::logCall(const ADDRINT prevBase, const ADDRINT prevAddr, const ADD
     m_traceFile.flush();
 }
 
-void TraceLog::logCallRet(const ADDRINT prevBase, const ADDRINT prevAddr, const ADDRINT retPageBase, const ADDRINT retAddr, const std::string module, const std::string func)
+void TraceLog::logCallRet(const ADDRINT prevBase, const ADDRINT prevAddr, const ADDRINT retPageBase, const ADDRINT retAddr, const std::string module, const std::string &func)
 {
     if (!createFile()) return;
 
@@ -142,7 +142,7 @@ void TraceLog::logSyscall(const ADDRINT base, const ADDRINT rva, const ADDRINT p
     m_traceFile.flush();
 }
 
-void TraceLog::logLine(std::string str)
+void TraceLog::logLine(std::string &str)
 {
     if (!createFile()) return;
 
@@ -152,7 +152,7 @@ void TraceLog::logLine(std::string str)
     m_traceFile.flush();
 }
 
-void TraceLog::logNewSectionCalled(const ADDRINT prevAddr, std::string prevSection, std::string currSection)
+void TraceLog::logNewSectionCalled(const ADDRINT prevAddr, const std::string &prevSection, const std::string &currSection)
 {
     createFile();
     m_traceFile

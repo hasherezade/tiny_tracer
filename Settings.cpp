@@ -144,7 +144,7 @@ void stripComments(std::string &str)
     }
 }
 
-bool Settings::saveINI(const std::string filename)
+bool Settings::saveINI(const std::string &filename)
 {
     std::ofstream myfile(filename.c_str());
     if (!myfile.is_open()) {
@@ -165,7 +165,7 @@ bool Settings::saveINI(const std::string filename)
     return true;
 }
 
-bool Settings::loadINI(const std::string filename)
+bool Settings::loadINI(const std::string &filename)
 {
     std::ifstream myfile(filename.c_str());
     if (!myfile.is_open()) {
