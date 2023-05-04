@@ -44,7 +44,7 @@ void TraceLog::logCall(const ADDRINT prevBase, const ADDRINT prevAddr, const ADD
     m_traceFile.flush();
 }
 
-void TraceLog::logCallRet(const ADDRINT prevBase, const ADDRINT prevAddr, const ADDRINT retPageBase, const ADDRINT retAddr, const std::string module, const std::string &func)
+void TraceLog::logCallRet(const ADDRINT prevBase, const ADDRINT prevAddr, const ADDRINT retPageBase, const ADDRINT retAddr, const std::string &module, const std::string &func)
 {
     if (!createFile()) return;
 
@@ -68,7 +68,7 @@ void TraceLog::logCallRet(const ADDRINT prevBase, const ADDRINT prevAddr, const 
 }
 
 
-void TraceLog::logSectionChange(const ADDRINT prevAddr, std::string name)
+void TraceLog::logSectionChange(const ADDRINT prevAddr, std::string &name)
 {
     if (!createFile()) return;
     m_traceFile 
