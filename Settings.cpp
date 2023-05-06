@@ -140,7 +140,7 @@ void stripComments(std::string &str)
 {
     size_t found = str.find_first_of(";#");
     if (found != std::string::npos) {
-        str = str.substr(0, found - 1);
+        str.resize(found);
     }
 }
 
