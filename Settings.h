@@ -18,6 +18,21 @@ t_shellc_options ConvertShcOption(int value);
 
 //---
 
+// ANTIDEBUG: settings management
+
+typedef enum {
+    ANTIDEBUG_DISABLED = 0,      // AntiDebug detection is disabled
+    ANTIDEBUG_STANDARD = 1,      // Track "standard" and easily identifiable techniques
+    ANTIDEBUG_DEEP = 2,          // Track more techniques, may lead to false positives
+    ANTIDEBUG_DEEPER = 3,        // Track even more techniques
+    ANTIDEBUG_OPTIONS_COUNT
+} t_antidebug_options;
+
+t_antidebug_options ConvertAntidebugOption(int value);
+
+//---
+
+
 class SyscallsTable {
 public:
     
@@ -52,7 +67,8 @@ public:
         logShelcTrans(true),
         shortLogging(true),
         logIndirect(false),
-        hexdumpSize(8)
+        hexdumpSize(8),
+        antidebug(ANTIDEBUG_DISABLED)
     {
     }
 
@@ -70,6 +86,7 @@ public:
     size_t hexdumpSize;
     bool hookSleep;
     size_t sleepTime;
+    t_antidebug_options antidebug;
 
     SyscallsTable syscallsTable; //Syscalls table: mapping the syscall ID to the function name
     FuncWatchList funcWatch; //List of functions, arguments of which are going to be logged

@@ -257,6 +257,7 @@
   <ItemGroup>
     <ClCompile Include="ModuleInfo.cpp" />
     <ClCompile Include="ProcessInfo.cpp" />
+    <ClCompile Include="AntiDebug.cpp" />
     <ClCompile Include="TinyTracer.cpp" />
     <ClCompile Include="TraceLog.cpp" />
     <ClCompile Include="FuncWatch.cpp" />
@@ -264,6 +265,8 @@
     <ClCompile Include="Settings.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AntiDebug.h" />
+    <ClInclude Include="my_paths.h" />
     <ClInclude Include="ModuleInfo.h" />
     <ClInclude Include="ProcessInfo.h" />
     <ClInclude Include="TraceLog.h" />
