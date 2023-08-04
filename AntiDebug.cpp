@@ -373,7 +373,7 @@ VOID AntidebugMonitorFunctions(IMG Image, FuncWatchList funcWatch)
 /* ==================================================================== */
 // Add single function
 /* ==================================================================== */
-bool AntidebugMonitorAdd(IMG Image, char* fName, uint32_t argNum, const std::string dllName, FuncWatchList funcWatch)
+bool AntidebugMonitorAdd(IMG Image, char* fName, uint32_t argNum, const std::string& dllName, FuncWatchList funcWatch)
 {
     // Check if already in the list monitored
     for (size_t i = 0; i < funcWatch.funcs.size(); i++) {

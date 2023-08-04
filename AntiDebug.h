@@ -14,7 +14,7 @@ VOID AntidebugMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr);
 VOID ThreadStart(THREADID threadid, CONTEXT* ctxt, INT32 flags, VOID* v);
 std::wstring paramToStrSplit(VOID* arg1);
 VOID AntidebugCloseHandle(ADDRINT Address, ADDRINT regGAX);
-bool AntidebugMonitorAdd(IMG Image, char* fName, uint32_t argNum, const std::string dllName, FuncWatchList funcWatch);
+bool AntidebugMonitorAdd(IMG Image, char* fName, uint32_t argNum, const std::string& dllName, FuncWatchList funcWatch);
 VOID AntidebugMonitorFunctions(IMG Image, FuncWatchList funcWatch);
 
 //* ==================================================================== */
