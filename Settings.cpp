@@ -17,6 +17,7 @@
 #define SLEEP_TIME                      "SLEEP_TIME"
 #define HOOK_SLEEP                      "HOOK_SLEEP"
 #define LOG_INDIRECT                    "LOG_INDIRECT_CALLS"
+#define KEY_ANTIDEBUG                   "ANTIDEBUG"
 
 t_shellc_options ConvertShcOption(int value)
 {
@@ -25,6 +26,15 @@ t_shellc_options ConvertShcOption(int value)
         return t_shellc_options(SHELLC_OPTIONS_COUNT - 1);
     }
     return (t_shellc_options)value;
+}
+
+t_antidebug_options ConvertAntidebugOption(int value)
+{
+    if (value >= ANTIDEBUG_OPTIONS_COUNT) {
+        // choose the last option:
+        return t_antidebug_options(ANTIDEBUG_OPTIONS_COUNT - 1);
+    }
+    return (t_antidebug_options)value;
 }
 
 //----
@@ -133,6 +143,11 @@ bool fillSettings(Settings &s, std::string line)
         s.sleepTime = util::loadInt(valStr);
         isFilled = true;
     }
+    if (util::iequals(valName, KEY_ANTIDEBUG)) {
+        const int val = util::loadInt(valStr);
+        s.antidebug = ConvertAntidebugOption(val);
+        isFilled = true;
+    }
     return isFilled;
 }
 
@@ -161,6 +176,7 @@ bool Settings::saveINI(const std::string &filename)
     myfile << HOOK_SLEEP << DELIM << this->hookSleep << "\r\n";
     myfile << SLEEP_TIME << DELIM << this->sleepTime << "\r\n";
     myfile << LOG_INDIRECT << DELIM << this->logIndirect << "\r\n";
+    myfile << KEY_ANTIDEBUG << DELIM << this->antidebug << "\r\n";
     myfile.close();
     return true;
 }
