@@ -23,6 +23,7 @@
 
 #include "Util.h"
 #include "Settings.h"
+#include "AntiDebug.h"
 
 /* ================================================================== */
 // Global variables 
@@ -559,6 +560,11 @@ VOID _LogFunctionArgs(const ADDRINT Address, const CHAR *name, uint32_t argCount
 {
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
 
+    // ANTIDEBUG: API detection processing
+    if (m_Settings.antidebug > 0) {
+        AntidebugProcessFunctions(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
+    }
+
     const size_t argsMax = 10;
     VOID* args[argsMax] = { arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10 };
     std::wstringstream ss;
@@ -665,6 +671,18 @@ VOID InstrumentInstruction(INS ins, VOID *v)
         );
 
     }
+
+    // ANTIDEBUG: memory read instrumentation
+    if (m_Settings.antidebug > 0) {
+        if (INS_IsMemoryRead(ins)) {
+            // Insert the callback function before memory read instructions
+            INS_InsertCall(ins, IPOINT_BEFORE, AFUNPTR(AntidebugMemoryAccess),
+                IARG_MEMORYREAD_EA,   // Effective address for memory read
+                IARG_MEMORYREAD_SIZE, // Size of memory read
+                IARG_INST_PTR,        // Instruction address
+                IARG_END);
+        }
+    }
 }
 
 /* ===================================================================== */
@@ -711,6 +729,12 @@ VOID ImageLoad(IMG Image, VOID *v)
                 RTN_Close(sleepRtn);
             }
         }
+    }
+
+    // ANTIDEBUG: Register Function instrumentation needed for AntiDebug
+    if (m_Settings.antidebug > 0) {
+        // Register functions
+        AntidebugMonitorFunctions(Image, m_Settings.funcWatch);
     }
 }
 
@@ -793,6 +817,11 @@ int main(int argc, char *argv[])
 
     // Register function to be called before every instruction
     INS_AddInstrumentFunction(InstrumentInstruction, NULL);
+
+    // ANTIDEBUG: collect some info on thread start
+    if (m_Settings.antidebug > 0) {
+        PIN_AddThreadStartFunction(ThreadStart, 0);
+    }
 
     if (m_Settings.traceSYSCALL) {
         // Register function to be called before every syscall instruction
