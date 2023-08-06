@@ -1,6 +1,7 @@
 #include "ProcessInfo.h"
 #include <algorithm>
 #include <cstring>
+#include <cctype>
 
 std::string to_lowercase(const std::string &_str)
 {

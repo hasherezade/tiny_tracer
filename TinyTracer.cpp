@@ -14,6 +14,7 @@
 #include <iostream>
 #include <string>
 #include <set>
+#include <sstream>
 
 #include "TinyTracer.h"
 

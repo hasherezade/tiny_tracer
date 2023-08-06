@@ -1,6 +1,7 @@
 #include "AntiDebug.h"
 
 #include <iostream>
+#include <sstream>
 
 #include "ProcessInfo.h"
 #include "Util.h"

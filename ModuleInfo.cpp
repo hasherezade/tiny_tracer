@@ -1,6 +1,7 @@
 #include "ModuleInfo.h"
 #include <string>
 #include <iostream>
+#include <sstream>
 
 bool init_section(s_module &section, const ADDRINT &ImageBase, const SEC &sec)
 {

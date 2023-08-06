@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <sstream>
+#include <iomanip>
 
 #include "pin.H"
 
