@@ -428,6 +428,8 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
     if (wType == WatchedType::NOT_WATCHED) return;
     
     const ADDRINT syscallNum = PIN_GetSyscallNumber(ctxt, std);
+    if (syscallNum == (-1)) return; //invalid
+
     std::string funcName = m_Settings.syscallsTable.getName(syscallNum);
 
     if (wType == WatchedType::WATCHED_MY_MODULE) {
