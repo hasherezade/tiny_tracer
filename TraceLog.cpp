@@ -1,7 +1,5 @@
 #include "TraceLog.h"
 
-#define DELIMITER ';'
-
 #include "Util.h"
 
 void TraceLog::logCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, bool isRVA, const std::string &module, const std::string &func)
