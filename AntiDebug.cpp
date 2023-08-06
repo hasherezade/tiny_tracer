@@ -9,7 +9,7 @@
 #include "PinLocker.h"
 #include "TinyTracer.h"
 
-#include "my_paths.h"
+#include "win_paths.h"
 #include "win_constants.h"
 
 #define ANTIDBG_LABEL "[ANTIDEBUG] --> "
