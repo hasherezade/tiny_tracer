@@ -538,12 +538,7 @@ std::wstring paramToStr(VOID *arg1)
 VOID _LogFunctionArgs(const ADDRINT Address, const CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
 {
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
-#ifdef USE_ANTIDEBUG
-    // ANTIDEBUG: API detection processing
-    if (m_Settings.antidebug > 0) {
-        AntidebugProcessFunctions(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
-    }
-#endif
+
     const size_t argsMax = 10;
     VOID* args[argsMax] = { arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10 };
     std::wstringstream ss;
@@ -714,7 +709,7 @@ VOID ImageLoad(IMG Image, VOID *v)
     // ANTIDEBUG: Register Function instrumentation needed for AntiDebug
     if (m_Settings.antidebug > 0) {
         // Register functions
-        AntidebugMonitorFunctions(Image, m_Settings.funcWatch);
+        AntidebugMonitorFunctions(Image);
     }
 #endif
 }

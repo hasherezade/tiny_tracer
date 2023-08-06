@@ -31,7 +31,6 @@ extern TraceLog traceLog;
 extern Settings m_Settings;
 extern WatchedType isWatchedAddress(const ADDRINT Address);
 extern std::wstring paramToStr(VOID* arg1);
-extern VOID LogFunctionArgs(const ADDRINT Address, CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10);
 
 /* ==================================================================== */
 // Leveraging the existing paramToStr, extracts only the string after '->'
@@ -130,8 +129,10 @@ VOID AntidebugMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr)
 
 VOID AntidebugProcessFunctions(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10)
 {
-    std::wstringstream ss;
+    PinLocker locker;
+    if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
 
+    std::wstringstream ss;
     ADDRINT RvaFrom = addr_to_rva(Address);
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -335,21 +336,13 @@ VOID AntidebugCloseHandle(ADDRINT Address, ADDRINT regGAX)
 /* ==================================================================== */
 // Add single function
 /* ==================================================================== */
-bool AntidebugMonitorAdd(IMG Image, char* fName, uint32_t argNum, const std::string& dllName, FuncWatchList funcWatch)
+bool AntidebugMonitorAdd(IMG Image, char* fName, uint32_t argNum, const std::string& dllName)
 {
-    // Check if already in the list monitored
-    for (size_t i = 0; i < funcWatch.funcs.size(); i++) {
-        if (util::isStrEqualI(dllName, funcWatch.funcs[i].dllName) &&
-            util::isStrEqualI(fName, funcWatch.funcs[i].funcName)) {
-            return false;
-        }
-    }
-
     RTN funcRtn = RTN_FindByName(Image, fName);
     if (RTN_Valid(funcRtn)) {
         RTN_Open(funcRtn);
 
-        RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunctionArgs),
+        RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(AntidebugProcessFunctions),
             IARG_RETURN_IP,
             IARG_ADDRINT, fName,
             IARG_UINT32, argNum,
@@ -379,34 +372,34 @@ bool AntidebugMonitorAdd(IMG Image, char* fName, uint32_t argNum, const std::str
 // Called by ImageLoad
 /* ==================================================================== */
 
-VOID AntidebugMonitorFunctions(IMG Image, FuncWatchList funcWatch)
+VOID AntidebugMonitorFunctions(IMG Image)
 {
     // API needed for Antidebug
     const std::string dllName = util::getDllName(IMG_Name(Image));
     if (util::iequals(dllName, "ntdll")) {
-        AntidebugMonitorAdd(Image, "CsrGetProcessId", 0, dllName, funcWatch);
-        AntidebugMonitorAdd(Image, "NtQueryInformationProcess", 5, dllName, funcWatch);
-        AntidebugMonitorAdd(Image, "RtlQueryProcessHeapInformation", 1, dllName, funcWatch);
-        AntidebugMonitorAdd(Image, "RtlQueryProcessDebugInformation", 3, dllName, funcWatch);
-        AntidebugMonitorAdd(Image, "NtQuerySystemInformation", 4, dllName, funcWatch);
+        AntidebugMonitorAdd(Image, "CsrGetProcessId", 0, dllName);
+        AntidebugMonitorAdd(Image, "NtQueryInformationProcess", 5, dllName);
+        AntidebugMonitorAdd(Image, "RtlQueryProcessHeapInformation", 1, dllName);
+        AntidebugMonitorAdd(Image, "RtlQueryProcessDebugInformation", 3, dllName);
+        AntidebugMonitorAdd(Image, "NtQuerySystemInformation", 4, dllName);
         if (m_Settings.antidebug > 1) {
             // For Deep or above
-            AntidebugMonitorAdd(Image, "NtQueryObject", 5, dllName, funcWatch);
+            AntidebugMonitorAdd(Image, "NtQueryObject", 5, dllName);
         }
     }
     if (util::iequals(dllName, "kernel32")) {
-        AntidebugMonitorAdd(Image, "LoadLibraryW", 1, dllName, funcWatch);
-        AntidebugMonitorAdd(Image, "LoadLibraryA", 1, dllName, funcWatch);
-        AntidebugMonitorAdd(Image, "GetProcAddress", 2, dllName, funcWatch);
-        AntidebugMonitorAdd(Image, "CreateFileW", 6, dllName, funcWatch);
-        AntidebugMonitorAdd(Image, "CreateFileA", 7, dllName, funcWatch);
-        AntidebugMonitorAdd(Image, "OpenProcess", 3, dllName, funcWatch);
-        AntidebugMonitorAdd(Image, "IsDebuggerPresent", 0, dllName, funcWatch);
-        AntidebugMonitorAdd(Image, "CheckRemoteDebuggerPresent", 2, dllName, funcWatch);
-        AntidebugMonitorAdd(Image, "HeapWalk", 2, dllName, funcWatch);
-        AntidebugMonitorAdd(Image, "CloseHandle", 1, dllName, funcWatch);
-        AntidebugMonitorAdd(Image, "SetUnhandledExceptionFilter", 1, dllName, funcWatch);
-        AntidebugMonitorAdd(Image, "RaiseException", 4, dllName, funcWatch);
+        AntidebugMonitorAdd(Image, "LoadLibraryW", 1, dllName);
+        AntidebugMonitorAdd(Image, "LoadLibraryA", 1, dllName);
+        AntidebugMonitorAdd(Image, "GetProcAddress", 2, dllName);
+        AntidebugMonitorAdd(Image, "CreateFileW", 6, dllName);
+        AntidebugMonitorAdd(Image, "CreateFileA", 7, dllName);
+        AntidebugMonitorAdd(Image, "OpenProcess", 3, dllName);
+        AntidebugMonitorAdd(Image, "IsDebuggerPresent", 0, dllName);
+        AntidebugMonitorAdd(Image, "CheckRemoteDebuggerPresent", 2, dllName);
+        AntidebugMonitorAdd(Image, "HeapWalk", 2, dllName);
+        AntidebugMonitorAdd(Image, "CloseHandle", 1, dllName);
+        AntidebugMonitorAdd(Image, "SetUnhandledExceptionFilter", 1, dllName);
+        AntidebugMonitorAdd(Image, "RaiseException", 4, dllName);
     }
 
     // CloseHandle return value hook
