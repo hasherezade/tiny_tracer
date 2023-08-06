@@ -268,6 +268,7 @@
     <ClInclude Include="ModuleInfo.h" />
     <ClInclude Include="ProcessInfo.h" />
     <ClInclude Include="AntiDebug.h" />
+    <ClInclude Include="TinyTracer.h" />
     <ClInclude Include="TraceLog.h" />
     <ClInclude Include="FuncWatch.h" />
     <ClInclude Include="Util.h" />

@@ -266,7 +266,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AntiDebug.h" />
-    <ClInclude Include="my_paths.h" />
+    <ClInclude Include="TinyTracer.h" />
     <ClInclude Include="ModuleInfo.h" />
     <ClInclude Include="ProcessInfo.h" />
     <ClInclude Include="TraceLog.h" />

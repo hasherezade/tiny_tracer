@@ -15,6 +15,8 @@
 #include <string>
 #include <set>
 
+#include "TinyTracer.h"
+
 #include "ProcessInfo.h"
 #include "TraceLog.h"
 #include "PinLocker.h"
@@ -24,6 +26,7 @@
 
 #include "Util.h"
 #include "Settings.h"
+
 
 #define USE_ANTIDEBUG
 
@@ -87,7 +90,7 @@ INT32 Usage()
 // Analysis utilities
 /* ===================================================================== */
 
-BOOL isInTracedShellc(ADDRINT addr)
+BOOL isInTracedShellc(const ADDRINT addr)
 {
     if (addr == UNKNOWN_ADDR) {
         return FALSE;
@@ -101,12 +104,6 @@ BOOL isInTracedShellc(ADDRINT addr)
     }
     return FALSE;
 }
-
-enum class WatchedType {
-    NOT_WATCHED = 0,
-    WATCHED_MY_MODULE,
-    WATCHED_SHELLCODE
-};
 
 WatchedType isWatchedAddress(const ADDRINT Address)
 {

@@ -7,6 +7,7 @@
 #include "TraceLog.h"
 #include "Settings.h"
 #include "PinLocker.h"
+#include "TinyTracer.h"
 
 #include "my_paths.h"
 #include "win_constants.h"
@@ -20,17 +21,6 @@ ADDRINT pebAddr = 0;
 ADDRINT heapFlags = 0;
 ADDRINT heapForceFlags = 0;
 std::vector<std::string> loadedLib;
-
-enum class WatchedType {
-    NOT_WATCHED = 0,
-    WATCHED_MY_MODULE,
-    WATCHED_SHELLCODE
-};
-
-extern TraceLog traceLog;
-extern Settings m_Settings;
-extern WatchedType isWatchedAddress(const ADDRINT Address);
-extern std::wstring paramToStr(VOID* arg1);
 
 /* ==================================================================== */
 // Leveraging the existing paramToStr, extracts only the string after '->'
@@ -124,7 +114,7 @@ VOID AntidebugMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr)
 }
 
 /* ==================================================================== */
-// Process API calls (defined in params.txt)
+// Process API calls (related to AntiDebug techniques)
 /* ==================================================================== */
 
 VOID AntidebugProcessFunctions(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10)
