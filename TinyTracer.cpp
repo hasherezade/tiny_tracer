@@ -350,9 +350,9 @@ VOID InterruptCalled(const CONTEXT* ctxt)
         }
     }
     const WatchedType wType = isWatchedAddress(Address);
-    if (wType == WatchedType::NOT_WATCHED) return;
-
-    ADDRINT Param = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
+    if (wType == WatchedType::NOT_WATCHED) {
+        return;
+    }
     if (wType == WatchedType::WATCHED_MY_MODULE) {
         ADDRINT rva = addr_to_rva(Address); // convert to RVA
         traceLog.logInstruction(0, rva, mnem);
