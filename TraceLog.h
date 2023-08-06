@@ -36,7 +36,7 @@ public:
     void logCpuid(const ADDRINT base, const ADDRINT rva, const ADDRINT param);
     void logSyscall(const ADDRINT base, const ADDRINT rva, const ADDRINT param, const std::string &funcName);
 
-    void logLine(std::string &str);
+    void logLine(const std::string &str);
 
 protected:
 

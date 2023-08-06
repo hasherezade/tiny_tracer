@@ -142,7 +142,7 @@ void TraceLog::logSyscall(const ADDRINT base, const ADDRINT rva, const ADDRINT p
     m_traceFile.flush();
 }
 
-void TraceLog::logLine(std::string &str)
+void TraceLog::logLine(const std::string &str)
 {
     if (!createFile()) return;
 
