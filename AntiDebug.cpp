@@ -31,6 +31,31 @@ extern WatchedType isWatchedAddress(const ADDRINT Address);
 extern std::wstring paramToStr(VOID* arg1);
 extern VOID LogFunctionArgs(const ADDRINT Address, CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10);
 
+/* ==================================================================== */
+// Leveraging the existing paramToStr, extracts only the string after '->'
+/* ==================================================================== */
+std::wstring paramToStrSplit(VOID* arg1)
+{
+    if (arg1 == NULL) {
+        return L"0";
+    }
+
+    std::wstring inStr = paramToStr(arg1);
+    size_t arrowPos = inStr.find(L"->");
+    if (arrowPos != 0) {
+        // Extract the substring after the arrow symbol and contained in quotes
+        std::wstring secondPart = inStr.substr(arrowPos + 3);
+        size_t startPos = secondPart.find('"');
+        if (startPos != std::string::npos) {
+            size_t endPos = secondPart.rfind('"');
+            if (endPos != std::string::npos) {
+                secondPart = secondPart.substr(startPos + 1, endPos - startPos - 1);
+            }
+        }
+        return secondPart;
+    }
+    return L"0";
+}
 
 /* ==================================================================== */
 // Function to check if is native 32 bit or not
@@ -306,6 +331,48 @@ VOID AntidebugCloseHandle(ADDRINT Address, ADDRINT regGAX)
 }
 
 /* ==================================================================== */
+// Add single function
+/* ==================================================================== */
+bool AntidebugMonitorAdd(IMG Image, char* fName, uint32_t argNum, const std::string& dllName, FuncWatchList funcWatch)
+{
+    // Check if already in the list monitored
+    for (size_t i = 0; i < funcWatch.funcs.size(); i++) {
+        if (util::isStrEqualI(dllName, funcWatch.funcs[i].dllName) &&
+            util::isStrEqualI(fName, funcWatch.funcs[i].funcName)) {
+            return false;
+        }
+    }
+
+    RTN funcRtn = RTN_FindByName(Image, fName);
+    if (RTN_Valid(funcRtn)) {
+        RTN_Open(funcRtn);
+
+        RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunctionArgs),
+            IARG_RETURN_IP,
+            IARG_ADDRINT, fName,
+            IARG_UINT32, argNum,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 6,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 7,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 8,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 9,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 10,
+            IARG_END
+        );
+
+        RTN_Close(funcRtn);
+        return true;
+    }
+
+    return false;
+}
+
+/* ==================================================================== */
 // Add to monitored functions all the API needed for AntiDebug.
 // Called by ImageLoad
 /* ==================================================================== */
@@ -355,70 +422,4 @@ VOID AntidebugMonitorFunctions(IMG Image, FuncWatchList funcWatch)
     RTN_Close(funcRtn);
 }
 
-/* ==================================================================== */
-// Add single function
-/* ==================================================================== */
-bool AntidebugMonitorAdd(IMG Image, char* fName, uint32_t argNum, const std::string& dllName, FuncWatchList funcWatch)
-{
-    // Check if already in the list monitored
-    for (size_t i = 0; i < funcWatch.funcs.size(); i++) {
-        if (util::isStrEqualI(dllName, funcWatch.funcs[i].dllName) &&
-            util::isStrEqualI(fName, funcWatch.funcs[i].funcName)) {
-            return false;
-        }
-    }
 
-    RTN funcRtn = RTN_FindByName(Image, fName);
-    if (RTN_Valid(funcRtn)) {
-        RTN_Open(funcRtn);
-
-        RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(LogFunctionArgs),
-            IARG_RETURN_IP,
-            IARG_ADDRINT, fName,
-            IARG_UINT32, argNum,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 6,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 7,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 8,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 9,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 10,
-            IARG_END
-        );
-
-        RTN_Close(funcRtn);
-        return true;
-    }
-
-    return false;
-}
-
-/* ==================================================================== */
-// Leveraging the existing paramToStr, extracts only the string after '->'
-/* ==================================================================== */
-std::wstring paramToStrSplit(VOID* arg1)
-{
-    if (arg1 == NULL) {
-        return L"0";
-    }
-
-    std::wstring inStr = paramToStr(arg1);
-    size_t arrowPos = inStr.find(L"->");
-    if (arrowPos != 0) {
-        // Extract the substring after the arrow symbol and contained in quotes
-        std::wstring secondPart = inStr.substr(arrowPos + 3);
-        size_t startPos = secondPart.find('"');
-        if (startPos != std::string::npos) {
-            size_t endPos = secondPart.rfind('"');
-            if (endPos != std::string::npos) {
-                secondPart = secondPart.substr(startPos + 1, endPos - startPos - 1);
-            }
-        }
-        return secondPart;
-    }
-    return L"0";
-}
