@@ -1,15 +1,15 @@
-#include "pin.H"
+#include "AntiDebug.h"
 
 #include <iostream>
 
 #include "ProcessInfo.h"
 #include "Util.h"
 #include "TraceLog.h"
-#include "my_paths.h"
 #include "Settings.h"
-#include "AntiDebug.h"
 #include "PinLocker.h"
-#include "FuncWatch.h"
+
+#include "my_paths.h"
+#include "win_constants.h"
 
 /* ================================================================== */
 // Global variables used by AntiDebug
@@ -29,7 +29,6 @@ extern TraceLog traceLog;
 extern Settings m_Settings;
 extern WatchedType isWatchedAddress(const ADDRINT Address);
 extern std::wstring paramToStr(VOID* arg1);
-extern bool isStrEqualI(const std::string& str1, const std::string& str2);
 extern VOID LogFunctionArgs(const ADDRINT Address, CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10);
 
 
@@ -171,13 +170,13 @@ VOID AntidebugProcessFunctions(const ADDRINT Address, const CHAR* name, uint32_t
                 // Convert from wide string for comparison
                 std::string _argStr(argStr.begin(), argStr.end());
                 // Check if open is done on module
-                if (isStrEqualI(_argStr, moduleName)) {
+                if (util::isStrEqualI(_argStr, moduleName)) {
                     ss << std::hex << RvaFrom << ";[ANTIDEBUG] -->^ kernel32!CreateFile on module https://anti-debug.checkpoint.com/techniques/object-handles.html#createfile";
                 }
                 else {
                     // Check if open is done on loaded libraries
                     for (int i = 0; i < loadedLib.size(); i++)
-                        if (isStrEqualI(_argStr, loadedLib[i])) {
+                        if (util::isStrEqualI(_argStr, loadedLib[i])) {
                             ss << std::hex << RvaFrom << ";[ANTIDEBUG] -->^ kernel32!CreateFile on loaded lib https://anti-debug.checkpoint.com/techniques/object-handles.html#loadlibrary";
                         }
                 }
@@ -363,8 +362,8 @@ bool AntidebugMonitorAdd(IMG Image, char* fName, uint32_t argNum, const std::str
 {
     // Check if already in the list monitored
     for (size_t i = 0; i < funcWatch.funcs.size(); i++) {
-        if (isStrEqualI(dllName, funcWatch.funcs[i].dllName) && 
-            isStrEqualI(fName, funcWatch.funcs[i].funcName)) {
+        if (util::isStrEqualI(dllName, funcWatch.funcs[i].dllName) &&
+            util::isStrEqualI(fName, funcWatch.funcs[i].funcName)) {
             return false;
         }
     }

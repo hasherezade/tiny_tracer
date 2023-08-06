@@ -31,4 +31,7 @@ namespace util {
     int loadInt(const std::string &str, bool as_hex = false);
 
     std::string stripQuotes(const std::string& str);
+
+    // compare strings, ignore case
+    bool isStrEqualI(const std::string& str1, const std::string& str2);
 };

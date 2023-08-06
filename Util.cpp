@@ -103,8 +103,8 @@ static inline void rtrim(std::string &s)
     rtrim(s);
 }
 
- int util::loadInt(const std::string &str, bool as_hex)
- {
+int util::loadInt(const std::string &str, bool as_hex)
+{
      int intVal = 0;
      
      std::stringstream ss;
@@ -112,11 +112,24 @@ static inline void rtrim(std::string &s)
      ss >> intVal;
 
      return intVal;
- }
+}
 
- std::string util::stripQuotes(const std::string& str)
- {
+std::string util::stripQuotes(const std::string& str)
+{
      std::string s = str;
      s.erase(std::remove(s.begin(), s.end(), '\"'), s.end());
      return s;
- }
+}
+
+bool util::isStrEqualI(const std::string &str1, const std::string &str2)
+{
+    if (str1.length() != str2.length()) {
+        return false;
+    }
+    for (size_t i = 0; i < str1.length(); i++) {
+        if (tolower(str1[i]) != tolower(str2[i])) {
+            return false;
+        }
+    }
+    return true;
+}

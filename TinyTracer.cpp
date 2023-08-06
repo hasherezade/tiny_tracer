@@ -83,21 +83,6 @@ INT32 Usage()
     return -1;
 }
 
-// compare strings, ignore case
-bool isStrEqualI(const std::string &str1, const std::string &str2)
-{
-    if (str1.length() != str2.length()) {
-        return false;
-    }
-    for (size_t i = 0; i < str1.length(); i++) {
-        if (tolower(str1[i]) != tolower(str2[i])) {
-            return false;
-        }
-    }
-    return true;
-}
-
-
 /* ===================================================================== */
 // Analysis utilities
 /* ===================================================================== */
@@ -617,7 +602,7 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
 
 VOID InstrumentInstruction(INS ins, VOID *v)
 {
-    if (isStrEqualI(INS_Mnemonic(ins), "cpuid")) {
+    if (util::isStrEqualI(INS_Mnemonic(ins), "cpuid")) {
         INS_InsertCall(
             ins,
             IPOINT_BEFORE, (AFUNPTR)CpuidCalled,
