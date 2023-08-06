@@ -8,6 +8,8 @@
 #include "my_paths.h"
 #include "Settings.h"
 #include "AntiDebug.h"
+#include "PinLocker.h"
+#include "FuncWatch.h"
 
 /* ================================================================== */
 // Global variables used by AntiDebug
@@ -30,22 +32,6 @@ extern std::wstring paramToStr(VOID* arg1);
 extern bool isStrEqualI(const std::string& str1, const std::string& str2);
 extern VOID LogFunctionArgs(const ADDRINT Address, CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10);
 
-/*!
-*  A locker class.
-*/
-class PinLocker
-{
-public:
-    PinLocker()
-    {
-        PIN_LockClient();
-    }
-
-    ~PinLocker()
-    {
-        PIN_UnlockClient();
-    }
-};
 
 /* ==================================================================== */
 // Function to check if is native 32 bit or not

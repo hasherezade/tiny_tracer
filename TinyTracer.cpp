@@ -17,13 +17,23 @@
 
 #include "ProcessInfo.h"
 #include "TraceLog.h"
+#include "PinLocker.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.3"
+#define VERSION "2.4"
 
 #include "Util.h"
 #include "Settings.h"
+
+#define USE_ANTIDEBUG
+
+#ifndef _WIN32
+#undef USE_ANTIDEBUG // works only for Windows!
+#endif
+
+#ifdef USE_ANTIDEBUG
 #include "AntiDebug.h"
+#endif
 
 /* ================================================================== */
 // Global variables 
@@ -60,22 +70,6 @@ KNOB<std::string> KnobSyscallsTable(KNOB_MODE_WRITEONCE, "pintool",
 
 VOID _LogFunctionArgs(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10);
 
-/*!
-*  A locker class.
-*/
-class PinLocker
-{
-public:
-    PinLocker()
-    {
-        PIN_LockClient();
-    }
-
-    ~PinLocker()
-    {
-        PIN_UnlockClient();
-    }
-};
 
 /*!
 *  Print out help message.
@@ -559,12 +553,12 @@ std::wstring paramToStr(VOID *arg1)
 VOID _LogFunctionArgs(const ADDRINT Address, const CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
 {
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
-
+#ifdef USE_ANTIDEBUG
     // ANTIDEBUG: API detection processing
     if (m_Settings.antidebug > 0) {
         AntidebugProcessFunctions(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
     }
-
+#endif
     const size_t argsMax = 10;
     VOID* args[argsMax] = { arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10 };
     std::wstringstream ss;
@@ -671,7 +665,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
         );
 
     }
-
+#ifdef USE_ANTIDEBUG
     // ANTIDEBUG: memory read instrumentation
     if (m_Settings.antidebug > 0) {
         if (INS_IsMemoryRead(ins)) {
@@ -683,6 +677,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
                 IARG_END);
         }
     }
+#endif
 }
 
 /* ===================================================================== */
@@ -730,12 +725,13 @@ VOID ImageLoad(IMG Image, VOID *v)
             }
         }
     }
-
+#ifdef USE_ANTIDEBUG
     // ANTIDEBUG: Register Function instrumentation needed for AntiDebug
     if (m_Settings.antidebug > 0) {
         // Register functions
         AntidebugMonitorFunctions(Image, m_Settings.funcWatch);
     }
+#endif
 }
 
 static void OnCtxChange(THREADID threadIndex,
@@ -817,12 +813,12 @@ int main(int argc, char *argv[])
 
     // Register function to be called before every instruction
     INS_AddInstrumentFunction(InstrumentInstruction, NULL);
-
+#ifdef USE_ANTIDEBUG
     // ANTIDEBUG: collect some info on thread start
     if (m_Settings.antidebug > 0) {
         PIN_AddThreadStartFunction(ThreadStart, 0);
     }
-
+#endif
     if (m_Settings.traceSYSCALL) {
         // Register function to be called before every syscall instruction
         // (i.e., syscall, sysenter, int 2Eh)
