@@ -34,8 +34,8 @@ public:
     void logSectionChange(const ADDRINT addr, std::string &sectionName);
     void logNewSectionCalled(const ADDRINT addFrom, const std::string &prevSection, const std::string &currSection);
     void logIndirectCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, bool isRVA, const ADDRINT calledBase, const ADDRINT callRVA);
-    void logRdtsc(const ADDRINT base, const ADDRINT rva);
-    void logCpuid(const ADDRINT base, const ADDRINT rva, const ADDRINT param);
+    void logInstruction(const ADDRINT base, const ADDRINT rva, const std::string& mnem, const ADDRINT param);
+    void logInstruction(const ADDRINT base, const ADDRINT rva, const std::string& mnem);
     void logSyscall(const ADDRINT base, const ADDRINT rva, const ADDRINT param, const std::string &funcName);
 
     void logLine(const std::string &str);

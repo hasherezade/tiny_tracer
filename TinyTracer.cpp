@@ -276,6 +276,7 @@ VOID SaveTransitions(const ADDRINT prevVA, const ADDRINT Address, BOOL isIndirec
 VOID RdtscCalled(const CONTEXT* ctxt)
 {
     PinLocker locker;
+    const std::string mnem = "RDTSC";
 
     const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
 
@@ -284,13 +285,13 @@ VOID RdtscCalled(const CONTEXT* ctxt)
 
     if (wType == WatchedType::WATCHED_MY_MODULE) {
         ADDRINT rva = addr_to_rva(Address); // convert to RVA
-        traceLog.logRdtsc(0, rva);
+        traceLog.logInstruction(0, rva, mnem);
     }
     if (wType == WatchedType::WATCHED_SHELLCODE) {
         const ADDRINT start = query_region_base(Address);
         ADDRINT rva = Address - start;
         if (start != UNKNOWN_ADDR) {
-            traceLog.logRdtsc(start, rva);
+            traceLog.logInstruction(start, rva, mnem);
         }
     }
 }
@@ -298,6 +299,7 @@ VOID RdtscCalled(const CONTEXT* ctxt)
 VOID CpuidCalled(const CONTEXT* ctxt)
 {
     PinLocker locker;
+    const std::string mnem = "CPUID";
 
     const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
 
@@ -307,13 +309,58 @@ VOID CpuidCalled(const CONTEXT* ctxt)
     ADDRINT Param = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
     if (wType == WatchedType::WATCHED_MY_MODULE) {
         ADDRINT rva = addr_to_rva(Address); // convert to RVA
-        traceLog.logCpuid(0, rva, Param);
+        traceLog.logInstruction(0, rva, mnem, Param);
     }
     if (wType == WatchedType::WATCHED_SHELLCODE) {
         const ADDRINT start = query_region_base(Address);
         ADDRINT rva = Address - start;
         if (start != UNKNOWN_ADDR) {
-            traceLog.logCpuid(start, rva, Param);
+            traceLog.logInstruction(start, rva, mnem, Param);
+        }
+    }
+}
+
+VOID InterruptCalled(const CONTEXT* ctxt)
+{
+    PinLocker locker;
+    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+    unsigned char copyBuf[2] = { 0 };
+    int fetchedSize = 1;
+    std::string mnem;
+    if (PIN_FetchCode(copyBuf, (void*)Address, fetchedSize, NULL)) {
+        if (copyBuf[0] == 0xCD) { // INT 
+            fetchedSize = 2;
+            PIN_FetchCode(copyBuf, (void*)Address, fetchedSize, NULL);
+        }
+        switch (copyBuf[0]) {
+            case 0xCC:
+                mnem = "INT3"; break;
+            case 0xCE:
+                mnem = "INT0"; break;
+            case 0xF1:
+                mnem = "INT1"; break;
+            case 0xCD:
+            {
+                std::stringstream ss;
+                ss << std::hex << (unsigned int)copyBuf[1];
+                mnem = "INT:" + ss.str();
+                break;
+            }
+        }
+    }
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    ADDRINT Param = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
+    if (wType == WatchedType::WATCHED_MY_MODULE) {
+        ADDRINT rva = addr_to_rva(Address); // convert to RVA
+        traceLog.logInstruction(0, rva, mnem);
+    }
+    if (wType == WatchedType::WATCHED_SHELLCODE) {
+        const ADDRINT start = query_region_base(Address);
+        ADDRINT rva = Address - start;
+        if (start != UNKNOWN_ADDR) {
+            traceLog.logInstruction(start, rva, mnem);
         }
     }
 }
@@ -381,6 +428,8 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
     if (wType == WatchedType::NOT_WATCHED) return;
     
     const ADDRINT syscallNum = PIN_GetSyscallNumber(ctxt, std);
+    if (syscallNum == (-1)) return; //invalid
+
     std::string funcName = m_Settings.syscallsTable.getName(syscallNum);
 
     if (wType == WatchedType::WATCHED_MY_MODULE) {
@@ -598,6 +647,15 @@ VOID InstrumentInstruction(INS ins, VOID *v)
         INS_InsertCall(
             ins,
             IPOINT_BEFORE, (AFUNPTR)CpuidCalled,
+            IARG_CONTEXT,
+            IARG_END
+        );
+    }
+
+    if (INS_IsInterrupt(ins)) {
+        INS_InsertCall(
+            ins,
+            IPOINT_BEFORE, (AFUNPTR)InterruptCalled,
             IARG_CONTEXT,
             IARG_END
         );
