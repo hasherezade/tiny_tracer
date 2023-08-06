@@ -93,7 +93,7 @@ void TraceLog::logIndirectCall(const ADDRINT prevModuleBase, const ADDRINT prevA
         << std::endl;
 }
 
-void TraceLog::logRdtsc(const ADDRINT base, const ADDRINT rva)
+void TraceLog::logInstruction(const ADDRINT base, const ADDRINT rva, const std::string& mnem, const ADDRINT param)
 {
     if (!createFile()) return;
     if (base) {
@@ -102,12 +102,13 @@ void TraceLog::logRdtsc(const ADDRINT base, const ADDRINT rva)
     m_traceFile
         << std::hex << rva
         << DELIMITER
-        << "RDTSC"
+        << mnem << ":"
+        << std::hex << param
         << std::endl;
     m_traceFile.flush();
 }
 
-void TraceLog::logCpuid(const ADDRINT base, const ADDRINT rva, const ADDRINT param)
+void TraceLog::logInstruction(const ADDRINT base, const ADDRINT rva, const std::string& mnem)
 {
     if (!createFile()) return;
     if (base) {
@@ -116,8 +117,7 @@ void TraceLog::logCpuid(const ADDRINT base, const ADDRINT rva, const ADDRINT par
     m_traceFile
         << std::hex << rva
         << DELIMITER
-        << "CPUID:"
-        << std::hex << param
+        << mnem
         << std::endl;
     m_traceFile.flush();
 }
