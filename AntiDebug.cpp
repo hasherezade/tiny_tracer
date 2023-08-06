@@ -87,18 +87,18 @@ VOID AntidebugMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr)
     }
     else
     if (addr == 0x7ffe02d4) {
-        ss << std::hex << RvaFrom << DELIMITER << ANTIDBG_LABEL << "KUSER_SHARED_DATA accessd https://anti-debug.checkpoint.com/techniques/debug-flags.html#kuser_shared_data";
+        ss << std::hex << RvaFrom << DELIMITER << ANTIDBG_LABEL << "KUSER_SHARED_DATA accessed https://anti-debug.checkpoint.com/techniques/debug-flags.html#kuser_shared_data";
     } else
 #ifdef _WIN64
     if (addr == pebAddr + 0xBC) {
-        ss << std::hex << RvaFrom << DELIMITER << ANTIDBG_LABEL << "PEB!NtGlobalFlag  accessed";
+        ss << std::hex << RvaFrom << DELIMITER << ANTIDBG_LABEL << "PEB!NtGlobalFlag accessed";
     } else
     if (addr == heapFlags || addr == heapForceFlags) {
         ss << std::hex << RvaFrom << DELIMITER << ANTIDBG_LABEL << "Heap Flags accessed https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags";
     }
 #else
     if (addr == pebAddr + 0x68) {
-        ss << std::hex << RvaFrom << DELIMITER << ANTIDBG_LABEL << "PEB!NtGlobalFlag  accessed";
+        ss << std::hex << RvaFrom << DELIMITER << ANTIDBG_LABEL << "PEB!NtGlobalFlag accessed";
     } else
     if (addr == heapFlags || addr == heapForceFlags) {
         ss << std::hex << RvaFrom << DELIMITER << ANTIDBG_LABEL << "Heap Flags accessed https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags";
@@ -140,15 +140,15 @@ VOID AntidebugProcessFunctions(const ADDRINT Address, const CHAR* name, uint32_t
     if (strcmp(name, "NtQueryInformationProcess") == 0) {
         // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 7 (ProcessDebugPort)
         if (int((size_t)arg2) == PROCESSDEBUGPORT) {
-            ss << std::hex << RvaFrom << DELIMITER << ANTIDBG_LABEL << "^ ntdll!NtQueryInformationProcess https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugport";
+            ss << std::hex << RvaFrom << DELIMITER << ANTIDBG_LABEL << "^ ntdll!NtQueryInformationProcess (ProcessDebugPort) https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugport";
         } else
         // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 0x1f (ProcessDebugFlags)
         if (int((size_t)arg2) == PROCESSDEBUGFLAGS) {
-            ss << std::hex << RvaFrom << DELIMITER << ANTIDBG_LABEL << "^ ntdll!NtQueryInformationProcess https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugflags";
+            ss << std::hex << RvaFrom << DELIMITER << ANTIDBG_LABEL << "^ ntdll!NtQueryInformationProcess (ProcessDebugFlags) https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugflags";
         } else
         // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 0x1e (ProcessDebugObjectHandle)
         if (int((size_t)arg2) == PROCESSDEBUGOBJECTHANDLE) {
-            ss << std::hex << RvaFrom << DELIMITER << ANTIDBG_LABEL << "^ ntdll!NtQueryInformationProcess https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugobjecthandle";
+            ss << std::hex << RvaFrom << DELIMITER << ANTIDBG_LABEL << "^ ntdll!NtQueryInformationProcess (ProcessDebugObjectHandle) https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugobjecthandle";
         }
     } else
     if (strcmp(name, "RtlQueryProcessHeapInformation") == 0) {
@@ -163,7 +163,7 @@ VOID AntidebugProcessFunctions(const ADDRINT Address, const CHAR* name, uint32_t
     if (strcmp(name, "NtQuerySystemInformation") == 0) {
         // function ntdll!NtQuerySystemInformation() with first parameter set to 0x23 (SystemKernelDebuggerInformation)
         if (int((size_t)arg1) == SYSTEMKERNELDEBUGGERINFORMATION) {
-            ss << std::hex << RvaFrom << DELIMITER << ANTIDBG_LABEL << "^ ntdll!NtQuerySystemInformation https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-ntquerysysteminformation";
+            ss << std::hex << RvaFrom << DELIMITER << ANTIDBG_LABEL << "^ ntdll!NtQuerySystemInformation (SystemKernelDebuggerInformation) https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-ntquerysysteminformation";
         }
     } else
     if (strcmp(name, "HeapWalk") == 0) {
