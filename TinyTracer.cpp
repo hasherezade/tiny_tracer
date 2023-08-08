@@ -160,20 +160,6 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     const bool isCallerPeModule = IMG_Valid(callerModule);
     const bool isTargetPeModule = IMG_Valid(targetModule);
 
-    /**
-    is it a call to a function that was filtered out?
-    */
-    if (!m_Settings.excludedFuncs.isEmpty()) {
-        const std::string func = isTargetPeModule ? get_func_at(addrTo) : "";
-        const std::string dll_name = isTargetPeModule ? IMG_Name(targetModule) : "";
-
-        // check if the current function is excluded:
-        if (m_Settings.excludedFuncs.contains(dll_name, func)) {
-            // this function is excluded from the monitoring
-            //std::cout << "Excluded: " << dll_name << "." << func << "\n";
-            return;
-        }
-    }
 
     /**
     is it a transition from the traced module to a foreign module?
@@ -185,6 +171,9 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
         if (isTargetPeModule) {
             const std::string func = get_func_at(addrTo);
             const std::string dll_name = IMG_Name(targetModule);
+            if (m_Settings.excludedFuncs.contains(dll_name, func)) {
+                return;
+            }
             traceLog.logCall(0, RvaFrom, true, dll_name, func);
         }
         else {
@@ -206,7 +195,9 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
         if (isTargetPeModule) { // it is a call to a module
             const std::string func = get_func_at(addrTo);
             const std::string dll_name = IMG_Name(targetModule);
-
+            if (m_Settings.excludedFuncs.contains(dll_name, func)) {
+                return;
+            }
             traceLog.logCall(pageFrom, addrFrom, false, dll_name, func);
         }
         else if (pageFrom != pageTo) // it is a call to another shellcode
@@ -241,6 +232,9 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
         if (toWType != WatchedType::NOT_WATCHED) {
             const std::string func = get_func_at(addrTo);
             const std::string dll_name = IMG_Name(targetModule);
+            if (m_Settings.excludedFuncs.contains(dll_name, func)) {
+                return;
+            }
             const ADDRINT pageRet = get_base(returnAddr);
             const ADDRINT RvaFrom = addr_to_rva(addrFrom);
             const ADDRINT base = isTargetMy ? 0 : get_base(addrFrom);

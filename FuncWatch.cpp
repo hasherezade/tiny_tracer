@@ -68,6 +68,7 @@ bool WSyscallInfo::update(const WSyscallInfo& syscall_info)
 bool FuncExcludeList::contains(const std::string& dll_name, const std::string& func)
 {
     if (!dll_name.length() || !func.length()) return false;
+    if (this->isEmpty()) return false;
 
     const std::string shortDll = util::getDllName(dll_name);
     for (auto itr = funcs.begin(); itr != funcs.end(); ++itr) {
