@@ -10,12 +10,15 @@ bool WFuncInfo::load(const std::string &sline, char delimiter)
 {
     std::vector<std::string> args;
     util::splitList(sline, delimiter, args);
-    if (args.size() < 3) return false;
+    if (args.size() < 2) return false;
 
     this->dllName = args[0];
     this->funcName = args[1];
-    this->paramCount = util::loadInt(args[2]);
+    this->paramCount = 0;
 
+    if (args.size() >= 3) {
+        this->paramCount = util::loadInt(args[2]);
+    }
     return true;
 }
 
@@ -62,6 +65,74 @@ bool WSyscallInfo::update(const WSyscallInfo& syscall_info)
 
 //---
 
+bool FuncExcludeList::contains(const std::string& dll_name, const std::string& func)
+{
+    if (!dll_name.length() || !func.length()) return false;
+    if (this->isEmpty()) return false;
+
+    const std::string shortDll = util::getDllName(dll_name);
+    for (auto itr = funcs.begin(); itr != funcs.end(); ++itr) {
+        WFuncInfo& fInfo = *itr;
+        if (util::iequals(fInfo.dllName, shortDll)) {
+            if (fInfo.funcName == func) {
+                //std::cout << "Excluded Func: " << shortDll << "." << func << "\n";
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+WFuncInfo* FuncExcludeList::findFunc(const std::string& dllName, const std::string& funcName)
+{
+    for (size_t i = 0; i < funcs.size(); i++)
+    {
+        WFuncInfo& info = funcs[i];
+        if (util::iequals(info.dllName, dllName)
+            && util::iequals(info.funcName, funcName))
+        {
+            return &info;
+        }
+    }
+    return NULL;
+}
+
+bool FuncExcludeList::appendFunc(WFuncInfo& func_info)
+{
+    if (!func_info.isValid()) {
+        return false;
+    }
+    WFuncInfo* found = findFunc(func_info.dllName, func_info.funcName);
+    if (!found) {
+        funcs.push_back(func_info);
+    }
+    return true;
+}
+
+size_t FuncExcludeList::loadList(const char* filename)
+{
+    std::ifstream myfile(filename);
+    if (!myfile.is_open()) {
+        std::cerr << "Coud not open file: " << filename << std::endl;
+        return 0;
+    }
+    const size_t MAX_LINE = 300;
+    char line[MAX_LINE] = { 0 };
+    while (!myfile.eof()) {
+        myfile.getline(line, MAX_LINE);
+
+        // Try to parse as a function
+        WFuncInfo func_info;
+        
+        if (func_info.load(line, ';')) {
+            appendFunc(func_info);
+        }
+    }
+    return funcs.size();
+}
+
+//---
+
 WFuncInfo* FuncWatchList::findFunc(const std::string& dllName, const std::string &funcName)
 {
     for (size_t i = 0; i < funcs.size(); i++)
@@ -102,7 +173,7 @@ void FuncWatchList::appendSyscall(WSyscallInfo& syscall_info)
     }
 }
 
-size_t FuncWatchList::loadList(const char* filename)
+size_t FuncWatchList::loadList(const char* filename, FuncExcludeList* exclusions)
 {
     std::ifstream myfile(filename);
     if (!myfile.is_open()) {
@@ -124,6 +195,10 @@ size_t FuncWatchList::loadList(const char* filename)
         // Try to parse as a function
         WFuncInfo func_info;
         if (func_info.load(line, ';')) {
+            if (exclusions && exclusions->contains(func_info.dllName, func_info.funcName)) {
+                //std::cout << ">> Skipping: " << func_info.funcName << std::endl;
+                continue;
+            }
             appendFunc(func_info);
         }
     }
