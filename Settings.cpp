@@ -9,6 +9,7 @@
 
 #define KEY_FOLLOW_SHELLCODES           "FOLLOW_SHELLCODES"
 #define KEY_LOG_RTDSC                   "TRACE_RDTSC"
+#define KEY_LOG_INT                     "TRACE_INT"
 #define KEY_LOG_SYSCALL                 "TRACE_SYSCALL"
 #define KEY_LOG_SECTIONS_TRANSITIONS    "LOG_SECTIONS_TRANSITIONS"
 #define KEY_LOG_SHELLCODES_TRANSITIONS  "LOG_SHELLCODES_TRANSITIONS"
@@ -111,6 +112,10 @@ bool fillSettings(Settings &s, std::string line)
         s.traceRDTSC = loadBoolean(valStr, s.traceRDTSC);
         isFilled = true;
     }
+    if (util::iequals(valName, KEY_LOG_INT)) {
+        s.traceINT = loadBoolean(valStr, s.traceINT);
+        isFilled = true;
+    }
     if (util::iequals(valName, KEY_LOG_SYSCALL)) {
         s.traceSYSCALL = loadBoolean(valStr, s.traceSYSCALL);
         isFilled = true;
@@ -167,6 +172,7 @@ bool Settings::saveINI(const std::string &filename)
     }
     myfile << KEY_FOLLOW_SHELLCODES << DELIM << this->followShellcode << "\r\n";
     myfile << KEY_LOG_RTDSC << DELIM << this->traceRDTSC << "\r\n";
+    myfile << KEY_LOG_INT << DELIM << this->traceINT << "\r\n";
     myfile << KEY_LOG_SYSCALL << DELIM << this->traceSYSCALL << "\r\n";
     myfile << KEY_LOG_SECTIONS_TRANSITIONS << DELIM << this->logSectTrans << "\r\n";
     myfile << KEY_LOG_SHELLCODES_TRANSITIONS << DELIM << this->logShelcTrans << "\r\n";

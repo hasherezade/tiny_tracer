@@ -62,6 +62,7 @@ public:
     Settings() 
         : followShellcode(SHELLC_FOLLOW_FIRST),
         traceRDTSC(false),
+        traceINT(false),
         traceSYSCALL(true),
         logSectTrans(true),
         logShelcTrans(true),
@@ -78,6 +79,7 @@ public:
     t_shellc_options followShellcode;
 
     bool traceRDTSC; // Trace RDTSC
+    bool traceINT; // trace INT
     bool traceSYSCALL; // Trace syscall instructions (i.e., syscall, int 2Eh, sysenter)
     bool logSectTrans; // watch transitions between sections
     bool logShelcTrans; // watch transitions between shellcodes

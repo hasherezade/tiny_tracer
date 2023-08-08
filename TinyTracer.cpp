@@ -23,7 +23,7 @@
 #include "PinLocker.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.4"
+#define VERSION "2.5"
 
 #include "Util.h"
 #include "Settings.h"
@@ -337,6 +337,11 @@ VOID InterruptCalled(const CONTEXT* ctxt)
 {
     PinLocker locker;
     const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) {
+        return;
+    }
+
     unsigned char copyBuf[2] = { 0 };
     int fetchedSize = 1;
     std::string mnem;
@@ -361,10 +366,7 @@ VOID InterruptCalled(const CONTEXT* ctxt)
             }
         }
     }
-    const WatchedType wType = isWatchedAddress(Address);
-    if (wType == WatchedType::NOT_WATCHED) {
-        return;
-    }
+
     if (wType == WatchedType::WATCHED_MY_MODULE) {
         ADDRINT rva = addr_to_rva(Address); // convert to RVA
         traceLog.logInstruction(0, rva, mnem);
@@ -665,13 +667,15 @@ VOID InstrumentInstruction(INS ins, VOID *v)
         );
     }
 
-    if (INS_IsInterrupt(ins)) {
-        INS_InsertCall(
-            ins,
-            IPOINT_BEFORE, (AFUNPTR)InterruptCalled,
-            IARG_CONTEXT,
-            IARG_END
-        );
+    if (m_Settings.traceINT) {
+        if (INS_IsInterrupt(ins)) {
+            INS_InsertCall(
+                ins,
+                IPOINT_BEFORE, (AFUNPTR)InterruptCalled,
+                IARG_CONTEXT,
+                IARG_END
+            );
+        }
     }
 
     if (INS_IsRDTSC(ins)) {
