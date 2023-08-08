@@ -63,6 +63,9 @@ SETTINGS_FILE=$PIN_TOOLS_DIR"/TinyTracer.ini"
 # or, in case of tracing syscalls: `<SYSCALL>;[syscall number];[parameters_count]` (where "<SYSCALL>" is a constant keyword)
 WATCH_BEFORE=$PIN_TOOLS_DIR"/params.txt"
 
+# List of functions that will be excluded from logging
+EXCLUDED_FUNC=$PIN_TOOLS_DIR"/excluded.txt"
+
 # SYSCALLS_TABLE - a CSV file, mapping syscall ID to a function name. Format: [syscallID:hex],[functionName]
 SYSCALLS_TABLE=$PIN_TOOLS_DIR"/linux_syscalls.txt"
 
@@ -88,4 +91,4 @@ else
     exit
 fi
 
-$PIN_DIR/pin -t $PINTOOL -s $SETTINGS_FILE -b $WATCH_BEFORE -m $TRACED_MODULE_BASENAME -o $TAG_FILE -l $SYSCALLS_TABLE -- $TARGET_APP $EXE_ARGS
+$PIN_DIR/pin -t $PINTOOL -s $SETTINGS_FILE -b $WATCH_BEFORE -x $EXCLUDED_FUNC -m $TRACED_MODULE_BASENAME -o $TAG_FILE -l $SYSCALLS_TABLE -- $TARGET_APP $EXE_ARGS
