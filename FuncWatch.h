@@ -67,15 +67,6 @@ public:
 
     std::vector<WFuncInfo> funcs;
 
-    void print()
-    {
-        std::cout << "Exclusions:\n";
-        for (auto itr = funcs.begin(); itr != funcs.end(); ++itr) {
-            std::cout << "\'" << itr->dllName << "\'.\'" << itr->funcName << "\'" << std::endl;
-        }
-        std::cout << std::endl;
-    }
-
 private:
     bool appendFunc(WFuncInfo& info);
 
