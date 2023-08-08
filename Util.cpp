@@ -56,7 +56,7 @@ std::string util::getDllName(const std::string& str)
     std::size_t len = str.length();
     std::size_t found = str.find_last_of("/\\");
     std::size_t ext = str.find_last_of(".");
-    if (ext >= len) return "";
+    if (ext > len) ext = len;
 
     std::string name = str.substr(found + 1, ext - (found + 1));
     std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c){ return std::tolower(c); });
