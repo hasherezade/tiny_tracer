@@ -49,6 +49,40 @@ struct WSyscallInfo
     size_t paramCount;
 };
 
+class FuncExcludeList {
+public:
+    FuncExcludeList()
+    {
+    }
+
+    ~FuncExcludeList()
+    {
+    }
+
+    bool isEmpty() { return this->funcs.size() > 0 ? false : true; }
+
+    bool contains(const std::string& dll_name, const std::string& func);
+
+    size_t loadList(const char* filename);
+
+    std::vector<WFuncInfo> funcs;
+
+    void print()
+    {
+        std::cout << "Exclusions:\n";
+        for (auto itr = funcs.begin(); itr != funcs.end(); ++itr) {
+            std::cout << "\'" << itr->dllName << "\'.\'" << itr->funcName << "\'" << std::endl;
+        }
+        std::cout << std::endl;
+    }
+
+private:
+    bool appendFunc(WFuncInfo& info);
+
+    WFuncInfo* findFunc(const std::string& dllName, const std::string& funcName);
+};
+
+
 class FuncWatchList {
 public:
     FuncWatchList()
@@ -59,7 +93,7 @@ public:
     {
     }
 
-    size_t loadList(const char* filename);
+    size_t loadList(const char* filename, FuncExcludeList* exclusions);
 
     std::vector<WFuncInfo> funcs;
     std::map<uint32_t, WSyscallInfo> syscalls;

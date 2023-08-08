@@ -68,6 +68,9 @@ KNOB<std::string> KnobWatchListFile(KNOB_MODE_WRITEONCE, "pintool",
 KNOB<std::string> KnobSyscallsTable(KNOB_MODE_WRITEONCE, "pintool",
     "l", "", "Syscall table: a CSV file mapping a syscall ID (in hex) to a function name");
 
+KNOB<std::string> KnobExcludedListFile(KNOB_MODE_WRITEONCE, "pintool",
+    "x", "", "A list of functions excluded from watching");
+
 /* ===================================================================== */
 // Utilities
 /* ===================================================================== */
@@ -147,15 +150,30 @@ inline ADDRINT getReturnFromTheStack(const CONTEXT* ctx)
 
 VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndirect, const CONTEXT* ctx = NULL)
 {
+    const WatchedType fromWType = isWatchedAddress(addrFrom); // is the call from the traced area?
+
     const bool isTargetMy = pInfo.isMyAddress(addrTo);
     const bool isCallerMy = pInfo.isMyAddress(addrFrom);
-
-    const WatchedType fromWType = isWatchedAddress(addrFrom); // is the call from the traced area?
 
     IMG targetModule = IMG_FindByAddress(addrTo);
     IMG callerModule = IMG_FindByAddress(addrFrom);
     const bool isCallerPeModule = IMG_Valid(callerModule);
     const bool isTargetPeModule = IMG_Valid(targetModule);
+
+    /**
+    is it a call to a function that was filtered out?
+    */
+    if (!m_Settings.excludedFuncs.isEmpty()) {
+        const std::string func = isTargetPeModule ? get_func_at(addrTo) : "";
+        const std::string dll_name = isTargetPeModule ? IMG_Name(targetModule) : "";
+
+        // check if the current function is excluded:
+        if (m_Settings.excludedFuncs.contains(dll_name, func)) {
+            // this function is excluded from the monitoring
+            //std::cout << "Excluded: " << dll_name << "." << func << "\n";
+            return;
+        }
+    }
 
     /**
     is it a transition from the traced module to a foreign module?
@@ -823,11 +841,19 @@ int main(int argc, char *argv[])
         std::cerr << "Coud not load the INI file: " << iniFilename << std::endl;
         m_Settings.saveINI(iniFilename);
     }
+    
+    if (KnobExcludedListFile.Enabled()) {
+        std::string excludedList = KnobExcludedListFile.ValueString();
+        if (excludedList.length()) {
+            m_Settings.excludedFuncs.loadList(excludedList.c_str());
+            std::cout << "Excluded " << m_Settings.excludedFuncs.funcs.size() << " functions\n";
+        }
+    }
 
     if (KnobWatchListFile.Enabled()) {
         std::string watchListFile = KnobWatchListFile.ValueString();
         if (watchListFile.length()) {
-            m_Settings.funcWatch.loadList(watchListFile.c_str());
+            m_Settings.funcWatch.loadList(watchListFile.c_str(), &m_Settings.excludedFuncs);
             std::cout << "Watch " << m_Settings.funcWatch.funcs.size() << " functions\n";
             std::cout << "Watch " << m_Settings.funcWatch.syscalls.size() << " syscalls\n";
         }
