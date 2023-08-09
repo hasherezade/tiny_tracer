@@ -35,7 +35,7 @@ if [ -n "$2" ]; then
   TRACED_MODULE=$2
 fi
 
-TRACED_MODULE_BASENAME=$(basename $TRACED_MODULE)
+TRACED_MODULE_BASENAME=$(basename "$TRACED_MODULE")
 
 if [ -z "$TRACED_MODULE_BASENAME" ]; then
   echo "ERROR: Invalid path to the traced module: $TRACED_MODULE"
