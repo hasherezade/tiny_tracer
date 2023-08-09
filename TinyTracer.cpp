@@ -468,6 +468,7 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
         isSyscallWatched = true;
     }
 
+#ifdef _WIN32 // supported only for Windows
     if (!isSyscallWatched) {
         // check if it is watched by the function name:
         std::string syscallFuncName = SyscallsTable::convertNameToNt(m_Settings.syscallsTable.getName(syscallNum));
@@ -484,6 +485,7 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
             }
         }
     }
+#endif
 }
 
 ADDRINT _setTimer(const CONTEXT* ctxt, bool isEax)
