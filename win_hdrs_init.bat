@@ -1,3 +1,4 @@
+@echo off
 setlocal enabledelayedexpansion
 
 set search_dir="C:\Program Files (x86)\Windows Kits\"
