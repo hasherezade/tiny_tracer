@@ -49,13 +49,15 @@ struct WSyscallInfo
     size_t paramCount;
 };
 
-class FuncExcludeList {
+//---
+
+class FuncList {
 public:
-    FuncExcludeList()
+    FuncList()
     {
     }
 
-    ~FuncExcludeList()
+    ~FuncList()
     {
     }
 
@@ -67,32 +69,26 @@ public:
 
     std::vector<WFuncInfo> funcs;
 
-private:
+protected:
     bool appendFunc(WFuncInfo& info);
 
     WFuncInfo* findFunc(const std::string& dllName, const std::string& funcName);
 };
 
+//--
 
-class FuncWatchList {
+class FuncWatchList : public FuncList {
 public:
     FuncWatchList()
+        : FuncList()
     {
     }
 
-    ~FuncWatchList()
-    {
-    }
+    size_t loadList(const char* filename, FuncList* exclusions);
 
-    size_t loadList(const char* filename, FuncExcludeList* exclusions);
-
-    std::vector<WFuncInfo> funcs;
     std::map<uint32_t, WSyscallInfo> syscalls;
 
 private:
-    bool appendFunc(WFuncInfo& info);
     void appendSyscall(WSyscallInfo& syscall_info);
-
-    WFuncInfo* findFunc(const std::string& dllName, const std::string& funcName);
 };
 

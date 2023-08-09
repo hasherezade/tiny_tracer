@@ -65,7 +65,7 @@ bool WSyscallInfo::update(const WSyscallInfo& syscall_info)
 
 //---
 
-bool FuncExcludeList::contains(const std::string& dll_name, const std::string& func)
+bool FuncList::contains(const std::string& dll_name, const std::string& func)
 {
     if (!dll_name.length() || !func.length()) return false;
     if (this->isEmpty()) return false;
@@ -83,7 +83,7 @@ bool FuncExcludeList::contains(const std::string& dll_name, const std::string& f
     return false;
 }
 
-WFuncInfo* FuncExcludeList::findFunc(const std::string& dllName, const std::string& funcName)
+WFuncInfo* FuncList::findFunc(const std::string& dllName, const std::string& funcName)
 {
     for (size_t i = 0; i < funcs.size(); i++)
     {
@@ -97,7 +97,7 @@ WFuncInfo* FuncExcludeList::findFunc(const std::string& dllName, const std::stri
     return NULL;
 }
 
-bool FuncExcludeList::appendFunc(WFuncInfo& func_info)
+bool FuncList::appendFunc(WFuncInfo& func_info)
 {
     if (!func_info.isValid()) {
         return false;
@@ -106,10 +106,14 @@ bool FuncExcludeList::appendFunc(WFuncInfo& func_info)
     if (!found) {
         funcs.push_back(func_info);
     }
+    else {
+        found->update(func_info);
+    }
     return true;
 }
 
-size_t FuncExcludeList::loadList(const char* filename)
+
+size_t FuncList::loadList(const char* filename)
 {
     std::ifstream myfile(filename);
     if (!myfile.is_open()) {
@@ -133,35 +137,6 @@ size_t FuncExcludeList::loadList(const char* filename)
 
 //---
 
-WFuncInfo* FuncWatchList::findFunc(const std::string& dllName, const std::string &funcName)
-{
-    for (size_t i = 0; i < funcs.size(); i++)
-    {
-        WFuncInfo& info = funcs[i];
-        if (util::iequals(info.dllName, dllName)
-            && util::iequals(info.funcName, funcName))
-        {
-            return &info;
-        }
-    }
-    return NULL;
-}
-
-bool FuncWatchList::appendFunc(WFuncInfo &func_info)
-{
-    if (!func_info.isValid()) {
-        return false;
-    }
-    WFuncInfo* found = findFunc(func_info.dllName, func_info.funcName);
-    if (!found) {
-        funcs.push_back(func_info);
-    }
-    else {
-        found->update(func_info);
-    }
-    return true;
-}
-
 void FuncWatchList::appendSyscall(WSyscallInfo& syscall_info)
 {
     std::map<uint32_t, WSyscallInfo>::iterator it = syscalls.find(syscall_info.syscallId);
@@ -173,7 +148,7 @@ void FuncWatchList::appendSyscall(WSyscallInfo& syscall_info)
     }
 }
 
-size_t FuncWatchList::loadList(const char* filename, FuncExcludeList* exclusions)
+size_t FuncWatchList::loadList(const char* filename, FuncList* exclusions)
 {
     std::ifstream myfile(filename);
     if (!myfile.is_open()) {
