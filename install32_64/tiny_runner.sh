@@ -26,7 +26,7 @@ if [ -z "$1" ]; then
 fi
 
 TARGET_APP=$1
-echo "PIN is trying to run the app: "$TARGET_APP
+echo "PIN is trying to run the app: $TARGET_APP"
 
 # TRACED_MODULE - by default it is the main module, but it can be also a DLL within the traced process
 TRACED_MODULE=$TARGET_APP
@@ -35,10 +35,10 @@ if [ -n "$2" ]; then
   TRACED_MODULE=$2
 fi
 
-TRACED_MODULE_BASENAME=`basename $TRACED_MODULE`
+TRACED_MODULE_BASENAME=$(basename $TRACED_MODULE)
 
 if [ -z "$TRACED_MODULE_BASENAME" ]; then
-  echo "ERROR: Invalid path to the traced module: "$TRACED_MODULE
+  echo "ERROR: Invalid path to the traced module: $TRACED_MODULE"
   exit
 fi
 
@@ -73,7 +73,7 @@ PINTOOL32=$PIN_TOOLS_DIR"/TinyTracer32.so"
 PINTOOL64=$PIN_TOOLS_DIR"/TinyTracer64.so"
 PINTOOL=$PINTOOL64
 
-APP_TYPE=`file $TARGET_APP`
+APP_TYPE=$(file $TARGET_APP)
 
 ELF_64="ELF 64-bit"
 ELF_32="ELF 32-bit"
@@ -92,3 +92,4 @@ else
 fi
 
 $PIN_DIR/pin -t $PINTOOL -s $SETTINGS_FILE -b $WATCH_BEFORE -x $EXCLUDED_FUNC -m $TRACED_MODULE_BASENAME -o $TAG_FILE -l $SYSCALLS_TABLE -- $TARGET_APP $EXE_ARGS
+
