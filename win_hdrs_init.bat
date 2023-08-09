@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 set search_dir="C:\Program Files (x86)\Windows Kits\"
-set output_file="my_paths.h"
+set output_file="win\my_paths.h"
 set header_name="Windows.h"
 
 for /r %search_dir% %%i in (*%header_name%) do (

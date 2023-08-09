@@ -10,8 +10,8 @@
 #include "PinLocker.h"
 #include "TinyTracer.h"
 
-#include "win_paths.h"
-#include "win_constants.h"
+#include "win/win_paths.h"
+#include "win/win_constants.h"
 
 #define ANTIDBG_LABEL "[ANTIDEBUG] --> "
 
