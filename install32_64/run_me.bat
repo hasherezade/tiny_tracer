@@ -42,6 +42,7 @@ rem WATCH_BEFORE - a file with a list of functions which's parameters will be lo
 rem The file must be a list of records in a format: [dll_name];[func_name];[parameters_count]
 set WATCH_BEFORE=%PIN_TOOLS_DIR%\params.txt
 
+rem List of functions that will be excluded from logging
 set EXCLUDED_FUNC=%PIN_TOOLS_DIR%\excluded.txt
 
 rem SYSCALLS_TABLE - a CSV file, mapping syscall ID to a function name. Format: [syscallID:hex],[functionName]

@@ -43,6 +43,9 @@ set WATCH_BEFORE=%PIN_TOOLS_DIR%\params.txt
 rem SYSCALLS_TABLE - a CSV file, mapping syscall ID to a function name. Format: [syscallID:hex],[functionName]
 set SYSCALLS_TABLE=%PIN_TOOLS_DIR%\syscalls.txt
 
+rem List of functions that will be excluded from logging
+set EXCLUDED_FUNC=%PIN_TOOLS_DIR%\excluded.txt
+
 %PIN_TOOLS_DIR%\kdb_check.exe
 if NOT %errorlevel% EQU 0 (
 	echo Disable Kernel Mode Debugger before running the PIN tool!
@@ -72,7 +75,7 @@ set DLL_EXPORTS=""
 echo Target module: "%TRACED_MODULE%"
 echo Tag file: %TAG_FILE%
 
-set EXE_CMD=%PIN_DIR%\pin.exe -pid %TARGET_PID% -t "%PINTOOL%" -m "%TRACED_MODULE%" -o %TAG_FILE% -s "%SETTINGS_FILE%" -l "%SYSCALLS_TABLE%" -b "%WATCH_BEFORE%" 
+set EXE_CMD=%PIN_DIR%\pin.exe -pid %TARGET_PID% -t "%PINTOOL%" -m "%TRACED_MODULE%" -o %TAG_FILE% -s "%SETTINGS_FILE%" -l "%SYSCALLS_TABLE%" -b "%WATCH_BEFORE%" -x "%EXCLUDED_FUNC%"
 
 ;rem "Trace EXE"
 %EXE_CMD%
