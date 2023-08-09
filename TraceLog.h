@@ -4,11 +4,12 @@
 #include <iostream>
 #include <fstream>
 
-#define DELIMITER ';'
 
 class TraceLog 
 {
 public:
+    static const char DELIMITER = ';';
+
     TraceLog()
     {
     }

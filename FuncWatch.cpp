@@ -128,7 +128,7 @@ size_t FuncList::loadList(const char* filename)
         // Try to parse as a function
         WFuncInfo func_info;
         
-        if (func_info.load(line, ';')) {
+        if (func_info.load(line, FuncList::DELIM)) {
             appendFunc(func_info);
         }
     }
@@ -162,14 +162,14 @@ size_t FuncWatchList::loadList(const char* filename, FuncList* exclusions)
 
         // Try to parse as a syscall
         WSyscallInfo syscall_info;
-        if (syscall_info.load(line, ';')) {
+        if (syscall_info.load(line, FuncList::DELIM)) {
             appendSyscall(syscall_info);
             continue;
         }
 
         // Try to parse as a function
         WFuncInfo func_info;
-        if (func_info.load(line, ';')) {
+        if (func_info.load(line, FuncList::DELIM)) {
             if (exclusions && exclusions->contains(func_info.dllName, func_info.funcName)) {
                 //std::cout << ">> Skipping: " << func_info.funcName << std::endl;
                 continue;

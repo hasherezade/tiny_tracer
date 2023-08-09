@@ -53,6 +53,8 @@ struct WSyscallInfo
 
 class FuncList {
 public:
+    static const char DELIM = ';';
+
     FuncList()
     {
     }
