@@ -459,29 +459,25 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
         }
     }
 
-    // Log arguments if needed
-    bool isSyscallWatched = false;
+    // Log arguments if needed:
+    // 
     // check if it is watched by the syscall number:
     const auto& it = m_Settings.funcWatch.syscalls.find(syscallNum);
     if (it != m_Settings.funcWatch.syscalls.end()) {
         LogSyscallsArgs(formatSyscallName(syscallNum).c_str(), ctxt, std, address, it->second.paramCount);
-        isSyscallWatched = true;
+        return;
     }
-
 #ifdef _WIN32 // supported only for Windows
-    if (!isSyscallWatched) {
-        // check if it is watched by the function name:
-        std::string syscallFuncName = SyscallsTable::convertNameToNt(m_Settings.syscallsTable.getName(syscallNum));
-        for (size_t i = 0; i < m_Settings.funcWatch.funcs.size(); i++) {
-            if (util::iequals("ntdll", m_Settings.funcWatch.funcs[i].dllName)
-                || util::iequals("win32u", m_Settings.funcWatch.funcs[i].dllName))
-            {
-                std::string funcName = SyscallsTable::convertNameToNt(m_Settings.funcWatch.funcs[i].funcName);
-                if (syscallFuncName == funcName) {
-                    LogSyscallsArgs(funcName.c_str(), ctxt, std, address, m_Settings.funcWatch.funcs[i].paramCount);
-                    isSyscallWatched = true;
-                    break;
-                }
+    // check if it is watched by the function name:
+    std::string syscallFuncName = SyscallsTable::convertNameToNt(m_Settings.syscallsTable.getName(syscallNum));
+    for (size_t i = 0; i < m_Settings.funcWatch.funcs.size(); i++) {
+        if (util::iequals("ntdll", m_Settings.funcWatch.funcs[i].dllName)
+            || util::iequals("win32u", m_Settings.funcWatch.funcs[i].dllName))
+        {
+            std::string funcName = SyscallsTable::convertNameToNt(m_Settings.funcWatch.funcs[i].funcName);
+            if (syscallFuncName == funcName) {
+                LogSyscallsArgs(funcName.c_str(), ctxt, std, address, m_Settings.funcWatch.funcs[i].paramCount);
+                break;
             }
         }
     }
