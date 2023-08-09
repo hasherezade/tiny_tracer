@@ -84,6 +84,8 @@ public:
     {
     }
 
+    bool isEmpty() { return (this->funcs.size() + this->syscalls.size()) > 0 ? false : true; }
+
     size_t loadList(const char* filename, FuncList* exclusions);
 
     std::map<uint32_t, WSyscallInfo> syscalls;
