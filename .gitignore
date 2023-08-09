@@ -9,4 +9,4 @@ Release
 Debug
 obj-ia32
 obj-intel64
-
+my_paths.h
