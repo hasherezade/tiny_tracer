@@ -1,13 +1,13 @@
 #!/bin/bash
- 
+
 make all TARGET=ia32
 make all TARGET=intel64
  
 TT_32=./obj-ia32/TinyTracer.so 
 TT_64=./obj-intel64/TinyTracer.so
  
-APP_TYPE32=`file $TT_32`
-APP_TYPE64=`file $TT_64`
+APP_TYPE32=$(file "$TT_32")
+APP_TYPE64=$(file "$TT_64")
 
 if [[ $APP_TYPE64 == *"ELF 64-bit"* ]];
 then
