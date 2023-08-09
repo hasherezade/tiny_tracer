@@ -53,18 +53,15 @@ std::wstring paramToStrSplit(VOID* arg1)
 // Function to check if is native 32 bit or not
 /* ==================================================================== */
 
-typedef BOOL WINAPI IsWow64Process_T(WINDOWS::HANDLE,WINDOWS::PBOOL);
 
 BOOL IsNativeOs32(void)
 {
     BOOL isNativeOs32 = FALSE;
-    if (sizeof(void*) == 4)
-    {
-        BOOL isWow64 = FALSE;
-        WINDOWS::IsWow64Process(WINDOWS::GetCurrentProcess(), (WINDOWS::PBOOL) &isWow64);
-        isNativeOs32 = !isWow64;
-    }
-
+#ifndef _WIN64
+    BOOL isWow64 = FALSE;
+    WINDOWS::IsWow64Process(WINDOWS::GetCurrentProcess(), (WINDOWS::PBOOL)&isWow64);
+    isNativeOs32 = !isWow64;
+#endif
     return isNativeOs32;
 }
 
