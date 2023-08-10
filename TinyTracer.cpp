@@ -552,20 +552,22 @@ std::wstring paramToStr(VOID *arg1)
         wchar_t* Buffer;
     } T_UNICODE_STRING;
 
-    T_UNICODE_STRING unicodeS = *(T_UNICODE_STRING*)arg1;
-    if (PIN_CheckReadAccess(unicodeS.Buffer)) {
-        size_t len = util::getAsciiLen((char*)unicodeS.Buffer, kMaxStr);
-        if (len == 1) {
-            // Must be wide string
-            size_t wLen = util::getAsciiLenW(unicodeS.Buffer, kMaxStr);
-            if (wLen >= len) {
-                if ((unicodeS.Length / sizeof(wchar_t)) == wLen && unicodeS.MaximumLength >= unicodeS.Length) { // An extra check, just to make sure
-                    ss << " -> ";
-                    ss << "U\"" << unicodeS.Buffer << "\""; // Just made the U up to denote a UNICODE_STRING
-                    return ss.str();
+    T_UNICODE_STRING* unicodeS = (T_UNICODE_STRING*)arg1;
+    if (PIN_CheckReadAccess(&unicodeS->Buffer)) {
+        if ((unicodeS->MaximumLength < 0x1000) && (unicodeS->Length <= unicodeS->MaximumLength)) { // check if the length makes sense
+            const size_t aLen = util::getAsciiLen((char*)unicodeS->Buffer, 2); // take minimal sample of ASCII string
+            if (aLen == 1) {
+                // Must be wide string
+                size_t wLen = util::getAsciiLenW(unicodeS->Buffer, kMaxStr);
+                if (wLen >= 1) {
+                    if ((unicodeS->Length / sizeof(wchar_t)) == wLen && unicodeS->MaximumLength >= unicodeS->Length) { // An extra check, just to make sure
+                        ss << " -> ";
+                        ss << "U\"" << unicodeS->Buffer << "\""; // Just made the U up to denote a UNICODE_STRING
+                        return ss.str();
+                    }
                 }
             }
-        }
+        }   
     }
 
     bool isString = false;
