@@ -85,8 +85,8 @@ VOID AntidebugMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr)
 
     if (isWatchedAddress(insAddr) == WatchedType::NOT_WATCHED) return;
 
-    ADDRINT RvaFrom = addr_to_rva(insAddr);
-    
+    const ADDRINT RvaFrom = addr_to_rva(insAddr);
+
     // Check the accessed memory address for antidebug tricks
     if (addr == pebAddr + 2) {
         LogAntiDbg(RvaFrom, "PEB!BeingDebugged accessed");
@@ -121,8 +121,7 @@ VOID AntidebugProcessFunctions(const ADDRINT Address, const CHAR* name, uint32_t
     PinLocker locker;
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
 
-    std::stringstream ss;
-    ADDRINT RvaFrom = addr_to_rva(Address);
+    const ADDRINT RvaFrom = addr_to_rva(Address);
 
     ///////////////////////////////////////////////////////////////////////////////
     // Check known function names for antidebug tricks, then parameters (if needed)
@@ -301,7 +300,6 @@ VOID AntidebugCloseHandle(ADDRINT Address, ADDRINT regGAX)
 
     if (regGAX == 0) {
         // Invalid closure
-        std::stringstream ss;
         const ADDRINT RvaFrom = addr_to_rva(Address);
         LogAntiDbg(RvaFrom, "^ kernel32!CloseHandle https://anti-debug.checkpoint.com/techniques/object-handles.html#closehandle");
     }
