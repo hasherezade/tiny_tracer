@@ -567,7 +567,7 @@ std::wstring paramToStr(VOID *arg1)
                     }
                 }
             }
-        }   
+        }
     }
 
     bool isString = false;
