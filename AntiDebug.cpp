@@ -53,15 +53,25 @@ std::wstring paramToStrSplit(VOID* arg1)
 // Function to check if is native 32 bit or not
 /* ==================================================================== */
 
-BOOL IsNativeOs32(void)
+BOOL WinIsNativeOs32(void)
 {
     BOOL isNativeOs32 = FALSE;
 #ifndef _WIN64
+    BOOL(WINAPI * _IsWow64Process)(WINDOWS::HANDLE, WINDOWS::PBOOL) = 
+        (BOOL(WINAPI *)(WINDOWS::HANDLE, WINDOWS::PBOOL)) WINDOWS::GetProcAddress(WINDOWS::GetModuleHandleA("kernel32"), "IsWow64Process");
+    if (!_IsWow64Process) {
+        return TRUE;   //function not found -> 32-bit system
+    }
     BOOL isWow64 = FALSE;
-    WINDOWS::IsWow64Process(WINDOWS::GetCurrentProcess(), (WINDOWS::PBOOL)&isWow64);
+    _IsWow64Process(WINDOWS::GetCurrentProcess(), (WINDOWS::PBOOL)&isWow64);
     isNativeOs32 = !isWow64;
 #endif
     return isNativeOs32;
+}
+
+BOOL WinIsWindowsVistaOrGreater(void)
+{
+    return WINDOWS::IsWindowsVistaOrGreater();
 }
 
 /* ==================================================================== */
@@ -277,14 +287,14 @@ VOID ThreadStart(THREADID threadid, CONTEXT* ctxt, INT32 flags, VOID* v)
 
     // Get Heap flags addresses (https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags)
     ADDRINT heapBase;
-    ADDRINT heapBaseOffset = IsNativeOs32()
+    ADDRINT heapBaseOffset = WinIsNativeOs32()
         ? 0x18
         : 0x1030;
     PIN_SafeCopy(&heapBase, reinterpret_cast<VOID*>(pebAddr + heapBaseOffset), sizeof(heapBase));
-    ADDRINT heapFlagsOffset = WINDOWS::IsWindowsVistaOrGreater()
+    ADDRINT heapFlagsOffset = WinIsWindowsVistaOrGreater()
         ? 0x40
         : 0x0C;
-    ADDRINT heapForceFlagsOffset = WINDOWS::IsWindowsVistaOrGreater()
+    ADDRINT heapForceFlagsOffset = WinIsWindowsVistaOrGreater()
         ? 0x44
         : 0x10;
     heapFlags = heapBase + heapFlagsOffset;
