@@ -523,26 +523,29 @@ ADDRINT AlterRdtscValueEax(const CONTEXT* ctxt)
 // Instrument functions arguments
 /* ===================================================================== */
 
+BOOL isValidReadPtr(VOID* arg1)
+{
+    const ADDRINT start = query_region_base((ADDRINT)arg1);
+    const BOOL isReadableAddr = (start != UNKNOWN_ADDR && start != 0) && PIN_CheckReadAccess(arg1);
+    return isReadableAddr;
+}
+
 std::wstring paramToStr(VOID *arg1)
 {
     if (arg1 == NULL) {
         return L"0";
     }
-    const size_t kMaxStr = 300;
-    const BOOL isReadableAddr = PIN_CheckReadAccess(arg1);
     std::wstringstream ss;
 
-    if (!isReadableAddr) {
+    if (!isValidReadPtr(arg1)) {
         // single value
         ss << std::hex << (arg1)
             << " = "
             << std::dec << ((size_t)arg1);
         return ss.str();
     }
-
     // possible pointer:
     ss << "ptr " << std::hex << (arg1);
-
     //
     // Check if UNICODE_STRING
     //
@@ -553,18 +556,22 @@ std::wstring paramToStr(VOID *arg1)
     } T_UNICODE_STRING;
 
     T_UNICODE_STRING* unicodeS = (T_UNICODE_STRING*)arg1;
-    if (PIN_CheckReadAccess(&unicodeS->Buffer)) {
-        if ((unicodeS->MaximumLength < 0x1000) && (unicodeS->Length <= unicodeS->MaximumLength)) { // check if the length makes sense
-            const size_t aLen = util::getAsciiLen((char*)unicodeS->Buffer, 2); // take minimal sample of ASCII string
-            if (aLen == 1) {
-                // Must be wide string
-                size_t wLen = util::getAsciiLenW(unicodeS->Buffer, kMaxStr);
-                if (wLen >= 1) {
-                    if ((unicodeS->Length / sizeof(wchar_t)) == wLen && unicodeS->MaximumLength >= unicodeS->Length) { // An extra check, just to make sure
-                        ss << " -> ";
-                        ss << "U\"" << unicodeS->Buffer << "\""; // Just made the U up to denote a UNICODE_STRING
-                        return ss.str();
-                    }
+
+    const size_t kMaxStr = 300;
+
+    if (PIN_CheckReadAccess(&unicodeS->Buffer) 
+        && (unicodeS->MaximumLength < kMaxStr) && (unicodeS->Length <= unicodeS->MaximumLength)// check if the length makes sense
+        && isValidReadPtr(unicodeS->Buffer))
+    {
+        const size_t aLen = util::getAsciiLen((char*)unicodeS->Buffer, 2); // take minimal sample of ASCII string
+        if (aLen == 1) {
+            // Must be wide string
+            size_t wLen = util::getAsciiLenW(unicodeS->Buffer, unicodeS->MaximumLength);
+            if (wLen >= 1) {
+                if ((unicodeS->Length / sizeof(wchar_t)) == wLen && unicodeS->MaximumLength >= unicodeS->Length) { // An extra check, just to make sure
+                    ss << " -> ";
+                    ss << "U\"" << unicodeS->Buffer << "\""; // Just made the U up to denote a UNICODE_STRING
+                    return ss.str();
                 }
             }
         }
