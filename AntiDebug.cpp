@@ -52,7 +52,7 @@ std::wstring paramToStrSplit(VOID* arg1)
 }
 
 /* ==================================================================== */
-// Function to check if is native 32 bit or not
+// Wrappers for Windows functions
 /* ==================================================================== */
 
 BOOL WinIsNativeOs32(void)
@@ -73,7 +73,18 @@ BOOL WinIsNativeOs32(void)
 
 BOOL WinIsWindowsVistaOrGreater(void)
 {
-    return WINDOWS::IsWindowsVistaOrGreater();
+    VOID(*_RtlGetNtVersionNumbers)(WINDOWS::DWORD*, WINDOWS::DWORD*, WINDOWS::DWORD*) = 
+        (VOID(*)(WINDOWS::DWORD*, WINDOWS::DWORD*, WINDOWS::DWORD*)) WINDOWS::GetProcAddress(WINDOWS::GetModuleHandleA("ntdll"), "RtlGetNtVersionNumbers");;
+    if (!_RtlGetNtVersionNumbers) return FALSE;
+
+    WINDOWS::DWORD major = 0;
+    WINDOWS::DWORD minor = 0;
+    WINDOWS::DWORD build = 0;
+    _RtlGetNtVersionNumbers(&major, &minor, &build);
+    if (major >= 6) {
+        return TRUE;
+    }
+    return FALSE;
 }
 
 /* ==================================================================== */
