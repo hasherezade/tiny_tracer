@@ -1,7 +1,12 @@
 @echo off
 setlocal enabledelayedexpansion
 
-set search_dir="C:\Program Files (x86)\Windows Kits\"
+if EXIST "%PROGRAMFILES(X86)%" (
+    set search_dir="%PROGRAMFILES(X86)%\Windows Kits\"
+) else (
+    set search_dir="%PROGRAMFILES%\Windows Kits\"
+)
+
 set output_file="win\my_paths.h"
 set header_name="Windows.h"
 
