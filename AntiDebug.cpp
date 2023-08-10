@@ -73,15 +73,13 @@ BOOL WinIsNativeOs32(void)
 
 BOOL WinIsWindowsVistaOrGreater(void)
 {
-    VOID(*_RtlGetNtVersionNumbers)(WINDOWS::DWORD*, WINDOWS::DWORD*, WINDOWS::DWORD*) = 
-        (VOID(*)(WINDOWS::DWORD*, WINDOWS::DWORD*, WINDOWS::DWORD*)) WINDOWS::GetProcAddress(WINDOWS::GetModuleHandleA("ntdll"), "RtlGetNtVersionNumbers");;
-    if (!_RtlGetNtVersionNumbers) return FALSE;
+    using namespace WINDOWS;
 
-    WINDOWS::DWORD major = 0;
-    WINDOWS::DWORD minor = 0;
-    WINDOWS::DWORD build = 0;
-    _RtlGetNtVersionNumbers(&major, &minor, &build);
-    if (major >= 6) {
+    DWORD dwVersion = WINDOWS::GetVersion();
+    DWORD dwMajorVersion = (DWORD)(LOBYTE(LOWORD(dwVersion)));
+    DWORD dwMinorVersion = (DWORD)(HIBYTE(LOWORD(dwVersion)));
+
+    if (dwMajorVersion >= 6) {
         return TRUE;
     }
     return FALSE;
@@ -215,7 +213,7 @@ VOID AntidebugProcessFunctions(const ADDRINT Address, const CHAR* name, uint32_t
                 }
                 else {
                     // Check if open is done on loaded libraries
-                    for (int i = 0; i < loadedLib.size(); i++)
+                    for (size_t i = 0; i < loadedLib.size(); i++)
                         if (util::isStrEqualI(_argStr, loadedLib[i])) {
                             return LogAntiDbg(RvaFrom, "^ kernel32!CreateFile on loaded lib https://anti-debug.checkpoint.com/techniques/object-handles.html#loadlibrary");
                         }
