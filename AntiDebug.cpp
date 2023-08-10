@@ -15,6 +15,8 @@
 
 #define ANTIDBG_LABEL "[ANTIDEBUG] --> "
 
+using namespace LEVEL_PINCLIENT;
+
 /* ================================================================== */
 // Global variables used by AntiDebug
 /* ================================================================== */
@@ -268,10 +270,10 @@ VOID ThreadStart(THREADID threadid, CONTEXT* ctxt, INT32 flags, VOID* v)
     // Get Heap flags addresses (https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags)
     ADDRINT heapBase;
     PIN_SafeCopy(&heapBase, reinterpret_cast<VOID*>(pebAddr + 0x30), sizeof(heapBase));
-    ADDRINT heapFlagsOffset = WINDOWS::IsWindowsVistaOrGreater()
+    ADDRINT heapFlagsOffset = WinIsWindowsVistaOrGreater()
         ? 0x70
         : 0x14;
-    ADDRINT heapForceFlagsOffset = WINDOWS::IsWindowsVistaOrGreater()
+    ADDRINT heapForceFlagsOffset = WinIsWindowsVistaOrGreater()
         ? 0x74
         : 0x18;
     heapFlags = heapBase + heapFlagsOffset;
