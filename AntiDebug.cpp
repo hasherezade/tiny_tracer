@@ -59,14 +59,18 @@ BOOL WinIsNativeOs32(void)
 {
     BOOL isNativeOs32 = FALSE;
 #ifndef _WIN64
-    BOOL(WINAPI * _IsWow64Process)(WINDOWS::HANDLE, WINDOWS::PBOOL) = 
-        (BOOL(WINAPI *)(WINDOWS::HANDLE, WINDOWS::PBOOL)) WINDOWS::GetProcAddress(WINDOWS::GetModuleHandleA("kernel32"), "IsWow64Process");
-    if (!_IsWow64Process) {
-        return TRUE;   //function not found -> 32-bit system
-    }
-    BOOL isWow64 = FALSE;
-    _IsWow64Process(WINDOWS::GetCurrentProcess(), (WINDOWS::PBOOL)&isWow64);
-    isNativeOs32 = !isWow64;
+    {  // scope
+        using namespace WINDOWS;
+
+        WINDOWS::BOOL(WINAPI * _IsWow64Process)(HANDLE, WINDOWS::PBOOL) =
+            (WINDOWS::BOOL(WINAPI*)(HANDLE, WINDOWS::PBOOL)) WINDOWS::GetProcAddress(GetModuleHandleA("kernel32"), "IsWow64Process");
+        if (!_IsWow64Process) {
+            return TRUE;   //function not found -> 32-bit system
+        }
+        WINDOWS::BOOL isWow64 = FALSE;
+        _IsWow64Process(WINDOWS::GetCurrentProcess(), &isWow64);
+        isNativeOs32 = !isWow64;
+    } // !scope
 #endif
     return isNativeOs32;
 }
