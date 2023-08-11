@@ -28,7 +28,7 @@ ADDRINT heapForceFlags = 0;
 std::vector<std::string> loadedLib;
 std::map<std::string, std::string> funcToLink;
 
-typedef VOID AntiDBGCallBack(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10);
+typedef VOID AntiDBGCallBack(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5);
 
 /* ==================================================================== */
 // Leveraging the existing paramToStr, extracts only the string after '->'
@@ -152,7 +152,7 @@ VOID AntidebugMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr)
 // Process API calls (related to AntiDebug techniques)
 /* ==================================================================== */
 
-VOID AntiDbg_FuncLogOccurrence(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10)
+VOID AntiDbg_FuncLogOccurrence(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     PinLocker locker;
 
@@ -166,7 +166,7 @@ VOID AntiDbg_FuncLogOccurrence(const ADDRINT Address, const CHAR* name, uint32_t
     return LogAntiDbg(Address, ss.str().c_str());
 }
 
-VOID AntiDbg_LoadLibrary(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10)
+VOID AntiDbg_LoadLibrary(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     PinLocker locker;
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
@@ -179,7 +179,7 @@ VOID AntiDbg_LoadLibrary(const ADDRINT Address, const CHAR* name, uint32_t argCo
     loadedLib.push_back(_argStr);
 }
 
-VOID AntiDbg_RaiseException(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10)
+VOID AntiDbg_RaiseException(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     PinLocker locker;
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
@@ -196,7 +196,7 @@ VOID AntiDbg_RaiseException(const ADDRINT Address, const CHAR* name, uint32_t ar
     }
 }
 
-VOID AntiDbg_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10)
+VOID AntiDbg_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     PinLocker locker;
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
@@ -209,7 +209,7 @@ VOID AntiDbg_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, u
     }
 }
 
-VOID AntiDbg_NtQueryInformationProcess(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10)
+VOID AntiDbg_NtQueryInformationProcess(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     PinLocker locker;
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
@@ -232,7 +232,7 @@ VOID AntiDbg_NtQueryInformationProcess(const ADDRINT Address, const CHAR* name, 
     }
 }
 
-VOID AntiDbg_NtQueryObject(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10)
+VOID AntiDbg_NtQueryObject(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     PinLocker locker;
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
@@ -244,7 +244,7 @@ VOID AntiDbg_NtQueryObject(const ADDRINT Address, const CHAR* name, uint32_t arg
     }
 }
 
-VOID AntiDbg_CreateFile(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10)
+VOID AntiDbg_CreateFile(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     PinLocker locker;
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
@@ -359,6 +359,9 @@ VOID AntidebugCloseHandle(ADDRINT Address, ADDRINT result)
 
 bool AntidebugMonitorAddCallback(IMG Image, char* fName, uint32_t argNum, AntiDBGCallBack callback)
 {
+    const size_t argMax = 5;
+    if (argNum > argMax) argNum = argMax;
+
     RTN funcRtn = RTN_FindByName(Image, fName);
     if (RTN_Valid(funcRtn)) {
         RTN_Open(funcRtn);
@@ -372,12 +375,6 @@ bool AntidebugMonitorAddCallback(IMG Image, char* fName, uint32_t argNum, AntiDB
             IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
             IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
             IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 6,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 7,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 8,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 9,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 10,
             IARG_END
         );
 
@@ -424,8 +421,8 @@ VOID AntidebugMonitorFunctions(IMG Image)
     if (util::iequals(dllName, "kernel32")) {
         AntidebugMonitorAddCallback(Image, "LoadLibraryW", 1, AntiDbg_LoadLibrary);
         AntidebugMonitorAddCallback(Image, "LoadLibraryA", 1, AntiDbg_LoadLibrary);
-        AntidebugMonitorAddCallback(Image, "CreateFileW", 6, AntiDbg_CreateFile);
-        AntidebugMonitorAddCallback(Image, "CreateFileA", 7, AntiDbg_CreateFile);
+        AntidebugMonitorAddCallback(Image, "CreateFileW", 5, AntiDbg_CreateFile);
+        AntidebugMonitorAddCallback(Image, "CreateFileA", 5, AntiDbg_CreateFile);
         AntidebugMonitorAddCallback(Image, "IsDebuggerPresent", 0, AntiDbg_FuncLogOccurrence);
         AntidebugMonitorAddCallback(Image, "CheckRemoteDebuggerPresent", 2, AntiDbg_FuncLogOccurrence);
         AntidebugMonitorAddCallback(Image, "HeapWalk", 2, AntiDbg_FuncLogOccurrence);
