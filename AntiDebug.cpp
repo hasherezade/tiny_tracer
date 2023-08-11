@@ -321,13 +321,13 @@ VOID ThreadStart(THREADID threadid, CONTEXT* ctxt, INT32 flags, VOID* v)
 // "CloseHandle" instrumentation, detects invalid handlers
 /* ===================================================================== */
 
-VOID AntidebugCloseHandle(ADDRINT Address, ADDRINT regGAX)
+VOID AntidebugCloseHandle(ADDRINT Address, ADDRINT result)
 {
     PinLocker locker;
 
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
 
-    if (regGAX == 0) {
+    if (!result) {
         // Invalid closure
         const ADDRINT RvaFrom = addr_to_rva(Address);
         return LogAntiDbg(RvaFrom, "^ kernel32!CloseHandle https://anti-debug.checkpoint.com/techniques/object-handles.html#closehandle");
@@ -411,8 +411,7 @@ VOID AntidebugMonitorFunctions(IMG Image)
 
     RTN_InsertCall(funcRtn, IPOINT_AFTER, AFUNPTR(AntidebugCloseHandle),
         IARG_RETURN_IP,
-        IARG_REG_VALUE,
-        REG_GAX,
+        IARG_FUNCRET_EXITPOINT_VALUE,
         IARG_END);
 
     RTN_Close(funcRtn);
