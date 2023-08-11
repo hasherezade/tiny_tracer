@@ -258,7 +258,7 @@ VOID AntidebugProcessFunctions(const ADDRINT Address, const CHAR* name, uint32_t
         if (strcmp(name, "NtQueryObject") == 0) {
             // ntdll!NtQueryObject() to access DebugObject (with ObjectTypesInformation as 2nd argument)
             if (int((size_t)arg2) == OBJECTTYPESINFORMATION) {
-                return LogAntiDbg(RvaFrom, "^ ntdll!NtQueryObject(with ObjectAllTypesInformation)", "https://anti-debug.checkpoint.com/techniques/object-handles.html#ntqueryobject");
+                return LogAntiDbg(RvaFrom, "^ ntdll!NtQueryObject (ObjectAllTypesInformation)", "https://anti-debug.checkpoint.com/techniques/object-handles.html#ntqueryobject");
             }
         }
     }
@@ -335,7 +335,7 @@ VOID AntidebugCloseHandle(ADDRINT Address, ADDRINT result)
     if (!result) {
         // Invalid closure
         const ADDRINT RvaFrom = addr_to_rva(Address);
-        return LogAntiDbg(RvaFrom, "^ kernel32!CloseHandle", "https://anti-debug.checkpoint.com/techniques/object-handles.html#closehandle");
+        return LogAntiDbg(RvaFrom, "^ kernel32!CloseHandle (INVALID_HNDL_VAL)", "https://anti-debug.checkpoint.com/techniques/object-handles.html#closehandle");
     }
 }
 
