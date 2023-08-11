@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <sstream>
+#include <string>
+#include <map>
 
 #include "ProcessInfo.h"
 #include "Util.h"
@@ -11,7 +13,6 @@
 #include "TinyTracer.h"
 
 #include "win/win_paths.h"
-#include "win/win_constants.h"
 
 #define ANTIDBG_LABEL "[ANTIDEBUG] --> "
 
@@ -24,6 +25,9 @@ ADDRINT pebAddr = 0;
 ADDRINT heapFlags = 0;
 ADDRINT heapForceFlags = 0;
 std::vector<std::string> loadedLib;
+std::map<std::string, std::string> funcToLink;
+
+typedef VOID AntiDBGCallBack(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5);
 
 /* ==================================================================== */
 // Leveraging the existing paramToStr, extracts only the string after '->'
@@ -93,10 +97,11 @@ BOOL WinIsWindowsVistaOrGreater(void)
 // Log info with antidebug label
 /* ==================================================================== */
 
-VOID LogAntiDbg(const ADDRINT RvaFrom, const char* msg, const char *link=nullptr)
+VOID LogAntiDbg(const ADDRINT insAddr, const char* msg, const char *link=nullptr)
 {
     if (!msg) return;
 
+    const ADDRINT RvaFrom = addr_to_rva(insAddr);
     std::stringstream ss;
     ss << std::hex << RvaFrom << TraceLog::DELIMITER << ANTIDBG_LABEL << msg;
     if (link) {
@@ -115,30 +120,28 @@ VOID AntidebugMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr)
 
     if (isWatchedAddress(insAddr) == WatchedType::NOT_WATCHED) return;
 
-    const ADDRINT RvaFrom = addr_to_rva(insAddr);
-
     // Check the accessed memory address for antidebug tricks
     if (addr == pebAddr + 2) {
-        return LogAntiDbg(RvaFrom, "PEB!BeingDebugged accessed");
+        return LogAntiDbg(insAddr, "PEB!BeingDebugged accessed");
     }
     if (addr == 0x7ffe02d4) {
-        return LogAntiDbg(RvaFrom, "KUSER_SHARED_DATA accessed",
+        return LogAntiDbg(insAddr, "KUSER_SHARED_DATA accessed",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#kuser_shared_data");
     }
 #ifdef _WIN64
     if (addr == pebAddr + 0xBC) {
-        return LogAntiDbg(RvaFrom, "PEB!NtGlobalFlag accessed");
+        return LogAntiDbg(insAddr, "PEB!NtGlobalFlag accessed");
     }
     if (addr == heapFlags || addr == heapForceFlags) {
-        return LogAntiDbg(RvaFrom, "Heap Flags accessed",
+        return LogAntiDbg(insAddr, "Heap Flags accessed",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags");
     }
 #else
     if (addr == pebAddr + 0x68) {
-        return LogAntiDbg(RvaFrom, "PEB!NtGlobalFlag accessed");
+        return LogAntiDbg(insAddr, "PEB!NtGlobalFlag accessed");
     }
     if (addr == heapFlags || addr == heapForceFlags) {
-        return LogAntiDbg(RvaFrom, "Heap Flags accessed",
+        return LogAntiDbg(insAddr, "Heap Flags accessed",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags");
     }
 #endif
@@ -148,135 +151,139 @@ VOID AntidebugMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr)
 // Process API calls (related to AntiDebug techniques)
 /* ==================================================================== */
 
-VOID AntidebugProcessFunctions(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10)
+VOID AntiDbg_FuncLogOccurrence(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
+    PinLocker locker;
+
+    std::stringstream ss;
+    ss << "^ " << name;
+    auto itr = funcToLink.find(name);
+    if (itr != funcToLink.end()) {
+        return LogAntiDbg(Address, ss.str().c_str(),
+            itr->second.c_str());
+    }
+    return LogAntiDbg(Address, ss.str().c_str());
+}
+
+VOID AntiDbg_LoadLibrary(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+{
+    if (!argCount) return;
+
+    PinLocker locker;
+    if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
+    if (!arg1 || !PIN_CheckReadAccess(arg1)) return;
+
+    // Track LoadLibraryX to detect access to LOAD_DLL_DEBUG_INFO
+    // Get the library name from argument
+    std::wstring argStr = paramToStrSplit(arg1);
+    // Convert from wide string for comparison
+    std::string _argStr(argStr.begin(), argStr.end());
+    loadedLib.push_back(_argStr);
+}
+
+VOID AntiDbg_RaiseException(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+{
+    if (!argCount) return;
+
     PinLocker locker;
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
 
-    const ADDRINT RvaFrom = addr_to_rva(Address);
+    // RaiseException constants
+    enum ExceptionCode { kDBG_CONTROL_C = 0x40010005, kDBG_RIPEVENT = 0x40010007 };
+    // kernel32!RaiseException() with DBG_CONTROL_C or DBG_RIPEVENT
+    if (int((size_t)arg1) == ExceptionCode::kDBG_CONTROL_C || int((size_t)arg1) == ExceptionCode::kDBG_RIPEVENT) {
+        return LogAntiDbg(Address, "^ kernel32!RaiseException()",
+            "https://anti-debug.checkpoint.com/techniques/exceptions.html#raiseexception");
+    }
+}
 
-    ///////////////////////////////////////////////////////////////////////////////
-    // Check known function names for antidebug tricks, then parameters (if needed)
-    ///////////////////////////////////////////////////////////////////////////////
-    // TODO: not sure if it's better to use isStrEqualI or strcmp
-    if (strcmp(name, "IsDebuggerPresent") == 0) {
-        // function kernel32!IsDebuggerPresent()
-        return LogAntiDbg(RvaFrom, "^ kernel32!IsDebuggerPresent",
-            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-isdebuggerpresent");
+VOID AntiDbg_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+{
+    if (!argCount) return;
+
+    PinLocker locker;
+    if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
+
+    enum SystemInformationClass { SystemKernelDebuggerInformation = 0x23 };
+    // function ntdll!NtQuerySystemInformation() with first parameter set to 0x23 (SystemKernelDebuggerInformation)
+    if (int((size_t)arg1) == SystemInformationClass::SystemKernelDebuggerInformation) {
+        return LogAntiDbg(Address, "^ ntdll!NtQuerySystemInformation (SystemKernelDebuggerInformation)",
+            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-ntquerysysteminformation");
     }
-    if (strcmp(name, "CheckRemoteDebuggerPresent") == 0) {
-        // function kernel32!CheckRemoteDebuggerPresent()
-        return LogAntiDbg(RvaFrom, "^ kernel32!CheckRemoteDebuggerPresent",
-            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checkremotedebuggerpresent");
+}
+
+VOID AntiDbg_NtQueryInformationProcess(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+{
+    if (argCount < 2) return;
+
+    PinLocker locker;
+    if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
+
+    enum ProcessInformationClass { ProcessDebugPort = 0x7, ProcessDebugFlags = 0x1f, ProcessDebugObjectHandle = 0x1e };
+
+    // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 7 (ProcessDebugPort)
+    if (int((size_t)arg2) == ProcessInformationClass::ProcessDebugPort) {
+        return LogAntiDbg(Address, "^ ntdll!NtQueryInformationProcess (ProcessDebugPort)",
+            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugport");
     }
-    if (strcmp(name, "NtQueryInformationProcess") == 0) {
-        // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 7 (ProcessDebugPort)
-        if (int((size_t)arg2) == PROCESSDEBUGPORT) {
-            return LogAntiDbg(RvaFrom, "^ ntdll!NtQueryInformationProcess (ProcessDebugPort)",
-                "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugport");
-        }
-        // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 0x1f (ProcessDebugFlags)
-        if (int((size_t)arg2) == PROCESSDEBUGFLAGS) {
-            return LogAntiDbg(RvaFrom, "^ ntdll!NtQueryInformationProcess (ProcessDebugFlags)",
-                "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugflags");
-        }
-        // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 0x1e (ProcessDebugObjectHandle)
-        if (int((size_t)arg2) == PROCESSDEBUGOBJECTHANDLE) {
-            return LogAntiDbg(RvaFrom, "^ ntdll!NtQueryInformationProcess (ProcessDebugObjectHandle)",
-                "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugobjecthandle");
-        }
-        return;
+    // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 0x1f (ProcessDebugFlags)
+    if (int((size_t)arg2) == ProcessInformationClass::ProcessDebugFlags) {
+        return LogAntiDbg(Address, "^ ntdll!NtQueryInformationProcess (ProcessDebugFlags)",
+            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugflags");
     }
-    if (strcmp(name, "RtlQueryProcessHeapInformation") == 0) {
-        // function ntdll!RtlQueryProcessHeapInformation()
-        // FIXME possible improvement: check access to the buffer parameter of the function
-        return LogAntiDbg(RvaFrom, "^ ntdll!RtlQueryProcessHeapInformation",
-            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-rtlqueryprocessheapinformation");
+    // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 0x1e (ProcessDebugObjectHandle)
+    if (int((size_t)arg2) == ProcessInformationClass::ProcessDebugObjectHandle) {
+        return LogAntiDbg(Address, "^ ntdll!NtQueryInformationProcess (ProcessDebugObjectHandle)",
+            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugobjecthandle");
     }
-    if (strcmp(name, "RtlQueryProcessDebugInformation") == 0) {
-        // function ntdll!RtlQueryProcessDebugInformation()
-        return LogAntiDbg(RvaFrom, "^ ntdll!RtlQueryProcessDebugInformation",
-            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-rtlqueryprocessdebuginformation");
+}
+
+VOID AntiDbg_NtQueryObject(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+{
+    if (argCount < 2) return;
+
+    PinLocker locker;
+    if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
+
+    enum ObjectInformationClass { ObjectAllTypesInformation = 3 };
+    // ntdll!NtQueryObject() to access DebugObject (with ObjectAllTypesInformation as 2nd argument)
+    if (int((size_t)arg2) == ObjectInformationClass::ObjectAllTypesInformation) {
+        return LogAntiDbg(Address, "^ ntdll!NtQueryObject (ObjectAllTypesInformation)",
+            "https://anti-debug.checkpoint.com/techniques/object-handles.html#ntqueryobject");
     }
-    if (strcmp(name, "NtQuerySystemInformation") == 0) {
-        // function ntdll!NtQuerySystemInformation() with first parameter set to 0x23 (SystemKernelDebuggerInformation)
-        if (int((size_t)arg1) == SYSTEMKERNELDEBUGGERINFORMATION) {
-            return LogAntiDbg(RvaFrom, "^ ntdll!NtQuerySystemInformation (SystemKernelDebuggerInformation)",
-                "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-ntquerysysteminformation");
-        }
-        return;
-    }
-    if (strcmp(name, "HeapWalk") == 0) {
-        // kernel32!HeapWalk() function to extract Heap blocks and check the tail
-        return LogAntiDbg(RvaFrom, "^ kernel32!HeapWalk",
-            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-protection");
-    }
-    if (strcmp(name, "CsrGetProcessId") == 0) {
-        // kernel32!OpenProcess() function on the csrss.exe - CsrGetProcessId get the csrss.exe PID
-        return LogAntiDbg(RvaFrom, "^ kernel32!OpenProcess/CsrGetProcessId",
-            "https://anti-debug.checkpoint.com/techniques/object-handles.html#openprocess");
-    }
-    if (strcmp(name, "CreateFileA") == 0 || strcmp(name, "CreateFileW") == 0) {
-        // kernel32!CreateFileX called on the module itself with Exclusive access, or on loaded libraries
-        // Check only exclusive accesses for optimization
-        if (int((size_t)arg3) == 0) {
-            IMG img = IMG_FindByAddress(Address);
-            if (IMG_Valid(img))
-            {
-                // Get the module name from image
-                std::string moduleName = IMG_Name(img);
-                // Get the module name from arguments
-                std::wstring argStr = paramToStrSplit(arg1);
-                // Convert from wide string for comparison
-                std::string _argStr(argStr.begin(), argStr.end());
-                // Check if open is done on module
-                if (util::isStrEqualI(_argStr, moduleName)) {
-                    return LogAntiDbg(RvaFrom, "^ kernel32!CreateFile on module",
-                        "https://anti-debug.checkpoint.com/techniques/object-handles.html#createfile");
-                }
-                else {
-                    // Check if open is done on loaded libraries
-                    for (size_t i = 0; i < loadedLib.size(); i++)
-                        if (util::isStrEqualI(_argStr, loadedLib[i])) {
-                            return LogAntiDbg(RvaFrom, "^ kernel32!CreateFile on loaded lib",
-                                "https://anti-debug.checkpoint.com/techniques/object-handles.html#loadlibrary");
-                        }
-                }
-            }
-        }
-        return;
-    }
-    if (strcmp(name, "SetUnhandledExceptionFilter") == 0) {
-        // kernel32!SetUnhandledExceptionFilter() function to set a specific handler
-        return LogAntiDbg(RvaFrom, "^ kernel32!SetUnhandledExceptionFilter",
-            "https://anti-debug.checkpoint.com/techniques/exceptions.html#unhandledexceptionfilter");
-    }
-    if (strcmp(name, "RaiseException") == 0) {
-        // kernel32!RaiseException() with DBG_CONTROL_C or DBG_RIPEVENT
-        if (int((size_t)arg1) == DBG_CONTROL_C || int((size_t)arg1) == DBG_RIPEVENT) {
-            return LogAntiDbg(RvaFrom, "^ kernel32!RaiseException()",
-                "https://anti-debug.checkpoint.com/techniques/exceptions.html#raiseexception");
-        }
-        return;
-    }
-    if (strcmp(name, "LoadLibraryA") == 0 || strcmp(name, "LoadLibraryW") == 0) {
-        // Track LoadLibraryX to detect access to LOAD_DLL_DEBUG_INFO
-        // Get the library name from argument
+}
+
+VOID AntiDbg_CreateFile(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+{
+    if (argCount < 3) return;
+
+    PinLocker locker;
+    if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
+
+    // kernel32!CreateFileX called on the module itself with Exclusive access, or on loaded libraries
+    // Check only exclusive accesses for optimization
+    if (int((size_t)arg3) == 0) {
+        IMG img = IMG_FindByAddress(Address);
+        if (!IMG_Valid(img)) return;
+        if (!arg1 || !PIN_CheckReadAccess(arg1)) return;
+
+        // Get the module name from image
+        std::string moduleName = IMG_Name(img);
+        // Get the module name from arguments
         std::wstring argStr = paramToStrSplit(arg1);
         // Convert from wide string for comparison
         std::string _argStr(argStr.begin(), argStr.end());
-        loadedLib.push_back(_argStr);
-        return;
-    }
-    ////////////////////////////////////
-    // If AntiDebug level is == 2 (Deep)
-    ////////////////////////////////////
-    if (m_Settings.antidebug > 1) {
-        if (strcmp(name, "NtQueryObject") == 0) {
-            // ntdll!NtQueryObject() to access DebugObject (with ObjectTypesInformation as 2nd argument)
-            if (int((size_t)arg2) == OBJECTTYPESINFORMATION) {
-                return LogAntiDbg(RvaFrom, "^ ntdll!NtQueryObject (ObjectAllTypesInformation)",
-                    "https://anti-debug.checkpoint.com/techniques/object-handles.html#ntqueryobject");
+        // Check if open is done on module
+        if (util::isStrEqualI(_argStr, moduleName)) {
+            return LogAntiDbg(Address, "^ kernel32!CreateFile on module",
+                "https://anti-debug.checkpoint.com/techniques/object-handles.html#createfile");
+        }
+
+        // Check if open is done on loaded libraries
+        for (size_t i = 0; i < loadedLib.size(); i++) {
+            if (util::isStrEqualI(_argStr, loadedLib[i])) {
+                return LogAntiDbg(Address, "^ kernel32!CreateFile on loaded lib",
+                    "https://anti-debug.checkpoint.com/techniques/object-handles.html#loadlibrary");
             }
         }
     }
@@ -352,8 +359,7 @@ VOID AntidebugCloseHandle(ADDRINT Address, ADDRINT result)
 
     if (!result) {
         // Invalid closure
-        const ADDRINT RvaFrom = addr_to_rva(Address);
-        return LogAntiDbg(RvaFrom, "^ kernel32!CloseHandle (INVALID_HNDL_VAL)",
+        return LogAntiDbg(Address, "^ kernel32!CloseHandle (INVALID_HNDL_VAL)",
             "https://anti-debug.checkpoint.com/techniques/object-handles.html#closehandle");
     }
 }
@@ -361,13 +367,17 @@ VOID AntidebugCloseHandle(ADDRINT Address, ADDRINT result)
 /* ==================================================================== */
 // Add single function
 /* ==================================================================== */
-bool AntidebugMonitorAdd(IMG Image, char* fName, uint32_t argNum, const std::string& dllName)
+
+bool AntidebugMonitorAddCallback(IMG Image, char* fName, uint32_t argNum, AntiDBGCallBack callback)
 {
+    const size_t argMax = 5;
+    if (argNum > argMax) argNum = argMax;
+
     RTN funcRtn = RTN_FindByName(Image, fName);
     if (RTN_Valid(funcRtn)) {
         RTN_Open(funcRtn);
 
-        RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(AntidebugProcessFunctions),
+        RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(callback),
             IARG_RETURN_IP,
             IARG_ADDRINT, fName,
             IARG_UINT32, argNum,
@@ -376,12 +386,6 @@ bool AntidebugMonitorAdd(IMG Image, char* fName, uint32_t argNum, const std::str
             IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
             IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
             IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 6,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 7,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 8,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 9,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 10,
             IARG_END
         );
 
@@ -399,32 +403,42 @@ bool AntidebugMonitorAdd(IMG Image, char* fName, uint32_t argNum, const std::str
 
 VOID AntidebugMonitorFunctions(IMG Image)
 {
+    funcToLink["IsDebuggerPresent"] = "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-isdebuggerpresent";
+    funcToLink["CheckRemoteDebuggerPresent"] = "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checkremotedebuggerpresent";
+    funcToLink["RtlQueryProcessHeapInformation"] = "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-rtlqueryprocessheapinformation";
+    funcToLink["RtlQueryProcessDebugInformation"] = "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-rtlqueryprocessdebuginformation";
+    funcToLink["HeapWalk"] = "https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-protection";
+    funcToLink["CsrGetProcessId"] = "https://anti-debug.checkpoint.com/techniques/object-handles.html#openprocess";
+    funcToLink["SetUnhandledExceptionFilter"] = "https://anti-debug.checkpoint.com/techniques/exceptions.html#unhandledexceptionfilter";
+    funcToLink["RaiseException"] = "https://anti-debug.checkpoint.com/techniques/exceptions.html#raiseexception";
+
     // API needed for Antidebug
     const std::string dllName = util::getDllName(IMG_Name(Image));
     if (util::iequals(dllName, "ntdll")) {
-        AntidebugMonitorAdd(Image, "CsrGetProcessId", 0, dllName);
-        AntidebugMonitorAdd(Image, "NtQueryInformationProcess", 5, dllName);
-        AntidebugMonitorAdd(Image, "RtlQueryProcessHeapInformation", 1, dllName);
-        AntidebugMonitorAdd(Image, "RtlQueryProcessDebugInformation", 3, dllName);
-        AntidebugMonitorAdd(Image, "NtQuerySystemInformation", 4, dllName);
+        AntidebugMonitorAddCallback(Image, "CsrGetProcessId", 0, AntiDbg_FuncLogOccurrence);
+        AntidebugMonitorAddCallback(Image, "RtlQueryProcessHeapInformation", 1, AntiDbg_FuncLogOccurrence);
+        AntidebugMonitorAddCallback(Image, "RtlQueryProcessDebugInformation", 3, AntiDbg_FuncLogOccurrence);
+        AntidebugMonitorAddCallback(Image, "NtQueryInformationProcess", 5, AntiDbg_NtQueryInformationProcess);
+        AntidebugMonitorAddCallback(Image, "NtQuerySystemInformation", 4, AntiDbg_NtQuerySystemInformation);
+
+        ////////////////////////////////////
+        // If AntiDebug level is == 2 (Deep)
+        ////////////////////////////////////
         if (m_Settings.antidebug > 1) {
             // For Deep or above
-            AntidebugMonitorAdd(Image, "NtQueryObject", 5, dllName);
+            AntidebugMonitorAddCallback(Image, "NtQueryObject", 5, AntiDbg_NtQueryObject);
         }
     }
     if (util::iequals(dllName, "kernel32")) {
-        AntidebugMonitorAdd(Image, "LoadLibraryW", 1, dllName);
-        AntidebugMonitorAdd(Image, "LoadLibraryA", 1, dllName);
-        AntidebugMonitorAdd(Image, "GetProcAddress", 2, dllName);
-        AntidebugMonitorAdd(Image, "CreateFileW", 6, dllName);
-        AntidebugMonitorAdd(Image, "CreateFileA", 7, dllName);
-        AntidebugMonitorAdd(Image, "OpenProcess", 3, dllName);
-        AntidebugMonitorAdd(Image, "IsDebuggerPresent", 0, dllName);
-        AntidebugMonitorAdd(Image, "CheckRemoteDebuggerPresent", 2, dllName);
-        AntidebugMonitorAdd(Image, "HeapWalk", 2, dllName);
-        AntidebugMonitorAdd(Image, "CloseHandle", 1, dllName);
-        AntidebugMonitorAdd(Image, "SetUnhandledExceptionFilter", 1, dllName);
-        AntidebugMonitorAdd(Image, "RaiseException", 4, dllName);
+        AntidebugMonitorAddCallback(Image, "LoadLibraryW", 1, AntiDbg_LoadLibrary);
+        AntidebugMonitorAddCallback(Image, "LoadLibraryA", 1, AntiDbg_LoadLibrary);
+        AntidebugMonitorAddCallback(Image, "CreateFileW", 5, AntiDbg_CreateFile);
+        AntidebugMonitorAddCallback(Image, "CreateFileA", 5, AntiDbg_CreateFile);
+        AntidebugMonitorAddCallback(Image, "IsDebuggerPresent", 0, AntiDbg_FuncLogOccurrence);
+        AntidebugMonitorAddCallback(Image, "CheckRemoteDebuggerPresent", 2, AntiDbg_FuncLogOccurrence);
+        AntidebugMonitorAddCallback(Image, "HeapWalk", 2, AntiDbg_FuncLogOccurrence);
+        AntidebugMonitorAddCallback(Image, "SetUnhandledExceptionFilter", 1, AntiDbg_FuncLogOccurrence);
+        AntidebugMonitorAddCallback(Image, "RaiseException", 4, AntiDbg_RaiseException);
     }
 
     // CloseHandle return value hook
