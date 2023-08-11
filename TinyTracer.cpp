@@ -630,8 +630,11 @@ VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID 
 
 VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
 {
+    const size_t argMax = 11;
     const CHAR* fName = funcInfo.funcName.c_str();
     size_t argNum = funcInfo.paramCount;
+    if (argNum > argMax) argNum = argMax;
+
     RTN funcRtn = RTN_FindByName(Image, fName);
     if (!RTN_Valid(funcRtn) || !funcInfo.isValid()) return; // failed
 
