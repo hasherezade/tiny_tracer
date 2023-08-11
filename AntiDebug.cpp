@@ -184,6 +184,7 @@ VOID AntiDbg_RaiseException(const ADDRINT Address, const CHAR* name, uint32_t ar
     PinLocker locker;
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
 
+    if (!argCount) return;
     // RaiseException constants
     const int kDBG_CONTROL_C = 0x40010005;
     const int kDBG_RIPEVENT = 0x40010007;
@@ -200,6 +201,7 @@ VOID AntiDbg_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, u
     PinLocker locker;
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
 
+    if (!argCount) return;
     // function ntdll!NtQuerySystemInformation() with first parameter set to 0x23 (SystemKernelDebuggerInformation)
     if (int((size_t)arg1) == SYSTEMKERNELDEBUGGERINFORMATION) {
         return LogAntiDbg(Address, "^ ntdll!NtQuerySystemInformation (SystemKernelDebuggerInformation)",
@@ -212,6 +214,7 @@ VOID AntiDbg_NtQueryInformationProcess(const ADDRINT Address, const CHAR* name, 
     PinLocker locker;
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
 
+    if (argCount < 2) return;
     // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 7 (ProcessDebugPort)
     if (int((size_t)arg2) == PROCESSDEBUGPORT) {
         return LogAntiDbg(Address, "^ ntdll!NtQueryInformationProcess (ProcessDebugPort)",
@@ -235,7 +238,7 @@ VOID AntiDbg_NtQueryObject(const ADDRINT Address, const CHAR* name, uint32_t arg
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
 
     // ntdll!NtQueryObject() to access DebugObject (with ObjectTypesInformation as 2nd argument)
-    if (int((size_t)arg2) == OBJECTTYPESINFORMATION) {
+    if (argCount >= 2 && int((size_t)arg2) == OBJECTTYPESINFORMATION) {
         return LogAntiDbg(Address, "^ ntdll!NtQueryObject (ObjectAllTypesInformation)",
             "https://anti-debug.checkpoint.com/techniques/object-handles.html#ntqueryobject");
     }
@@ -251,6 +254,7 @@ VOID AntiDbg_CreateFile(const ADDRINT Address, const CHAR* name, uint32_t argCou
     if (int((size_t)arg3) == 0) {
         IMG img = IMG_FindByAddress(Address);
         if (!IMG_Valid(img)) return;
+        if (!argCount || !arg1 || !PIN_CheckReadAccess(arg1)) return;
 
         // Get the module name from image
         std::string moduleName = IMG_Name(img);
