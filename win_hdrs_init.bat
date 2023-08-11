@@ -1,10 +1,14 @@
 @echo off
 setlocal enabledelayedexpansion
 
-if EXIST "%PROGRAMFILES(X86)%" (
-    set search_dir="%PROGRAMFILES(X86)%\Windows Kits\"
-) else (
-    set search_dir="%PROGRAMFILES%\Windows Kits\"
+set search_dir=%1
+echo Supplied SDK path: %search_dir%
+if not defined search_dir (
+    if EXIST "%PROGRAMFILES(X86)%" (
+        set search_dir="%PROGRAMFILES(X86)%\Windows Kits\"
+    ) else (
+        set search_dir="%PROGRAMFILES%\Windows Kits\"
+    )
 )
 
 set output_file="win\my_paths.h"

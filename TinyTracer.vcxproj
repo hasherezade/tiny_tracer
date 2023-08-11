@@ -131,7 +131,7 @@
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PreBuildEvent>
-      <Command>win_hdrs_init.bat</Command>
+      <Command>win_hdrs_init.bat "$(WindowsSdkDir)"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Generate "my_paths.h"</Message>
@@ -175,7 +175,7 @@
       <AllowIsolation>true</AllowIsolation>
     </Link>
     <PreBuildEvent>
-      <Command>win_hdrs_init.bat</Command>
+      <Command>win_hdrs_init.bat "$(WindowsSdkDir)"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Generate "my_paths.h"</Message>
@@ -223,7 +223,7 @@
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PreBuildEvent>
-      <Command>win_hdrs_init.bat</Command>
+      <Command>win_hdrs_init.bat "$(WindowsSdkDir)"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Generate "my_paths.h"</Message>
@@ -272,7 +272,7 @@
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
     <PreBuildEvent>
-      <Command>win_hdrs_init.bat</Command>
+      <Command>win_hdrs_init.bat "$(WindowsSdkDir)"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Generate "my_paths.h"</Message>
