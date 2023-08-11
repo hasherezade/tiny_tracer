@@ -122,21 +122,24 @@ VOID AntidebugMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr)
         return LogAntiDbg(RvaFrom, "PEB!BeingDebugged accessed");
     }
     if (addr == 0x7ffe02d4) {
-        return LogAntiDbg(RvaFrom, "KUSER_SHARED_DATA accessed", "https://anti-debug.checkpoint.com/techniques/debug-flags.html#kuser_shared_data");
+        return LogAntiDbg(RvaFrom, "KUSER_SHARED_DATA accessed",
+            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#kuser_shared_data");
     }
 #ifdef _WIN64
     if (addr == pebAddr + 0xBC) {
         return LogAntiDbg(RvaFrom, "PEB!NtGlobalFlag accessed");
     }
     if (addr == heapFlags || addr == heapForceFlags) {
-        return LogAntiDbg(RvaFrom, "Heap Flags accessed", "https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags");
+        return LogAntiDbg(RvaFrom, "Heap Flags accessed",
+            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags");
     }
 #else
     if (addr == pebAddr + 0x68) {
         return LogAntiDbg(RvaFrom, "PEB!NtGlobalFlag accessed");
     }
     if (addr == heapFlags || addr == heapForceFlags) {
-        return LogAntiDbg(RvaFrom, "Heap Flags accessed", "https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags");
+        return LogAntiDbg(RvaFrom, "Heap Flags accessed",
+            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags");
     }
 #endif
 }
@@ -158,50 +161,60 @@ VOID AntidebugProcessFunctions(const ADDRINT Address, const CHAR* name, uint32_t
     // TODO: not sure if it's better to use isStrEqualI or strcmp
     if (strcmp(name, "IsDebuggerPresent") == 0) {
         // function kernel32!IsDebuggerPresent()
-        return LogAntiDbg(RvaFrom, "^ kernel32!IsDebuggerPresent", "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-isdebuggerpresent");
+        return LogAntiDbg(RvaFrom, "^ kernel32!IsDebuggerPresent",
+            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-isdebuggerpresent");
     }
     if (strcmp(name, "CheckRemoteDebuggerPresent") == 0) {
         // function kernel32!CheckRemoteDebuggerPresent()
-        return LogAntiDbg(RvaFrom, "^ kernel32!CheckRemoteDebuggerPresent", "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checkremotedebuggerpresent");
+        return LogAntiDbg(RvaFrom, "^ kernel32!CheckRemoteDebuggerPresent",
+            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checkremotedebuggerpresent");
     }
     if (strcmp(name, "NtQueryInformationProcess") == 0) {
         // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 7 (ProcessDebugPort)
         if (int((size_t)arg2) == PROCESSDEBUGPORT) {
-            return LogAntiDbg(RvaFrom, "^ ntdll!NtQueryInformationProcess (ProcessDebugPort)", "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugport");
+            return LogAntiDbg(RvaFrom, "^ ntdll!NtQueryInformationProcess (ProcessDebugPort)",
+                "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugport");
         }
         // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 0x1f (ProcessDebugFlags)
         if (int((size_t)arg2) == PROCESSDEBUGFLAGS) {
-            return LogAntiDbg(RvaFrom, "^ ntdll!NtQueryInformationProcess (ProcessDebugFlags)", "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugflags");
+            return LogAntiDbg(RvaFrom, "^ ntdll!NtQueryInformationProcess (ProcessDebugFlags)",
+                "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugflags");
         }
         // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 0x1e (ProcessDebugObjectHandle)
         if (int((size_t)arg2) == PROCESSDEBUGOBJECTHANDLE) {
-            return LogAntiDbg(RvaFrom, "^ ntdll!NtQueryInformationProcess (ProcessDebugObjectHandle)", "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugobjecthandle");
+            return LogAntiDbg(RvaFrom, "^ ntdll!NtQueryInformationProcess (ProcessDebugObjectHandle)",
+                "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugobjecthandle");
         }
         return;
     }
     if (strcmp(name, "RtlQueryProcessHeapInformation") == 0) {
         // function ntdll!RtlQueryProcessHeapInformation()
         // FIXME possible improvement: check access to the buffer parameter of the function
-        return LogAntiDbg(RvaFrom, "^ ntdll!RtlQueryProcessHeapInformation", "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-rtlqueryprocessheapinformation");
+        return LogAntiDbg(RvaFrom, "^ ntdll!RtlQueryProcessHeapInformation",
+            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-rtlqueryprocessheapinformation");
     }
     if (strcmp(name, "RtlQueryProcessDebugInformation") == 0) {
         // function ntdll!RtlQueryProcessDebugInformation()
-        return LogAntiDbg(RvaFrom, "^ ntdll!RtlQueryProcessDebugInformation", "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-rtlqueryprocessdebuginformation");
+        return LogAntiDbg(RvaFrom, "^ ntdll!RtlQueryProcessDebugInformation",
+            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-rtlqueryprocessdebuginformation");
     }
     if (strcmp(name, "NtQuerySystemInformation") == 0) {
         // function ntdll!NtQuerySystemInformation() with first parameter set to 0x23 (SystemKernelDebuggerInformation)
         if (int((size_t)arg1) == SYSTEMKERNELDEBUGGERINFORMATION) {
-            return LogAntiDbg(RvaFrom, "^ ntdll!NtQuerySystemInformation (SystemKernelDebuggerInformation)", "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-ntquerysysteminformation");
+            return LogAntiDbg(RvaFrom, "^ ntdll!NtQuerySystemInformation (SystemKernelDebuggerInformation)",
+                "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-ntquerysysteminformation");
         }
         return;
     }
     if (strcmp(name, "HeapWalk") == 0) {
         // kernel32!HeapWalk() function to extract Heap blocks and check the tail
-        return LogAntiDbg(RvaFrom, "^ kernel32!HeapWalk", "https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-protection");
+        return LogAntiDbg(RvaFrom, "^ kernel32!HeapWalk",
+            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-protection");
     }
     if (strcmp(name, "CsrGetProcessId") == 0) {
         // kernel32!OpenProcess() function on the csrss.exe - CsrGetProcessId get the csrss.exe PID
-        return LogAntiDbg(RvaFrom, "^ kernel32!OpenProcess/CsrGetProcessId", "https://anti-debug.checkpoint.com/techniques/object-handles.html#openprocess");
+        return LogAntiDbg(RvaFrom, "^ kernel32!OpenProcess/CsrGetProcessId",
+            "https://anti-debug.checkpoint.com/techniques/object-handles.html#openprocess");
     }
     if (strcmp(name, "CreateFileA") == 0 || strcmp(name, "CreateFileW") == 0) {
         // kernel32!CreateFileX called on the module itself with Exclusive access, or on loaded libraries
@@ -218,13 +231,15 @@ VOID AntidebugProcessFunctions(const ADDRINT Address, const CHAR* name, uint32_t
                 std::string _argStr(argStr.begin(), argStr.end());
                 // Check if open is done on module
                 if (util::isStrEqualI(_argStr, moduleName)) {
-                    return LogAntiDbg(RvaFrom, "^ kernel32!CreateFile on module", "https://anti-debug.checkpoint.com/techniques/object-handles.html#createfile");
+                    return LogAntiDbg(RvaFrom, "^ kernel32!CreateFile on module",
+                        "https://anti-debug.checkpoint.com/techniques/object-handles.html#createfile");
                 }
                 else {
                     // Check if open is done on loaded libraries
                     for (size_t i = 0; i < loadedLib.size(); i++)
                         if (util::isStrEqualI(_argStr, loadedLib[i])) {
-                            return LogAntiDbg(RvaFrom, "^ kernel32!CreateFile on loaded lib", "https://anti-debug.checkpoint.com/techniques/object-handles.html#loadlibrary");
+                            return LogAntiDbg(RvaFrom, "^ kernel32!CreateFile on loaded lib",
+                                "https://anti-debug.checkpoint.com/techniques/object-handles.html#loadlibrary");
                         }
                 }
             }
@@ -233,12 +248,14 @@ VOID AntidebugProcessFunctions(const ADDRINT Address, const CHAR* name, uint32_t
     }
     if (strcmp(name, "SetUnhandledExceptionFilter") == 0) {
         // kernel32!SetUnhandledExceptionFilter() function to set a specific handler
-        return LogAntiDbg(RvaFrom, "^ kernel32!SetUnhandledExceptionFilter https ://anti-debug.checkpoint.com/techniques/exceptions.html#unhandledexceptionfilter");
+        return LogAntiDbg(RvaFrom, "^ kernel32!SetUnhandledExceptionFilter",
+            "https://anti-debug.checkpoint.com/techniques/exceptions.html#unhandledexceptionfilter");
     }
     if (strcmp(name, "RaiseException") == 0) {
         // kernel32!RaiseException() with DBG_CONTROL_C or DBG_RIPEVENT
         if (int((size_t)arg1) == DBG_CONTROL_C || int((size_t)arg1) == DBG_RIPEVENT) {
-            return LogAntiDbg(RvaFrom, "^ kernel32!RaiseException()", "https://anti-debug.checkpoint.com/techniques/exceptions.html#raiseexception");
+            return LogAntiDbg(RvaFrom, "^ kernel32!RaiseException()",
+                "https://anti-debug.checkpoint.com/techniques/exceptions.html#raiseexception");
         }
         return;
     }
@@ -258,7 +275,8 @@ VOID AntidebugProcessFunctions(const ADDRINT Address, const CHAR* name, uint32_t
         if (strcmp(name, "NtQueryObject") == 0) {
             // ntdll!NtQueryObject() to access DebugObject (with ObjectTypesInformation as 2nd argument)
             if (int((size_t)arg2) == OBJECTTYPESINFORMATION) {
-                return LogAntiDbg(RvaFrom, "^ ntdll!NtQueryObject (ObjectAllTypesInformation)", "https://anti-debug.checkpoint.com/techniques/object-handles.html#ntqueryobject");
+                return LogAntiDbg(RvaFrom, "^ ntdll!NtQueryObject (ObjectAllTypesInformation)",
+                    "https://anti-debug.checkpoint.com/techniques/object-handles.html#ntqueryobject");
             }
         }
     }
@@ -335,7 +353,8 @@ VOID AntidebugCloseHandle(ADDRINT Address, ADDRINT result)
     if (!result) {
         // Invalid closure
         const ADDRINT RvaFrom = addr_to_rva(Address);
-        return LogAntiDbg(RvaFrom, "^ kernel32!CloseHandle (INVALID_HNDL_VAL)", "https://anti-debug.checkpoint.com/techniques/object-handles.html#closehandle");
+        return LogAntiDbg(RvaFrom, "^ kernel32!CloseHandle (INVALID_HNDL_VAL)",
+            "https://anti-debug.checkpoint.com/techniques/object-handles.html#closehandle");
     }
 }
 
