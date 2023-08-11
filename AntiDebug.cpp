@@ -13,7 +13,6 @@
 #include "TinyTracer.h"
 
 #include "win/win_paths.h"
-#include "win/win_constants.h"
 
 #define ANTIDBG_LABEL "[ANTIDEBUG] --> "
 
@@ -190,11 +189,9 @@ VOID AntiDbg_RaiseException(const ADDRINT Address, const CHAR* name, uint32_t ar
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
 
     // RaiseException constants
-    const int kDBG_CONTROL_C = 0x40010005;
-    const int kDBG_RIPEVENT = 0x40010007;
-
+    enum ExceptionCode { kDBG_CONTROL_C = 0x40010005, kDBG_RIPEVENT = 0x40010007 };
     // kernel32!RaiseException() with DBG_CONTROL_C or DBG_RIPEVENT
-    if (int((size_t)arg1) == kDBG_CONTROL_C || int((size_t)arg1) == kDBG_RIPEVENT) {
+    if (int((size_t)arg1) == ExceptionCode::kDBG_CONTROL_C || int((size_t)arg1) == ExceptionCode::kDBG_RIPEVENT) {
         return LogAntiDbg(Address, "^ kernel32!RaiseException()",
             "https://anti-debug.checkpoint.com/techniques/exceptions.html#raiseexception");
     }
@@ -207,8 +204,9 @@ VOID AntiDbg_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, u
     PinLocker locker;
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
 
+    enum SystemInformationClass { SystemKernelDebuggerInformation = 0x23 };
     // function ntdll!NtQuerySystemInformation() with first parameter set to 0x23 (SystemKernelDebuggerInformation)
-    if (int((size_t)arg1) == SYSTEMKERNELDEBUGGERINFORMATION) {
+    if (int((size_t)arg1) == SystemInformationClass::SystemKernelDebuggerInformation) {
         return LogAntiDbg(Address, "^ ntdll!NtQuerySystemInformation (SystemKernelDebuggerInformation)",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-ntquerysysteminformation");
     }
@@ -221,18 +219,20 @@ VOID AntiDbg_NtQueryInformationProcess(const ADDRINT Address, const CHAR* name, 
     PinLocker locker;
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
 
+    enum ProcessInformationClass { ProcessDebugPort = 0x7, ProcessDebugFlags = 0x1f, ProcessDebugObjectHandle = 0x1e };
+
     // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 7 (ProcessDebugPort)
-    if (int((size_t)arg2) == PROCESSDEBUGPORT) {
+    if (int((size_t)arg2) == ProcessInformationClass::ProcessDebugPort) {
         return LogAntiDbg(Address, "^ ntdll!NtQueryInformationProcess (ProcessDebugPort)",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugport");
     }
     // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 0x1f (ProcessDebugFlags)
-    if (int((size_t)arg2) == PROCESSDEBUGFLAGS) {
+    if (int((size_t)arg2) == ProcessInformationClass::ProcessDebugFlags) {
         return LogAntiDbg(Address, "^ ntdll!NtQueryInformationProcess (ProcessDebugFlags)",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugflags");
     }
     // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 0x1e (ProcessDebugObjectHandle)
-    if (int((size_t)arg2) == PROCESSDEBUGOBJECTHANDLE) {
+    if (int((size_t)arg2) == ProcessInformationClass::ProcessDebugObjectHandle) {
         return LogAntiDbg(Address, "^ ntdll!NtQueryInformationProcess (ProcessDebugObjectHandle)",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugobjecthandle");
     }
@@ -245,8 +245,9 @@ VOID AntiDbg_NtQueryObject(const ADDRINT Address, const CHAR* name, uint32_t arg
     PinLocker locker;
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
 
-    // ntdll!NtQueryObject() to access DebugObject (with ObjectTypesInformation as 2nd argument)
-    if (int((size_t)arg2) == OBJECTTYPESINFORMATION) {
+    enum ObjectInformationClass { ObjectAllTypesInformation = 3 };
+    // ntdll!NtQueryObject() to access DebugObject (with ObjectAllTypesInformation as 2nd argument)
+    if (int((size_t)arg2) == ObjectInformationClass::ObjectAllTypesInformation) {
         return LogAntiDbg(Address, "^ ntdll!NtQueryObject (ObjectAllTypesInformation)",
             "https://anti-debug.checkpoint.com/techniques/object-handles.html#ntqueryobject");
     }
