@@ -178,7 +178,8 @@ VOID FlagsCheck(const CONTEXT* ctxt)
     const bool isTrap = (pushedVal & 0x100) ? true : false;
     if (!isTrap) return;
 
-    return LogAntiDbg(wType, Address, "Trap Flag set");
+    return LogAntiDbg(wType, Address, "Trap Flag set",
+        "https://anti-debug.checkpoint.com/techniques/assembly.html#popf_and_trap_flag");
 }
 
 /* ==================================================================== */
