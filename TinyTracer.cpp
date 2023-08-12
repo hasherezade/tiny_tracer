@@ -731,7 +731,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
     if (m_Settings.antidebug != ANTIDEBUG_DISABLED) {
         if (INS_IsMemoryRead(ins)) {
             // Insert the callback function before memory read instructions
-            INS_InsertCall(ins, IPOINT_BEFORE, AFUNPTR(AntidebugMemoryAccess),
+            INS_InsertCall(ins, IPOINT_BEFORE, AFUNPTR(AntiDbg::WatchMemoryAccess),
                 IARG_MEMORYREAD_EA,   // Effective address for memory read
                 IARG_MEMORYREAD_SIZE, // Size of memory read
                 IARG_INST_PTR,        // Instruction address
@@ -747,7 +747,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
         {
             INS_InsertCall(
                 ins,
-                IPOINT_BEFORE, (AFUNPTR)FlagsCheck,
+                IPOINT_BEFORE, (AFUNPTR)AntiDbg::FlagsCheck,
                 IARG_CONTEXT,
                 IARG_END
             );
@@ -805,7 +805,7 @@ VOID ImageLoad(IMG Image, VOID *v)
     // ANTIDEBUG: Register Function instrumentation needed for AntiDebug
     if (m_Settings.antidebug != ANTIDEBUG_DISABLED) {
         // Register functions
-        AntidebugMonitorFunctions(Image);
+        AntiDbg::MonitorAntiDbgFunctions(Image);
     }
 #endif
 }
@@ -900,7 +900,7 @@ int main(int argc, char *argv[])
 #ifdef USE_ANTIDEBUG
     // ANTIDEBUG: collect some info on thread start
     if (m_Settings.antidebug != ANTIDEBUG_DISABLED) {
-        PIN_AddThreadStartFunction(ThreadStart, 0);
+        PIN_AddThreadStartFunction(AntiDbg::WatchThreadStart, 0);
     }
 #endif
     if (m_Settings.traceSYSCALL) {

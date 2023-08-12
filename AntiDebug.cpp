@@ -127,7 +127,7 @@ VOID LogAntiDbg(const WatchedType wType, const ADDRINT Address, const char* msg,
 // Callback function to be executed when memory is accessed
 /* ==================================================================== */
 
-VOID AntidebugMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr)
+VOID AntiDbg::WatchMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr)
 {
     PinLocker locker;
 
@@ -162,7 +162,7 @@ VOID AntidebugMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr)
 }
 
 #define CLEAR_TRAP
-VOID FlagsCheck(const CONTEXT* ctxt)
+VOID AntiDbg::FlagsCheck(const CONTEXT* ctxt)
 {
     PinLocker locker;
 
@@ -342,7 +342,7 @@ VOID AntiDbg_CreateFile(const ADDRINT Address, const CHAR* name, uint32_t argCou
 // Collect some infos at Thread start, to be used later in checks
 /* ==================================================================== */
 
-VOID ThreadStart(THREADID threadid, CONTEXT* ctxt, INT32 flags, VOID* v)
+VOID AntiDbg::WatchThreadStart(THREADID threadid, CONTEXT* ctxt, INT32 flags, VOID* v)
 {
     PinLocker locker;
 
@@ -451,7 +451,7 @@ bool AntiDbgAddCallbackBefore(IMG Image, char* fName, uint32_t argNum, AntiDBGCa
 // Called by ImageLoad
 /* ==================================================================== */
 
-VOID AntidebugMonitorFunctions(IMG Image)
+VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
 {
     funcToLink["IsDebuggerPresent"] = "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-isdebuggerpresent";
     funcToLink["CheckRemoteDebuggerPresent"] = "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checkremotedebuggerpresent";
