@@ -40,9 +40,11 @@ set SETTINGS_FILE=%PIN_TOOLS_DIR%\TinyTracer.ini
 
 rem WATCH_BEFORE - a file with a list of functions which's parameters will be logged before execution
 rem The file must be a list of records in a format: [dll_name];[func_name];[parameters_count]
+rem or, in case of tracing syscalls: <SYSCALL>;[syscallID:hex];[parameters_count] (where "<SYSCALL>" is a constant keyword)
 set WATCH_BEFORE=%PIN_TOOLS_DIR%\params.txt
 
 rem List of functions that will be excluded from logging
+rem The file must be a list of records in a format: [dll_name];[func_name]
 set EXCLUDED_FUNC=%PIN_TOOLS_DIR%\excluded.txt
 
 rem SYSCALLS_TABLE - a CSV file, mapping syscall ID to a function name. Format: [syscallID:hex],[functionName]
