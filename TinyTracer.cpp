@@ -752,6 +752,15 @@ VOID InstrumentInstruction(INS ins, VOID *v)
                 IARG_END
             );
         }
+
+        if (INS_IsInterrupt(ins)) {
+            INS_InsertCall(
+                ins,
+                IPOINT_BEFORE, (AFUNPTR)AntiDbg::InterruptCheck,
+                IARG_CONTEXT,
+                IARG_END
+            );
+        }
     }
 #endif
 }

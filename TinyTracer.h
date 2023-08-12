@@ -17,3 +17,4 @@ enum class WatchedType {
 
 WatchedType isWatchedAddress(const ADDRINT Address);
 std::wstring paramToStr(VOID* arg1);
+BOOL fetchInterruptID(const ADDRINT Address, int& intID);

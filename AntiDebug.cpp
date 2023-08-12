@@ -189,6 +189,26 @@ VOID AntiDbg::FlagsCheck(const CONTEXT* ctxt)
 #endif
 }
 
+VOID AntiDbg::InterruptCheck(const CONTEXT* ctxt)
+{
+    PinLocker locker;
+    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+    
+    int interruptID = 0;
+    if (!fetchInterruptID(Address, interruptID)) return;
+
+    if (interruptID == 3) {
+        LogAntiDbg(wType, Address, "INT3",
+            "https://anti-debug.checkpoint.com/techniques/assembly.html#int3");
+    }
+    if (interruptID == 0x2d) {
+        LogAntiDbg(wType, Address, "INT2D",
+            "https://anti-debug.checkpoint.com/techniques/assembly.html#int2d");
+    }
+}
+
 /* ==================================================================== */
 // Process API calls (related to AntiDebug techniques)
 /* ==================================================================== */
