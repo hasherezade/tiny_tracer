@@ -58,6 +58,8 @@ protected:
 class Settings {
 
 public:
+    static void stripComments(std::string& str);
+
     Settings() 
         : followShellcode(SHELLC_FOLLOW_FIRST),
         traceRDTSC(false),

@@ -156,7 +156,7 @@ bool fillSettings(Settings &s, std::string line)
     return isFilled;
 }
 
-void stripComments(std::string &str)
+void Settings::stripComments(std::string &str)
 {
     size_t found = str.find_first_of(";#");
     if (found != std::string::npos) {
