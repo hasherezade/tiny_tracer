@@ -729,7 +729,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
     }
 #ifdef USE_ANTIDEBUG
     // ANTIDEBUG: memory read instrumentation
-    if (m_Settings.antidebug > 0) {
+    if (m_Settings.antidebug != ANTIDEBUG_DISABLED) {
         if (INS_IsMemoryRead(ins)) {
             // Insert the callback function before memory read instructions
             INS_InsertCall(ins, IPOINT_BEFORE, AFUNPTR(AntidebugMemoryAccess),
@@ -789,7 +789,7 @@ VOID ImageLoad(IMG Image, VOID *v)
     }
 #ifdef USE_ANTIDEBUG
     // ANTIDEBUG: Register Function instrumentation needed for AntiDebug
-    if (m_Settings.antidebug > 0) {
+    if (m_Settings.antidebug != ANTIDEBUG_DISABLED) {
         // Register functions
         AntidebugMonitorFunctions(Image);
     }
@@ -885,7 +885,7 @@ int main(int argc, char *argv[])
     INS_AddInstrumentFunction(InstrumentInstruction, NULL);
 #ifdef USE_ANTIDEBUG
     // ANTIDEBUG: collect some info on thread start
-    if (m_Settings.antidebug > 0) {
+    if (m_Settings.antidebug != ANTIDEBUG_DISABLED) {
         PIN_AddThreadStartFunction(ThreadStart, 0);
     }
 #endif

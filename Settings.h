@@ -24,7 +24,6 @@ typedef enum {
     ANTIDEBUG_DISABLED = 0,      // AntiDebug detection is disabled
     ANTIDEBUG_STANDARD = 1,      // Track "standard" and easily identifiable techniques
     ANTIDEBUG_DEEP = 2,          // Track more techniques, may lead to false positives
-    ANTIDEBUG_DEEPER = 3,        // Track even more techniques
     ANTIDEBUG_OPTIONS_COUNT
 } t_antidebug_options;
 

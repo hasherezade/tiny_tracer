@@ -422,10 +422,9 @@ VOID AntidebugMonitorFunctions(IMG Image)
         AntidebugMonitorAddCallback(Image, "NtQuerySystemInformation", 4, AntiDbg_NtQuerySystemInformation);
 
         ////////////////////////////////////
-        // If AntiDebug level is == 2 (Deep)
+        // If AntiDebug level is Deep
         ////////////////////////////////////
-        if (m_Settings.antidebug > 1) {
-            // For Deep or above
+        if (m_Settings.antidebug >= ANTIDEBUG_DEEP) {
             AntidebugMonitorAddCallback(Image, "NtQueryObject", 5, AntiDbg_NtQueryObject);
         }
     }
