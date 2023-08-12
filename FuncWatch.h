@@ -8,9 +8,19 @@
 #include <map>
 #include <vector>
 
-struct WFuncInfo 
+struct RoutineInfo
 {
-    WFuncInfo() : paramCount(0)
+    RoutineInfo() : paramCount(0) {};
+
+    virtual bool load(const std::string& line, char delimiter) = 0;
+    virtual bool isValid() const = 0;
+
+    size_t paramCount;
+};
+
+struct WFuncInfo : public RoutineInfo
+{
+    WFuncInfo() : RoutineInfo()
     {
     }
 
@@ -32,12 +42,15 @@ struct WFuncInfo
 
     std::string dllName;
     std::string funcName;
-    size_t paramCount;
 };
 
-struct WSyscallInfo
+struct WSyscallInfo : public RoutineInfo
 {
-    WSyscallInfo() : syscallId(0), paramCount(0)
+    static const uint32_t INVALID_SYSCALL = (-1);
+
+    WSyscallInfo() :
+        RoutineInfo(), 
+        syscallId(INVALID_SYSCALL)
     {
     }
 
@@ -45,8 +58,12 @@ struct WSyscallInfo
 
     bool update(const WSyscallInfo& syscall_info);
 
+    bool isValid() const
+    {
+        return (syscallId != INVALID_SYSCALL);
+    }
+
     uint32_t syscallId;
-    size_t paramCount;
 };
 
 //---
