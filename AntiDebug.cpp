@@ -147,6 +147,26 @@ VOID AntidebugMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr)
 #endif
 }
 
+VOID FlagsCheck(const CONTEXT* ctxt)
+{
+    PinLocker locker;
+
+    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    ADDRINT pushedVal = UNKNOWN_ADDR;
+    const ADDRINT* stackPtr = reinterpret_cast<ADDRINT*>(PIN_GetContextReg(ctxt, REG_STACK_PTR));
+    size_t copiedSize = PIN_SafeCopy(&pushedVal, stackPtr, sizeof(pushedVal));
+    if (copiedSize != sizeof(pushedVal)) {
+        return;
+    }
+    const bool isTrap = (pushedVal & 0x100) ? true : false;
+    if (!isTrap) return;
+
+    return LogAntiDbg(Address, "Trap Flag set");
+}
+
 /* ==================================================================== */
 // Process API calls (related to AntiDebug techniques)
 /* ==================================================================== */
