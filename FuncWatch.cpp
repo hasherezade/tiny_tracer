@@ -34,6 +34,13 @@ bool WFuncInfo::update(const WFuncInfo &func_info)
 
 //---
 
+std::string WSyscallInfo::formatSyscallName(int syscallID)
+{
+    std::stringstream ss;
+    ss << "SYSCALL:0x" << std::hex << (syscallID);
+    return ss.str();
+}
+
 bool WSyscallInfo::load(const std::string& sline, char delimiter)
 {
     std::vector<std::string> args;

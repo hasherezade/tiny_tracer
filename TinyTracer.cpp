@@ -403,12 +403,6 @@ VOID LogSyscallsArgs(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std
         syscall_args[9]);
 }
 
-std::string formatSyscallName(int syscallID)
-{
-    std::stringstream ss;
-    ss << "SYSCALL:0x" << std::hex << (syscallID);
-    return ss.str();
-}
 
 VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
 {
@@ -464,7 +458,7 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
     // check if it is watched by the syscall number:
     const auto& it = m_Settings.funcWatch.syscalls.find(syscallNum);
     if (it != m_Settings.funcWatch.syscalls.end()) {
-        LogSyscallsArgs(formatSyscallName(syscallNum).c_str(), ctxt, std, address, it->second.paramCount);
+        LogSyscallsArgs(WSyscallInfo::formatSyscallName(syscallNum).c_str(), ctxt, std, address, it->second.paramCount);
         return;
     }
 #ifdef _WIN32 // supported only for Windows

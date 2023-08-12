@@ -48,6 +48,8 @@ struct WSyscallInfo : public RoutineInfo
 {
     static const uint32_t INVALID_SYSCALL = (-1);
 
+    static std::string formatSyscallName(int syscallID);
+
     WSyscallInfo() :
         RoutineInfo(), 
         syscallId(INVALID_SYSCALL)
