@@ -151,7 +151,7 @@ VOID AntidebugMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr)
 // Process API calls (related to AntiDebug techniques)
 /* ==================================================================== */
 
-VOID AntiDbg_FuncLogOccurrence(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiDbgLogFuncOccurrence(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     PinLocker locker;
 
@@ -351,7 +351,7 @@ VOID ThreadStart(THREADID threadid, CONTEXT* ctxt, INT32 flags, VOID* v)
 // "CloseHandle" instrumentation, detects invalid handlers
 /* ===================================================================== */
 
-VOID AntidebugCloseHandle(ADDRINT Address, ADDRINT result)
+VOID AntiDbg_After_CloseHandle(ADDRINT Address, ADDRINT result)
 {
     PinLocker locker;
 
@@ -368,7 +368,7 @@ VOID AntidebugCloseHandle(ADDRINT Address, ADDRINT result)
 // Add single function
 /* ==================================================================== */
 
-bool AntidebugMonitorAddCallback(IMG Image, char* fName, uint32_t argNum, AntiDBGCallBack callback)
+bool AntiDbgAddCallbackBefore(IMG Image, char* fName, uint32_t argNum, AntiDBGCallBack callback)
 {
     const size_t argMax = 5;
     if (argNum > argMax) argNum = argMax;
@@ -415,29 +415,29 @@ VOID AntidebugMonitorFunctions(IMG Image)
     // API needed for Antidebug
     const std::string dllName = util::getDllName(IMG_Name(Image));
     if (util::iequals(dllName, "ntdll")) {
-        AntidebugMonitorAddCallback(Image, "CsrGetProcessId", 0, AntiDbg_FuncLogOccurrence);
-        AntidebugMonitorAddCallback(Image, "RtlQueryProcessHeapInformation", 1, AntiDbg_FuncLogOccurrence);
-        AntidebugMonitorAddCallback(Image, "RtlQueryProcessDebugInformation", 3, AntiDbg_FuncLogOccurrence);
-        AntidebugMonitorAddCallback(Image, "NtQueryInformationProcess", 5, AntiDbg_NtQueryInformationProcess);
-        AntidebugMonitorAddCallback(Image, "NtQuerySystemInformation", 4, AntiDbg_NtQuerySystemInformation);
+        AntiDbgAddCallbackBefore(Image, "CsrGetProcessId", 0, AntiDbgLogFuncOccurrence);
+        AntiDbgAddCallbackBefore(Image, "RtlQueryProcessHeapInformation", 1, AntiDbgLogFuncOccurrence);
+        AntiDbgAddCallbackBefore(Image, "RtlQueryProcessDebugInformation", 3, AntiDbgLogFuncOccurrence);
+        AntiDbgAddCallbackBefore(Image, "NtQueryInformationProcess", 5, AntiDbg_NtQueryInformationProcess);
+        AntiDbgAddCallbackBefore(Image, "NtQuerySystemInformation", 4, AntiDbg_NtQuerySystemInformation);
 
         ////////////////////////////////////
         // If AntiDebug level is Deep
         ////////////////////////////////////
         if (m_Settings.antidebug >= ANTIDEBUG_DEEP) {
-            AntidebugMonitorAddCallback(Image, "NtQueryObject", 5, AntiDbg_NtQueryObject);
+            AntiDbgAddCallbackBefore(Image, "NtQueryObject", 5, AntiDbg_NtQueryObject);
         }
     }
     if (util::iequals(dllName, "kernel32")) {
-        AntidebugMonitorAddCallback(Image, "LoadLibraryW", 1, AntiDbg_LoadLibrary);
-        AntidebugMonitorAddCallback(Image, "LoadLibraryA", 1, AntiDbg_LoadLibrary);
-        AntidebugMonitorAddCallback(Image, "CreateFileW", 5, AntiDbg_CreateFile);
-        AntidebugMonitorAddCallback(Image, "CreateFileA", 5, AntiDbg_CreateFile);
-        AntidebugMonitorAddCallback(Image, "IsDebuggerPresent", 0, AntiDbg_FuncLogOccurrence);
-        AntidebugMonitorAddCallback(Image, "CheckRemoteDebuggerPresent", 2, AntiDbg_FuncLogOccurrence);
-        AntidebugMonitorAddCallback(Image, "HeapWalk", 2, AntiDbg_FuncLogOccurrence);
-        AntidebugMonitorAddCallback(Image, "SetUnhandledExceptionFilter", 1, AntiDbg_FuncLogOccurrence);
-        AntidebugMonitorAddCallback(Image, "RaiseException", 4, AntiDbg_RaiseException);
+        AntiDbgAddCallbackBefore(Image, "LoadLibraryW", 1, AntiDbg_LoadLibrary);
+        AntiDbgAddCallbackBefore(Image, "LoadLibraryA", 1, AntiDbg_LoadLibrary);
+        AntiDbgAddCallbackBefore(Image, "CreateFileW", 5, AntiDbg_CreateFile);
+        AntiDbgAddCallbackBefore(Image, "CreateFileA", 5, AntiDbg_CreateFile);
+        AntiDbgAddCallbackBefore(Image, "IsDebuggerPresent", 0, AntiDbgLogFuncOccurrence);
+        AntiDbgAddCallbackBefore(Image, "CheckRemoteDebuggerPresent", 2, AntiDbgLogFuncOccurrence);
+        AntiDbgAddCallbackBefore(Image, "HeapWalk", 2, AntiDbgLogFuncOccurrence);
+        AntiDbgAddCallbackBefore(Image, "SetUnhandledExceptionFilter", 1, AntiDbgLogFuncOccurrence);
+        AntiDbgAddCallbackBefore(Image, "RaiseException", 4, AntiDbg_RaiseException);
     }
 
     // CloseHandle return value hook
@@ -446,7 +446,7 @@ VOID AntidebugMonitorFunctions(IMG Image)
 
     RTN_Open(funcRtn);
 
-    RTN_InsertCall(funcRtn, IPOINT_AFTER, AFUNPTR(AntidebugCloseHandle),
+    RTN_InsertCall(funcRtn, IPOINT_AFTER, AFUNPTR(AntiDbg_After_CloseHandle),
         IARG_RETURN_IP,
         IARG_FUNCRET_EXITPOINT_VALUE,
         IARG_END);
