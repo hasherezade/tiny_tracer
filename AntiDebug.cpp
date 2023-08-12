@@ -97,13 +97,26 @@ BOOL WinIsWindowsVistaOrGreater(void)
 // Log info with antidebug label
 /* ==================================================================== */
 
-VOID LogAntiDbg(const ADDRINT insAddr, const char* msg, const char *link=nullptr)
+VOID LogAntiDbg(const WatchedType wType, const ADDRINT Address, const char* msg, const char *link=nullptr)
 {
     if (!msg) return;
+    if (wType == WatchedType::NOT_WATCHED) return;
 
-    const ADDRINT RvaFrom = addr_to_rva(insAddr);
     std::stringstream ss;
-    ss << std::hex << RvaFrom << TraceLog::DELIMITER << ANTIDBG_LABEL << msg;
+    ADDRINT rva = UNKNOWN_ADDR;
+    if (wType == WatchedType::WATCHED_MY_MODULE) {
+        rva = addr_to_rva(Address); // convert to RVA
+    }
+    else if (wType == WatchedType::WATCHED_SHELLCODE) {
+        const ADDRINT start = query_region_base(Address);
+        rva = Address - start;
+        if (start != UNKNOWN_ADDR) {
+            ss << "> " << std::hex << start << "+";
+        }
+    }
+    if (rva == UNKNOWN_ADDR) return;
+
+    ss << std::hex << rva << TraceLog::DELIMITER << ANTIDBG_LABEL << msg;
     if (link) {
         ss << TraceLog::DELIMITER << link;
     }
@@ -118,30 +131,31 @@ VOID AntidebugMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr)
 {
     PinLocker locker;
 
-    if (isWatchedAddress(insAddr) == WatchedType::NOT_WATCHED) return;
+    const WatchedType wType = isWatchedAddress(insAddr);
+    if (wType == WatchedType::NOT_WATCHED) return;
 
     // Check the accessed memory address for antidebug tricks
     if (addr == pebAddr + 2) {
-        return LogAntiDbg(insAddr, "PEB!BeingDebugged accessed");
+        return LogAntiDbg(wType, insAddr, "PEB!BeingDebugged accessed");
     }
     if (addr == 0x7ffe02d4) {
-        return LogAntiDbg(insAddr, "KUSER_SHARED_DATA accessed",
+        return LogAntiDbg(wType, insAddr, "KUSER_SHARED_DATA accessed",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#kuser_shared_data");
     }
 #ifdef _WIN64
     if (addr == pebAddr + 0xBC) {
-        return LogAntiDbg(insAddr, "PEB!NtGlobalFlag accessed");
+        return LogAntiDbg(wType, insAddr, "PEB!NtGlobalFlag accessed");
     }
     if (addr == heapFlags || addr == heapForceFlags) {
-        return LogAntiDbg(insAddr, "Heap Flags accessed",
+        return LogAntiDbg(wType, insAddr, "Heap Flags accessed",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags");
     }
 #else
     if (addr == pebAddr + 0x68) {
-        return LogAntiDbg(insAddr, "PEB!NtGlobalFlag accessed");
+        return LogAntiDbg(wType, insAddr, "PEB!NtGlobalFlag accessed");
     }
     if (addr == heapFlags || addr == heapForceFlags) {
-        return LogAntiDbg(insAddr, "Heap Flags accessed",
+        return LogAntiDbg(wType, insAddr, "Heap Flags accessed",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags");
     }
 #endif
@@ -164,7 +178,7 @@ VOID FlagsCheck(const CONTEXT* ctxt)
     const bool isTrap = (pushedVal & 0x100) ? true : false;
     if (!isTrap) return;
 
-    return LogAntiDbg(Address, "Trap Flag set");
+    return LogAntiDbg(wType, Address, "Trap Flag set");
 }
 
 /* ==================================================================== */
@@ -175,14 +189,17 @@ VOID AntiDbgLogFuncOccurrence(const ADDRINT Address, const CHAR* name, uint32_t 
 {
     PinLocker locker;
 
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
     std::stringstream ss;
     ss << "^ " << name;
     auto itr = funcToLink.find(name);
     if (itr != funcToLink.end()) {
-        return LogAntiDbg(Address, ss.str().c_str(),
+        return LogAntiDbg(wType, Address, ss.str().c_str(),
             itr->second.c_str());
     }
-    return LogAntiDbg(Address, ss.str().c_str());
+    return LogAntiDbg(wType, Address, ss.str().c_str());
 }
 
 VOID AntiDbg_LoadLibrary(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
@@ -206,13 +223,14 @@ VOID AntiDbg_RaiseException(const ADDRINT Address, const CHAR* name, uint32_t ar
     if (!argCount) return;
 
     PinLocker locker;
-    if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
 
     // RaiseException constants
     enum ExceptionCode { kDBG_CONTROL_C = 0x40010005, kDBG_RIPEVENT = 0x40010007 };
     // kernel32!RaiseException() with DBG_CONTROL_C or DBG_RIPEVENT
     if (int((size_t)arg1) == ExceptionCode::kDBG_CONTROL_C || int((size_t)arg1) == ExceptionCode::kDBG_RIPEVENT) {
-        return LogAntiDbg(Address, "^ kernel32!RaiseException()",
+        return LogAntiDbg(wType, Address, "^ kernel32!RaiseException()",
             "https://anti-debug.checkpoint.com/techniques/exceptions.html#raiseexception");
     }
 }
@@ -222,12 +240,13 @@ VOID AntiDbg_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, u
     if (!argCount) return;
 
     PinLocker locker;
-    if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
 
     enum SystemInformationClass { SystemKernelDebuggerInformation = 0x23 };
     // function ntdll!NtQuerySystemInformation() with first parameter set to 0x23 (SystemKernelDebuggerInformation)
     if (int((size_t)arg1) == SystemInformationClass::SystemKernelDebuggerInformation) {
-        return LogAntiDbg(Address, "^ ntdll!NtQuerySystemInformation (SystemKernelDebuggerInformation)",
+        return LogAntiDbg(wType, Address, "^ ntdll!NtQuerySystemInformation (SystemKernelDebuggerInformation)",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-ntquerysysteminformation");
     }
 }
@@ -237,23 +256,24 @@ VOID AntiDbg_NtQueryInformationProcess(const ADDRINT Address, const CHAR* name, 
     if (argCount < 2) return;
 
     PinLocker locker;
-    if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
 
     enum ProcessInformationClass { ProcessDebugPort = 0x7, ProcessDebugFlags = 0x1f, ProcessDebugObjectHandle = 0x1e };
 
     // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 7 (ProcessDebugPort)
     if (int((size_t)arg2) == ProcessInformationClass::ProcessDebugPort) {
-        return LogAntiDbg(Address, "^ ntdll!NtQueryInformationProcess (ProcessDebugPort)",
+        return LogAntiDbg(wType, Address, "^ ntdll!NtQueryInformationProcess (ProcessDebugPort)",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugport");
     }
     // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 0x1f (ProcessDebugFlags)
     if (int((size_t)arg2) == ProcessInformationClass::ProcessDebugFlags) {
-        return LogAntiDbg(Address, "^ ntdll!NtQueryInformationProcess (ProcessDebugFlags)",
+        return LogAntiDbg(wType, Address, "^ ntdll!NtQueryInformationProcess (ProcessDebugFlags)",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugflags");
     }
     // function ntdll!NtQueryInformationProcess with ProcessInformationClass == 0x1e (ProcessDebugObjectHandle)
     if (int((size_t)arg2) == ProcessInformationClass::ProcessDebugObjectHandle) {
-        return LogAntiDbg(Address, "^ ntdll!NtQueryInformationProcess (ProcessDebugObjectHandle)",
+        return LogAntiDbg(wType, Address, "^ ntdll!NtQueryInformationProcess (ProcessDebugObjectHandle)",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-ntqueryinformationprocess-processdebugobjecthandle");
     }
 }
@@ -263,12 +283,13 @@ VOID AntiDbg_NtQueryObject(const ADDRINT Address, const CHAR* name, uint32_t arg
     if (argCount < 2) return;
 
     PinLocker locker;
-    if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
 
     enum ObjectInformationClass { ObjectAllTypesInformation = 3 };
     // ntdll!NtQueryObject() to access DebugObject (with ObjectAllTypesInformation as 2nd argument)
     if (int((size_t)arg2) == ObjectInformationClass::ObjectAllTypesInformation) {
-        return LogAntiDbg(Address, "^ ntdll!NtQueryObject (ObjectAllTypesInformation)",
+        return LogAntiDbg(wType, Address, "^ ntdll!NtQueryObject (ObjectAllTypesInformation)",
             "https://anti-debug.checkpoint.com/techniques/object-handles.html#ntqueryobject");
     }
 }
@@ -278,7 +299,8 @@ VOID AntiDbg_CreateFile(const ADDRINT Address, const CHAR* name, uint32_t argCou
     if (argCount < 3) return;
 
     PinLocker locker;
-    if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
 
     // kernel32!CreateFileX called on the module itself with Exclusive access, or on loaded libraries
     // Check only exclusive accesses for optimization
@@ -295,14 +317,14 @@ VOID AntiDbg_CreateFile(const ADDRINT Address, const CHAR* name, uint32_t argCou
         std::string _argStr(argStr.begin(), argStr.end());
         // Check if open is done on module
         if (util::isStrEqualI(_argStr, moduleName)) {
-            return LogAntiDbg(Address, "^ kernel32!CreateFile on module",
+            return LogAntiDbg(wType, Address, "^ kernel32!CreateFile on module",
                 "https://anti-debug.checkpoint.com/techniques/object-handles.html#createfile");
         }
 
         // Check if open is done on loaded libraries
         for (size_t i = 0; i < loadedLib.size(); i++) {
             if (util::isStrEqualI(_argStr, loadedLib[i])) {
-                return LogAntiDbg(Address, "^ kernel32!CreateFile on loaded lib",
+                return LogAntiDbg(wType, Address, "^ kernel32!CreateFile on loaded lib",
                     "https://anti-debug.checkpoint.com/techniques/object-handles.html#loadlibrary");
             }
         }
@@ -375,11 +397,12 @@ VOID AntiDbg_After_CloseHandle(ADDRINT Address, ADDRINT result)
 {
     PinLocker locker;
 
-    if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
 
     if (!result) {
         // Invalid closure
-        return LogAntiDbg(Address, "^ kernel32!CloseHandle (INVALID_HNDL_VAL)",
+        return LogAntiDbg(wType, Address, "^ kernel32!CloseHandle (INVALID_HNDL_VAL)",
             "https://anti-debug.checkpoint.com/techniques/object-handles.html#closehandle");
     }
 }
