@@ -161,6 +161,7 @@ VOID AntidebugMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr)
 #endif
 }
 
+#define CLEAR_TRAP
 VOID FlagsCheck(const CONTEXT* ctxt)
 {
     PinLocker locker;
@@ -178,8 +179,13 @@ VOID FlagsCheck(const CONTEXT* ctxt)
     const bool isTrap = (pushedVal & 0x100) ? true : false;
     if (!isTrap) return;
 
-    return LogAntiDbg(wType, Address, "Trap Flag set",
+    LogAntiDbg(wType, Address, "Trap Flag set",
         "https://anti-debug.checkpoint.com/techniques/assembly.html#popf_and_trap_flag");
+
+#ifdef CLEAR_TRAP
+    pushedVal ^= 0x100;
+    ::memcpy((void*)stackPtr, &pushedVal, sizeof(pushedVal));
+#endif
 }
 
 /* ==================================================================== */
