@@ -134,6 +134,7 @@ VOID AntiDbg::WatchMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr
     const WatchedType wType = isWatchedAddress(insAddr);
     if (wType == WatchedType::NOT_WATCHED) return;
 
+    if (!pebAddr) return;
     // Check the accessed memory address for antidebug tricks
     if (addr == pebAddr + 2) {
         return LogAntiDbg(wType, insAddr, "PEB!BeingDebugged accessed");
@@ -342,6 +343,28 @@ VOID AntiDbg_CreateFile(const ADDRINT Address, const CHAR* name, uint32_t argCou
 // Collect some infos at Thread start, to be used later in checks
 /* ==================================================================== */
 
+BOOL getPEB(CONTEXT* ctxt, ADDRINT& pebAddr)
+{
+    BOOL is_ok = FALSE;
+#ifdef _WIN64
+    // Read the value from the memory address pointed by GS:[60h] and save it in the global variable
+    ADDRINT gsValue;
+    PIN_GetContextRegval(ctxt, REG_SEG_GS_BASE, reinterpret_cast<UINT8*>(&gsValue));
+    gsValue += 0x60;
+    // Save PEB Address
+    if (PIN_SafeCopy(&pebAddr, reinterpret_cast<VOID*>(gsValue), sizeof(pebAddr)))is_ok = TRUE;
+#else
+    // Read the value from the memory address pointed by FS:[30h] and save it in the global variable
+    ADDRINT fsValue;
+    PIN_GetContextRegval(ctxt, REG_SEG_FS_BASE, reinterpret_cast<UINT8*>(&fsValue));
+    fsValue += 0x30;
+
+    // Save PEB Address
+    if (PIN_SafeCopy(&pebAddr, reinterpret_cast<VOID*>(fsValue), sizeof(pebAddr))) is_ok = TRUE;
+#endif
+    return is_ok;
+}
+
 VOID AntiDbg::WatchThreadStart(THREADID threadid, CONTEXT* ctxt, INT32 flags, VOID* v)
 {
     PinLocker locker;
@@ -352,12 +375,7 @@ VOID AntiDbg::WatchThreadStart(THREADID threadid, CONTEXT* ctxt, INT32 flags, VO
     }
 #ifdef _WIN64
     // Read the value from the memory address pointed by GS:[60h] and save it in the global variable
-    ADDRINT gsValue;
-    PIN_GetContextRegval(ctxt, REG_SEG_GS_BASE, reinterpret_cast<UINT8*>(&gsValue));
-    gsValue += 0x60;
-
-    // Save PEB Address
-    PIN_SafeCopy(&pebAddr, reinterpret_cast<VOID*>(gsValue), sizeof(pebAddr));
+    if (!getPEB(ctxt, pebAddr)) return;
 
     // Get Heap flags addresses (https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags)
     ADDRINT heapBase;
@@ -372,12 +390,7 @@ VOID AntiDbg::WatchThreadStart(THREADID threadid, CONTEXT* ctxt, INT32 flags, VO
     heapForceFlags = heapBase + heapForceFlagsOffset;
 #else
     // Read the value from the memory address pointed by FS:[30h] and save it in the global variable
-    ADDRINT fsValue;
-    PIN_GetContextRegval(ctxt, REG_SEG_FS_BASE, reinterpret_cast<UINT8*>(&fsValue));
-    fsValue += 0x30;
-
-    // Save PEB Address
-    PIN_SafeCopy(&pebAddr, reinterpret_cast<VOID*>(fsValue), sizeof(pebAddr));
+    if (!getPEB(ctxt, pebAddr)) return;
 
     // Get Heap flags addresses (https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags)
     ADDRINT heapBase;
