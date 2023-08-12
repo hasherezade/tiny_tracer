@@ -333,6 +333,33 @@ VOID CpuidCalled(const CONTEXT* ctxt)
     }
 }
 
+BOOL fetchInterruptID(const ADDRINT Address, int &intID)
+{
+    unsigned char copyBuf[2] = { 0 };
+    int fetchedSize = 1;
+    std::string mnem;
+    if (!PIN_FetchCode(copyBuf, (void*)Address, fetchedSize, NULL)) return FALSE;
+
+    if (copyBuf[0] == 0xCD) { // INT
+        fetchedSize = 2;
+        if (!PIN_FetchCode(copyBuf, (void*)Address, fetchedSize, NULL)) return FALSE;
+    }
+    switch (copyBuf[0]) {
+        case 0xCC:
+            intID = 3; break;
+        case 0xCE:
+            intID = 4; break;
+        case 0xF1:
+            intID = 1; break;
+        case 0xCD:
+        {
+            intID = (unsigned int)copyBuf[1];
+            break;
+        }
+    }
+    return TRUE;
+}
+
 VOID InterruptCalled(const CONTEXT* ctxt)
 {
     PinLocker locker;
@@ -341,41 +368,19 @@ VOID InterruptCalled(const CONTEXT* ctxt)
     if (wType == WatchedType::NOT_WATCHED) {
         return;
     }
+    int interruptID = 0;
+    if (!fetchInterruptID(Address, interruptID)) return;
 
-    unsigned char copyBuf[2] = { 0 };
-    int fetchedSize = 1;
-    std::string mnem;
-    if (PIN_FetchCode(copyBuf, (void*)Address, fetchedSize, NULL)) {
-        if (copyBuf[0] == 0xCD) { // INT 
-            fetchedSize = 2;
-            PIN_FetchCode(copyBuf, (void*)Address, fetchedSize, NULL);
-        }
-        switch (copyBuf[0]) {
-            case 0xCC:
-                mnem = "INT3"; break;
-            case 0xCE:
-                mnem = "INT0"; break;
-            case 0xF1:
-                mnem = "INT1"; break;
-            case 0xCD:
-            {
-                std::stringstream ss;
-                ss << std::hex << (unsigned int)copyBuf[1];
-                mnem = "INT:" + ss.str();
-                break;
-            }
-        }
-    }
-
+    const std::string mnem = "INT";
     if (wType == WatchedType::WATCHED_MY_MODULE) {
         ADDRINT rva = addr_to_rva(Address); // convert to RVA
-        traceLog.logInstruction(0, rva, mnem);
+        traceLog.logInstruction(0, rva, mnem, interruptID);
     }
     if (wType == WatchedType::WATCHED_SHELLCODE) {
         const ADDRINT start = query_region_base(Address);
         ADDRINT rva = Address - start;
         if (start != UNKNOWN_ADDR) {
-            traceLog.logInstruction(start, rva, mnem);
+            traceLog.logInstruction(start, rva, mnem, interruptID);
         }
     }
 }
