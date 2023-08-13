@@ -11,6 +11,7 @@
 #include "Settings.h"
 #include "PinLocker.h"
 #include "TinyTracer.h"
+#include "ModuleInfo.h"
 
 #include "win/win_paths.h"
 
@@ -456,7 +457,7 @@ bool AntiDbgAddCallbackBefore(IMG Image, char* fName, uint32_t argNum, AntiDBGCa
     const size_t argMax = 5;
     if (argNum > argMax) argNum = argMax;
 
-    RTN funcRtn = RTN_FindByName(Image, fName);
+    RTN funcRtn = find_by_unmangled_name(Image, fName);
     if (RTN_Valid(funcRtn)) {
         RTN_Open(funcRtn);
 
@@ -524,7 +525,7 @@ VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
     }
 
     // CloseHandle return value hook
-    RTN funcRtn = RTN_FindByName(Image, "CloseHandle");
+    RTN funcRtn = find_by_unmangled_name(Image, "CloseHandle");
     if (!RTN_Valid(funcRtn)) return; // failed
 
     RTN_Open(funcRtn);
