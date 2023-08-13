@@ -23,7 +23,7 @@
 #include "PinLocker.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.6"
+#define VERSION "2.6.1"
 
 #include "Util.h"
 #include "Settings.h"
@@ -848,7 +848,7 @@ int main(int argc, char *argv[])
     // Initialize PIN library. Print help message if -h(elp) is specified
     // in the command line or the command line is invalid 
 
-    PIN_InitSymbols();
+    PIN_InitSymbolsAlt(EXPORT_SYMBOLS);
     if (PIN_Init(argc, argv))
     {
         return Usage();
