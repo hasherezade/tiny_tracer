@@ -19,6 +19,7 @@
 #define HOOK_SLEEP                      "HOOK_SLEEP"
 #define LOG_INDIRECT                    "LOG_INDIRECT_CALLS"
 #define KEY_ANTIDEBUG                   "ANTIDEBUG"
+#define KEY_ANTIVM                      "ANTIVM"
 
 t_shellc_options ConvertShcOption(int value)
 {
@@ -153,6 +154,10 @@ bool fillSettings(Settings &s, std::string line)
         s.antidebug = ConvertAntidebugOption(val);
         isFilled = true;
     }
+    if (util::iequals(valName, KEY_ANTIVM)) {
+        s.antivm = loadBoolean(valStr, s.antivm);
+        isFilled = true;
+    }
     return isFilled;
 }
 
@@ -183,6 +188,7 @@ bool Settings::saveINI(const std::string &filename)
     myfile << SLEEP_TIME << DELIM << this->sleepTime << "\r\n";
     myfile << LOG_INDIRECT << DELIM << this->logIndirect << "\r\n";
     myfile << KEY_ANTIDEBUG << DELIM << this->antidebug << "\r\n";
+    myfile << KEY_ANTIVM << DELIM << this->antivm << "\r\n";
     myfile.close();
     return true;
 }

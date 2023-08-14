@@ -30,13 +30,19 @@
 
 
 #define USE_ANTIDEBUG
+#define USE_ANTIVM
 
 #ifndef _WIN32
 #undef USE_ANTIDEBUG // works only for Windows!
+undef USE_ANTIVM
 #endif
 
 #ifdef USE_ANTIDEBUG
 #include "AntiDebug.h"
+#endif
+
+#ifdef USE_ANTIVM
+#include "AntiVm.h"
 #endif
 
 /* ================================================================== */
@@ -815,6 +821,13 @@ VOID ImageLoad(IMG Image, VOID *v)
     if (m_Settings.antidebug != ANTIDEBUG_DISABLED) {
         // Register functions
         AntiDbg::MonitorAntiDbgFunctions(Image);
+    }
+#endif
+#ifdef USE_ANTIVM
+    // ANTIVM: Register Function instrumentation needed for AntiVm
+    if (m_Settings.antivm) {
+        // Register functions
+        AntiVm::MonitorAntiVmFunctions(Image);
     }
 #endif
 }
