@@ -849,7 +849,6 @@ int main(int argc, char *argv[])
     // Initialize PIN library. Print help message if -h(elp) is specified
     // in the command line or the command line is invalid 
 
-    PIN_InitSymbolsAlt(DEBUG_OR_EXPORT_SYMBOLS);
     if (PIN_Init(argc, argv))
     {
         return Usage();
@@ -873,7 +872,15 @@ int main(int argc, char *argv[])
         std::cerr << "Coud not load the INI file: " << iniFilename << std::endl;
         m_Settings.saveINI(iniFilename);
     }
-    
+
+    // select mode in which symbols should be initialized
+    SYMBOL_INFO_MODE mode = EXPORT_SYMBOLS;
+    if (m_Settings.useDebugSym) {
+        std::cout << "Using debug symbols (if available)\n";
+        mode = DEBUG_OR_EXPORT_SYMBOLS;
+    }
+    PIN_InitSymbolsAlt(mode);
+
     if (KnobExcludedListFile.Enabled()) {
         std::string excludedList = KnobExcludedListFile.ValueString();
         if (excludedList.length()) {

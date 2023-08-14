@@ -70,7 +70,8 @@ public:
         shortLogging(true),
         logIndirect(false),
         hexdumpSize(8),
-        antidebug(ANTIDEBUG_DISABLED)
+        antidebug(ANTIDEBUG_DISABLED),
+        useDebugSym(false)
     {
     }
 
@@ -90,6 +91,7 @@ public:
     bool hookSleep;
     size_t sleepTime;
     t_antidebug_options antidebug;
+    bool useDebugSym;
 
     SyscallsTable syscallsTable; //Syscalls table: mapping the syscall ID to the function name
     FuncWatchList funcWatch; //List of functions, arguments of which are going to be logged

@@ -19,6 +19,7 @@
 #define HOOK_SLEEP                      "HOOK_SLEEP"
 #define LOG_INDIRECT                    "LOG_INDIRECT_CALLS"
 #define KEY_ANTIDEBUG                   "ANTIDEBUG"
+#define KEY_USE_DEBUG_SYMBOLS           "USE_DEBUG_SYMBOLS"
 
 t_shellc_options ConvertShcOption(int value)
 {
@@ -153,6 +154,10 @@ bool fillSettings(Settings &s, std::string line)
         s.antidebug = ConvertAntidebugOption(val);
         isFilled = true;
     }
+    if (util::iequals(valName, KEY_USE_DEBUG_SYMBOLS)) {
+        s.useDebugSym = loadBoolean(valStr, s.useDebugSym);
+        isFilled = true;
+    }
     return isFilled;
 }
 
@@ -177,12 +182,14 @@ bool Settings::saveINI(const std::string &filename)
     myfile << KEY_LOG_SECTIONS_TRANSITIONS << DELIM << this->logSectTrans << "\r\n";
     myfile << KEY_LOG_SHELLCODES_TRANSITIONS << DELIM << this->logShelcTrans << "\r\n";
     myfile << KEY_SHORT_LOGGING << DELIM << this->shortLogging << "\r\n";
+    myfile << KEY_USE_DEBUG_SYMBOLS << DELIM << this->useDebugSym << "\r\n";
     myfile << HEXDUMP_SIZE << DELIM << this->hexdumpSize << "\r\n";
 
     myfile << HOOK_SLEEP << DELIM << this->hookSleep << "\r\n";
     myfile << SLEEP_TIME << DELIM << this->sleepTime << "\r\n";
     myfile << LOG_INDIRECT << DELIM << this->logIndirect << "\r\n";
     myfile << KEY_ANTIDEBUG << DELIM << this->antidebug << "\r\n";
+
     myfile.close();
     return true;
 }
