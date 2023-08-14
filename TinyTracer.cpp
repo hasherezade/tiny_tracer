@@ -34,7 +34,7 @@
 
 #ifndef _WIN32
 #undef USE_ANTIDEBUG // works only for Windows!
-undef USE_ANTIVM
+#undef USE_ANTIVM
 #endif
 
 #ifdef USE_ANTIDEBUG
