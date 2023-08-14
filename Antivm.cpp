@@ -1,4 +1,4 @@
-#include "AntiDebug.h"
+#include "AntiVm.h"
 
 #include <iostream>
 #include <sstream>
@@ -20,6 +20,6 @@ using namespace LEVEL_PINCLIENT;
 // Called by ImageLoad
 /* ==================================================================== */
 
-VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
+VOID AntiVm::MonitorAntiVmFunctions(IMG Image)
 {
 }
