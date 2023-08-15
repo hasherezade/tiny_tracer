@@ -64,30 +64,43 @@ BOOL WinIsNativeOs32(void)
 {
     BOOL isNativeOs32 = FALSE;
 #ifndef _WIN64
-    {  // scope
-        using namespace WINDOWS;
-
-        WINDOWS::BOOL(WINAPI * _IsWow64Process)(HANDLE, WINDOWS::PBOOL) =
-            (WINDOWS::BOOL(WINAPI*)(HANDLE, WINDOWS::PBOOL)) WINDOWS::GetProcAddress(GetModuleHandleA("kernel32"), "IsWow64Process");
-        if (!_IsWow64Process) {
-            return TRUE;   //function not found -> 32-bit system
-        }
-        WINDOWS::BOOL isWow64 = FALSE;
-        _IsWow64Process(WINDOWS::GetCurrentProcess(), &isWow64);
-        isNativeOs32 = !isWow64;
-    } // !scope
+    OS_HOST_CPU_ARCH_TYPE arch = OS_HOST_CPU_ARCH_TYPE_INVALID;
+    OS_RETURN_CODE code = OS_GetHostCPUArch(&arch);
+    if (code.generic_err != OS_RETURN_CODE_NO_ERROR) {
+        return TRUE; // assume 32 bit
+    }
+    if (arch == OS_HOST_CPU_ARCH_TYPE_IA32) {
+        isNativeOs32 = TRUE;
+    }
 #endif
     return isNativeOs32;
 }
 
 BOOL WinIsWindowsVistaOrGreater(void)
 {
-    using namespace WINDOWS;
-
-    DWORD dwVersion = WINDOWS::GetVersion();
-    DWORD dwMajorVersion = (DWORD)(LOBYTE(LOWORD(dwVersion)));
-    DWORD dwMinorVersion = (DWORD)(HIBYTE(LOWORD(dwVersion)));
-
+    const USIZE buf_size = 300;
+    CHAR buf[buf_size] = { 0 };
+    OS_RETURN_CODE code = OS_GetKernelRelease(buf, buf_size);
+    if (code.generic_err != OS_RETURN_CODE_NO_ERROR) {
+        return TRUE; // assume greater than Vista
+    }
+    int dwMajorVersion = 0;
+    int dwMinorVersion = 0;    
+#ifdef _DEBUG
+    std::cout << "Kernel ver: " << buf << "\n";
+#endif
+    std::vector<std::string> args;
+    util::splitList(buf, '.', args);
+    if (args.size() >= 2) {
+        dwMajorVersion = util::loadInt(args[0], false);
+        dwMinorVersion = util::loadInt(args[1], false);
+#ifdef _DEBUG
+        std::cout << "VER {" << dwMajorVersion << ";" << dwMinorVersion << "}\n";
+#endif
+    }
+#ifdef _DEBUG
+    std::cout << "Is native 32bit?: " << WinIsNativeOs32() << "\n";
+#endif
     if (dwMajorVersion >= 6) {
         return TRUE;
     }
