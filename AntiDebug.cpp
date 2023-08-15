@@ -57,7 +57,7 @@ std::wstring paramToStrSplit(VOID* arg1)
 }
 
 /* ==================================================================== */
-// Wrappers for Windows functions
+// System information
 /* ==================================================================== */
 
 BOOL WinIsNativeOs32(void)
@@ -85,22 +85,13 @@ BOOL WinIsWindowsVistaOrGreater(void)
         return TRUE; // assume greater than Vista
     }
     int dwMajorVersion = 0;
-    int dwMinorVersion = 0;    
-#ifdef _DEBUG
-    std::cout << "Kernel ver: " << buf << "\n";
-#endif
+    int dwMinorVersion = 0;
     std::vector<std::string> args;
     util::splitList(buf, '.', args);
     if (args.size() >= 2) {
         dwMajorVersion = util::loadInt(args[0], false);
         dwMinorVersion = util::loadInt(args[1], false);
-#ifdef _DEBUG
-        std::cout << "VER {" << dwMajorVersion << ";" << dwMinorVersion << "}\n";
-#endif
     }
-#ifdef _DEBUG
-    std::cout << "Is native 32bit?: " << WinIsNativeOs32() << "\n";
-#endif
     if (dwMajorVersion >= 6) {
         return TRUE;
     }
