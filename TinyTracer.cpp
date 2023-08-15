@@ -23,7 +23,7 @@
 #include "PinLocker.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.6.1"
+#define VERSION "2.6.2"
 
 #include "Util.h"
 #include "Settings.h"
@@ -634,7 +634,7 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
     size_t argNum = funcInfo.paramCount;
     if (argNum > argMax) argNum = argMax;
 
-    RTN funcRtn = RTN_FindByName(Image, fName);
+    RTN funcRtn = find_by_unmangled_name(Image, fName);
     if (!RTN_Valid(funcRtn) || !funcInfo.isValid()) return; // failed
 
     std::cout << "Watch " << IMG_Name(Image) << ": " << fName << " [" << argNum << "]\n";
@@ -784,6 +784,7 @@ VOID HookNtDelayExecution(const CHAR* name, UINT64* sleepTimePtr)
 
 /* ===================================================================== */
 
+
 VOID ImageLoad(IMG Image, VOID *v)
 {
     PinLocker locker;
@@ -799,7 +800,7 @@ VOID ImageLoad(IMG Image, VOID *v)
         const std::string dllName = util::getDllName(IMG_Name(Image));
         if (util::iequals(dllName, "ntdll")) {
             const CHAR *SLEEP = "NtDelayExecution";
-            RTN sleepRtn = RTN_FindByName(Image, SLEEP);
+            RTN sleepRtn = find_by_unmangled_name(Image, SLEEP);
             if (RTN_Valid(sleepRtn)) {
                 RTN_Open(sleepRtn);
                 RTN_InsertCall(sleepRtn, IPOINT_BEFORE, (AFUNPTR)HookNtDelayExecution,
@@ -848,7 +849,6 @@ int main(int argc, char *argv[])
     // Initialize PIN library. Print help message if -h(elp) is specified
     // in the command line or the command line is invalid 
 
-    PIN_InitSymbolsAlt(EXPORT_SYMBOLS);
     if (PIN_Init(argc, argv))
     {
         return Usage();
@@ -872,7 +872,15 @@ int main(int argc, char *argv[])
         std::cerr << "Coud not load the INI file: " << iniFilename << std::endl;
         m_Settings.saveINI(iniFilename);
     }
-    
+
+    // select mode in which symbols should be initialized
+    SYMBOL_INFO_MODE mode = EXPORT_SYMBOLS;
+    if (m_Settings.useDebugSym) {
+        std::cout << "Using debug symbols (if available)\n";
+        mode = DEBUG_OR_EXPORT_SYMBOLS;
+    }
+    PIN_InitSymbolsAlt(mode);
+
     if (KnobExcludedListFile.Enabled()) {
         std::string excludedList = KnobExcludedListFile.ValueString();
         if (excludedList.length()) {

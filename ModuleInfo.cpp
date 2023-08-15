@@ -43,7 +43,7 @@ std::string get_func_at(ADDRINT callAddr)
         sstr << "[ + " << (callAddr - base) << "]*";
         return sstr.str();
     }
-    std::string name = RTN_Name(rtn);
+    std::string name = get_unmangled_name(rtn);
     ADDRINT rtnAddr = RTN_Address(rtn);
     if (rtnAddr == callAddr) {
         return name;
@@ -95,4 +95,22 @@ ADDRINT query_region_base(ADDRINT memoryAddr)
         return UNKNOWN_ADDR;
     }
     return GetPageOfAddr((ADDRINT)memoryAddr);
+}
+
+std::string get_unmangled_name(RTN rtn)
+{
+    return PIN_UndecorateSymbolName(RTN_Name(rtn), UNDECORATION_NAME_ONLY);
+}
+
+RTN find_by_unmangled_name(IMG img, const CHAR* fName)
+{
+    for (SYM sym = IMG_RegsymHead(img); SYM_Valid(sym); sym = SYM_Next(sym)) {
+        const std::string undFuncName = PIN_UndecorateSymbolName(SYM_Name(sym), UNDECORATION_NAME_ONLY);
+        if (undFuncName == fName) {
+            const ADDRINT offset = SYM_Value(sym);
+            if (offset == UNKNOWN_ADDR) break;
+            return RTN_FindByAddress(IMG_LowAddress(img) + offset);
+        }
+    }
+    return RTN_Invalid();
 }

@@ -26,3 +26,8 @@ ADDRINT get_base(ADDRINT Address);
 ADDRINT addr_to_rva(ADDRINT Address);
 
 ADDRINT query_region_base(ADDRINT memoryAddr);
+
+std::string get_unmangled_name(RTN rtn);
+
+RTN find_by_unmangled_name(IMG img, const CHAR* fName);
+
