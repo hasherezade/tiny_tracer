@@ -86,16 +86,13 @@ BOOL WinIsWindowsVistaOrGreater(void)
     if (code.generic_err != OS_RETURN_CODE_NO_ERROR) {
         return TRUE; // assume greater than Vista
     }
-    int dwMajorVersion = 0;
-    int dwMinorVersion = 0;
     std::vector<std::string> args;
     util::splitList(buf, '.', args);
     if (args.size() >= 2) {
-        dwMajorVersion = util::loadInt(args[0], false);
-        dwMinorVersion = util::loadInt(args[1], false);
-    }
-    if (dwMajorVersion >= 6) {
-        return TRUE;
+        int dwMajorVersion = util::loadInt(args[0], false);
+        if (dwMajorVersion >= 6) {
+            return TRUE;
+        }
     }
     return FALSE;
 }
