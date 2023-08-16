@@ -82,9 +82,8 @@ VOID AntiVm_WmiQueries(const ADDRINT addr, const CHAR* name, uint32_t argCount, 
     using namespace WINDOWS;
 
     LPCWSTR wmi_query = (LPCWSTR)arg2;
-    VARIANT* wmi_args = (VARIANT*)arg4;
 
-    if (wmi_query == NULL || wmi_args == NULL) return;
+    if (wmi_query == NULL) return;
 
     char wmi_query_field[PATH_BUFSIZE];
     GET_STR_TO_UPPER(wmi_query, wmi_query_field, PATH_BUFSIZE);

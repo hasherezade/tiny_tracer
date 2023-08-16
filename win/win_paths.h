@@ -5,5 +5,4 @@
 namespace WINDOWS
 {
 	#include <Windows.h>
-	#include "OAIdl.h"
 }
