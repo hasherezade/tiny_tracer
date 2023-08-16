@@ -71,6 +71,7 @@ public:
         logIndirect(false),
         hexdumpSize(8),
         antidebug(ANTIDEBUG_DISABLED),
+        antivm(false),
         useDebugSym(false)
     {
     }
@@ -91,6 +92,7 @@ public:
     bool hookSleep;
     size_t sleepTime;
     t_antidebug_options antidebug;
+    bool antivm; // Trace Anti-VM techniques (WMI queries)
     bool useDebugSym;
 
     SyscallsTable syscallsTable; //Syscalls table: mapping the syscall ID to the function name

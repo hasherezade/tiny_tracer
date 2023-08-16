@@ -279,6 +279,7 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Antivm.cpp" />
     <ClCompile Include="ModuleInfo.cpp" />
     <ClCompile Include="ProcessInfo.cpp" />
     <ClCompile Include="AntiDebug.cpp" />
@@ -290,6 +291,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AntiDebug.h" />
+    <ClInclude Include="AntiVm.h" />
     <ClInclude Include="TinyTracer.h" />
     <ClInclude Include="ModuleInfo.h" />
     <ClInclude Include="ProcessInfo.h" />
