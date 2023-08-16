@@ -71,11 +71,8 @@ public:
         logIndirect(false),
         hexdumpSize(8),
         antidebug(ANTIDEBUG_DISABLED),
-<<<<<<< HEAD
+        antivm(false),
         useDebugSym(false)
-=======
-        antivm(false)
->>>>>>> dev_antivm
     {
     }
 
@@ -95,11 +92,8 @@ public:
     bool hookSleep;
     size_t sleepTime;
     t_antidebug_options antidebug;
-<<<<<<< HEAD
+    bool antivm; // Trace Anti-VM techniques (WMI queries)
     bool useDebugSym;
-=======
-    bool antivm; // Trace Anti-VM techniques (API calls, WMI queries, specific instructions)
->>>>>>> dev_antivm
 
     SyscallsTable syscallsTable; //Syscalls table: mapping the syscall ID to the function name
     FuncWatchList funcWatch; //List of functions, arguments of which are going to be logged

@@ -19,11 +19,8 @@
 #define HOOK_SLEEP                      "HOOK_SLEEP"
 #define LOG_INDIRECT                    "LOG_INDIRECT_CALLS"
 #define KEY_ANTIDEBUG                   "ANTIDEBUG"
-<<<<<<< HEAD
-#define KEY_USE_DEBUG_SYMBOLS           "USE_DEBUG_SYMBOLS"
-=======
 #define KEY_ANTIVM                      "ANTIVM"
->>>>>>> dev_antivm
+#define KEY_USE_DEBUG_SYMBOLS           "USE_DEBUG_SYMBOLS"
 
 t_shellc_options ConvertShcOption(int value)
 {
@@ -158,13 +155,12 @@ bool fillSettings(Settings &s, std::string line)
         s.antidebug = ConvertAntidebugOption(val);
         isFilled = true;
     }
-<<<<<<< HEAD
-    if (util::iequals(valName, KEY_USE_DEBUG_SYMBOLS)) {
-        s.useDebugSym = loadBoolean(valStr, s.useDebugSym);
-=======
     if (util::iequals(valName, KEY_ANTIVM)) {
         s.antivm = loadBoolean(valStr, s.antivm);
->>>>>>> dev_antivm
+        isFilled = true;
+    }
+    if (util::iequals(valName, KEY_USE_DEBUG_SYMBOLS)) {
+        s.useDebugSym = loadBoolean(valStr, s.useDebugSym);
         isFilled = true;
     }
     return isFilled;
@@ -198,11 +194,7 @@ bool Settings::saveINI(const std::string &filename)
     myfile << SLEEP_TIME << DELIM << this->sleepTime << "\r\n";
     myfile << LOG_INDIRECT << DELIM << this->logIndirect << "\r\n";
     myfile << KEY_ANTIDEBUG << DELIM << this->antidebug << "\r\n";
-<<<<<<< HEAD
-
-=======
     myfile << KEY_ANTIVM << DELIM << this->antivm << "\r\n";
->>>>>>> dev_antivm
     myfile.close();
     return true;
 }
