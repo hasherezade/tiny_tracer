@@ -27,7 +27,7 @@
 
 #include "Util.h"
 #include "Settings.h"
-
+#define LOGGED_ARGS_MAX 11
 
 #define USE_ANTIDEBUG
 #define USE_ANTIVM
@@ -81,7 +81,7 @@ KNOB<std::string> KnobExcludedListFile(KNOB_MODE_WRITEONCE, "pintool",
 // Utilities
 /* ===================================================================== */
 
-VOID _LogFunctionArgs(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10);
+VOID _LogFunctionArgs(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10, VOID* arg11);
 
 
 /*!
@@ -411,7 +411,7 @@ VOID InterruptCalled(const CONTEXT* ctxt)
 
 VOID LogSyscallsArgs(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address, uint32_t argCount)
 {
-    const size_t args_max = 10;
+    const size_t args_max = LOGGED_ARGS_MAX;
     VOID* syscall_args[args_max] = { 0 };
 
     for (size_t i = 0; i < args_max; i++) {
@@ -429,7 +429,8 @@ VOID LogSyscallsArgs(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std
         syscall_args[6],
         syscall_args[7],
         syscall_args[8],
-        syscall_args[9]);
+        syscall_args[9],
+        syscall_args[10]);
 }
 
 
@@ -626,12 +627,12 @@ std::wstring paramToStr(VOID *arg1)
     return ss.str();
 }
 
-VOID _LogFunctionArgs(const ADDRINT Address, const CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
+VOID _LogFunctionArgs(const ADDRINT Address, const CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10, VOID* arg11)
 {
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
 
-    const size_t argsMax = 10;
-    VOID* args[argsMax] = { arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10 };
+    const size_t argsMax = LOGGED_ARGS_MAX;
+    VOID* args[argsMax] = { arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11 };
     std::wstringstream ss;
     ss << name << ":\n";
     for (size_t i = 0; i < argCount && i < argsMax; i++) {
@@ -645,18 +646,18 @@ VOID _LogFunctionArgs(const ADDRINT Address, const CHAR *name, uint32_t argCount
     traceLog.logLine(s);
 }
 
-VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10)
+VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10, VOID* arg11)
 {
     PinLocker locker;
-    _LogFunctionArgs(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
+    _LogFunctionArgs(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
 }
 
 VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
 {
-    const size_t argMax = 11;
+    const size_t argsMax = LOGGED_ARGS_MAX;
     const CHAR* fName = funcInfo.funcName.c_str();
     size_t argNum = funcInfo.paramCount;
-    if (argNum > argMax) argNum = argMax;
+    if (argNum > argsMax) argNum = argsMax;
 
     RTN funcRtn = find_by_unmangled_name(Image, fName);
     if (!RTN_Valid(funcRtn) || !funcInfo.isValid()) return; // failed
