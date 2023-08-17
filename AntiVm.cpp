@@ -140,13 +140,13 @@ bool AntiVmAddCallbackBefore(IMG Image, char* fName, uint32_t argNum, AntiVmCall
 
 VOID AntiVm::MonitorAntiVmFunctions(IMG Image)
 {
-	// API needed to trace WMI queries
-	const std::string dllName = util::getDllName(IMG_Name(Image));
-	if (util::iequals(dllName, "fastprox")) {
+    // API needed to trace WMI queries
+    const std::string dllName = util::getDllName(IMG_Name(Image));
+    if (util::iequals(dllName, "fastprox")) {
 #ifdef _WIN64
         AntiVmAddCallbackBefore(Image, "?Get@CWbemObject@@UEAAJPEBGJPEAUtagVARIANT@@PEAJ2@Z", 6, AntiVm_WmiQueries);
 #else
         AntiVmAddCallbackBefore(Image, "?Get@CWbemObject@@UAGJPBGJPAUtagVARIANT@@PAJ2@Z", 6, AntiVm_WmiQueries);
 #endif
-	}
+    }
 }
