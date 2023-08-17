@@ -279,7 +279,7 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Antivm.cpp" />
+    <ClCompile Include="AntiVm.cpp" />
     <ClCompile Include="ModuleInfo.cpp" />
     <ClCompile Include="ProcessInfo.cpp" />
     <ClCompile Include="AntiDebug.cpp" />
