@@ -777,7 +777,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
                 IARG_END
             );
             INS_InsertCall(ins, 
-                IPOINT_BEFORE, 
+                IPOINT_AFTER, 
                 (AFUNPTR)AntiDbg::FlagsCheck_after,
                 IARG_CONTEXT, 
                 IARG_THREAD_ID,
