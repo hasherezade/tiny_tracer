@@ -103,28 +103,7 @@ BOOL WinIsWindowsVistaOrGreater(void)
 
 VOID LogAntiDbg(const WatchedType wType, const ADDRINT Address, const char* msg, const char *link=nullptr)
 {
-    if (!msg) return;
-    if (wType == WatchedType::NOT_WATCHED) return;
-
-    std::stringstream ss;
-    ADDRINT rva = UNKNOWN_ADDR;
-    if (wType == WatchedType::WATCHED_MY_MODULE) {
-        rva = addr_to_rva(Address); // convert to RVA
-    }
-    else if (wType == WatchedType::WATCHED_SHELLCODE) {
-        const ADDRINT start = query_region_base(Address);
-        rva = Address - start;
-        if (start != UNKNOWN_ADDR) {
-            ss << "> " << std::hex << start << "+";
-        }
-    }
-    if (rva == UNKNOWN_ADDR) return;
-
-    ss << std::hex << rva << TraceLog::DELIMITER << ANTIDBG_LABEL << msg;
-    if (link) {
-        ss << TraceLog::DELIMITER << link;
-    }
-    traceLog.logLine(ss.str());
+    LogMsgAtAddress(wType, Address, ANTIDBG_LABEL, msg, link);
 }
 
 /* ==================================================================== */

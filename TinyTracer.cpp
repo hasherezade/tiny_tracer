@@ -292,27 +292,45 @@ VOID SaveTransitions(const ADDRINT prevVA, const ADDRINT Address, BOOL isIndirec
     _SaveTransitions(prevVA, Address, isIndirect, ctx);
 }
 
+VOID LogMsgAtAddress(const WatchedType wType, const ADDRINT Address, const char* label, const char* msg, const char* link)
+{
+    if (!msg) return;
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    std::stringstream ss;
+    ADDRINT rva = UNKNOWN_ADDR;
+    if (wType == WatchedType::WATCHED_MY_MODULE) {
+        rva = addr_to_rva(Address); // convert to RVA
+    }
+    else if (wType == WatchedType::WATCHED_SHELLCODE) {
+        const ADDRINT start = query_region_base(Address);
+        rva = Address - start;
+        if (start != UNKNOWN_ADDR) {
+            ss << "> " << std::hex << start << "+";
+        }
+    }
+    if (rva == UNKNOWN_ADDR) return;
+    ss << std::hex << rva << TraceLog::DELIMITER;
+    if (label) {
+        ss << label;
+    }
+    ss << msg;
+    if (link) {
+        ss << TraceLog::DELIMITER << link;
+    }
+    traceLog.logLine(ss.str());
+}
+
 VOID RdtscCalled(const CONTEXT* ctxt)
 {
     PinLocker locker;
-    const std::string mnem = "RDTSC";
 
     const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
 
     const WatchedType wType = isWatchedAddress(Address);
     if (wType == WatchedType::NOT_WATCHED) return;
 
-    if (wType == WatchedType::WATCHED_MY_MODULE) {
-        ADDRINT rva = addr_to_rva(Address); // convert to RVA
-        traceLog.logInstruction(0, rva, mnem);
-    }
-    if (wType == WatchedType::WATCHED_SHELLCODE) {
-        const ADDRINT start = query_region_base(Address);
-        ADDRINT rva = Address - start;
-        if (start != UNKNOWN_ADDR) {
-            traceLog.logInstruction(start, rva, mnem);
-        }
-    }
+    LogMsgAtAddress(wType, Address, nullptr, "RDTSC", nullptr);
 }
 
 VOID CpuidCalled(const CONTEXT* ctxt)
