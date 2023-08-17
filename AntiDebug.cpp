@@ -145,6 +145,8 @@ VOID AntiDbg::WatchMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr
 #endif
 }
 
+bool isHandlingPopFd = FALSE;
+
 #define CLEAR_TRAP
 VOID AntiDbg::FlagsCheck(const CONTEXT* ctxt)
 {
@@ -169,7 +171,22 @@ VOID AntiDbg::FlagsCheck(const CONTEXT* ctxt)
 #ifdef CLEAR_TRAP
     pushedVal ^= 0x100;
     ::memcpy((void*)stackPtr, &pushedVal, sizeof(pushedVal));
+    isHandlingPopFd = TRUE;
 #endif
+}
+
+VOID AntiDbg::FlagsCheck_after(CONTEXT* ctx, THREADID tid, ADDRINT eip, ADDRINT esp) {
+    if (isHandlingPopFd) {
+        static int count = 0;
+        if (!count++) return; // skip very first instruction
+
+        *((ADDRINT*)(esp - 4)) |= 1UL << 8;; // restore wiped trap flag
+        EXCEPTION_INFO exc;
+        PIN_InitWindowsExceptionInfo(&exc, 0x80000004L, eip); // NTSTATUS_STATUS_SINGLE_STEP
+        isHandlingPopFd = FALSE;
+        count = 0;
+        PIN_RaiseException(ctx, tid, &exc);
+    }
 }
 
 VOID AntiDbg::InterruptCheck(const CONTEXT* ctxt)

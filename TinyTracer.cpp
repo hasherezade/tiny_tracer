@@ -776,6 +776,14 @@ VOID InstrumentInstruction(INS ins, VOID *v)
                 IARG_CONTEXT,
                 IARG_END
             );
+            INS_InsertCall(ins, 
+                IPOINT_AFTER, 
+                (AFUNPTR)AntiDbg::FlagsCheck_after,
+                IARG_CONTEXT, 
+                IARG_THREAD_ID,
+                IARG_INST_PTR, 
+                IARG_REG_VALUE, REG_STACK_PTR, 
+                IARG_END);
         }
 
         if (INS_IsInterrupt(ins)) {
