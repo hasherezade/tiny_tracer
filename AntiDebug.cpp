@@ -33,6 +33,36 @@ std::map<std::string, std::string> funcToLink;
 typedef VOID AntiDBGCallBack(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5);
 
 /* ==================================================================== */
+// Compute Effective Address, given an INS
+/* ==================================================================== */
+
+ADDRINT computeEA(const CONTEXT* ctxt, INS ins, UINT32 opIdx)
+{
+    REG baseReg = INS_OperandMemoryBaseReg(ins, opIdx);
+    REG indexReg = INS_OperandMemoryIndexReg(ins, opIdx);
+    INT32 scale = INS_OperandMemoryScale(ins, opIdx);
+    INT32 disp = INS_OperandMemoryDisplacement(ins, opIdx);
+
+    // Calculate the effective memory address
+    ADDRINT memAddress = 0;
+    if (baseReg != REG_INVALID())
+    {
+        ADDRINT baseValue;
+        PIN_GetContextRegval(ctxt, baseReg, reinterpret_cast<UINT8*>(&baseValue));
+        memAddress += baseValue;
+    }
+    if (indexReg != REG_INVALID())
+    {
+        ADDRINT indexValue;
+        PIN_GetContextRegval(ctxt, indexReg, reinterpret_cast<UINT8*>(&indexValue));
+        memAddress += indexValue * scale;
+    }
+    memAddress += disp;
+
+    return memAddress;
+}
+
+/* ==================================================================== */
 // Leveraging the existing paramToStr, extracts only the string after '->'
 /* ==================================================================== */
 std::wstring paramToStrSplit(VOID* arg1)
@@ -143,6 +173,67 @@ VOID AntiDbg::WatchMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags");
     }
 #endif
+}
+
+/* ==================================================================== */
+// Callback function to be executed when a compare is executed
+/* ==================================================================== */
+
+VOID AntiDbg::WatchCompareSoftBrk(const CONTEXT* ctxt, ADDRINT Address, ADDRINT insArg)
+{
+    PinLocker locker;
+
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    INS ins;
+    ins.q_set(insArg);
+    // Check all operands
+    for (UINT32 opIdx = 0; opIdx < INS_OperandCount(ins); ++opIdx)
+    {
+        // Immediate value
+        if (INS_OperandIsImmediate(ins, opIdx))
+        {
+            if ((INS_OperandImmediate(ins, opIdx) & 0xFF) == 0xCC)
+            {
+                LogAntiDbg(wType, Address, "Software Breakpoint comparison",
+                    "https://anti-debug.checkpoint.com/techniques/process-memory.html#anti-step-over");
+                break;
+            }
+        }
+        // REG value
+        if (INS_OperandIsReg(ins, opIdx))
+        {
+            // Get the context register value
+            REG reg = INS_OperandReg(ins, opIdx);
+
+            ADDRINT regValue;
+            PIN_GetContextRegval(ctxt, reg, reinterpret_cast<UINT8*>(&regValue));
+            if ((regValue & 0xFF) == 0xCC)
+            {
+                LogAntiDbg(wType, Address, "Software Breakpoint comparison",
+                    "https://anti-debug.checkpoint.com/techniques/process-memory.html#anti-step-over");
+                break;
+            }
+        }
+        // Memory reference
+        if (INS_OperandIsMemory(ins, opIdx))
+        {
+            ADDRINT memAddress = computeEA(ctxt, ins, opIdx);
+
+            // Read memory contents
+            ADDRINT memValue;
+            if (PIN_SafeCopy(&memValue, reinterpret_cast<const void*>(memAddress), sizeof(ADDRINT)) == sizeof(ADDRINT))
+            {
+                if ((memValue & 0xFF) == 0xCC)
+                {
+                    LogAntiDbg(wType, Address, "Software Breakpoint comparison",
+                        "https://anti-debug.checkpoint.com/techniques/process-memory.html#anti-step-over");
+                    break;
+                }
+            }
+        }
+    }
 }
 
 #define CLEAR_TRAP
