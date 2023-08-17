@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <map>
+#include <set>
 
 #include "ProcessInfo.h"
 #include "Util.h"
@@ -145,8 +146,9 @@ VOID AntiDbg::WatchMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr
 #endif
 }
 
+std::set<THREADID> popfThreads;
 #define CLEAR_TRAP
-VOID AntiDbg::FlagsCheck(const CONTEXT* ctxt)
+VOID AntiDbg::FlagsCheck(const CONTEXT* ctxt, THREADID tid)
 {
     PinLocker locker;
 
@@ -169,7 +171,22 @@ VOID AntiDbg::FlagsCheck(const CONTEXT* ctxt)
 #ifdef CLEAR_TRAP
     pushedVal ^= 0x100;
     ::memcpy((void*)stackPtr, &pushedVal, sizeof(pushedVal));
+    popfThreads.insert(tid);
 #endif
+}
+
+VOID AntiDbg::FlagsCheck_after(CONTEXT* ctx, THREADID tid, ADDRINT eip)
+{
+    {
+        PinLocker locker;
+        if (popfThreads.find(tid) == popfThreads.end()) {
+            return; // trap flag wasn't set in this thread
+        }
+        popfThreads.erase(tid); // erase the stored TID
+    }
+    EXCEPTION_INFO exc;
+    PIN_InitWindowsExceptionInfo(&exc, 0x80000004L, eip); // NTSTATUS_STATUS_SINGLE_STEP
+    PIN_RaiseException(ctx, tid, &exc);
 }
 
 VOID AntiDbg::InterruptCheck(const CONTEXT* ctxt)
