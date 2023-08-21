@@ -56,7 +56,7 @@ VOID AntiVm_WmiQueries(const ADDRINT addr, const CHAR* name, uint32_t argCount, 
     const WatchedType wType = isWatchedAddress(addr);
     if (wType == WatchedType::NOT_WATCHED) return;
 
-    const wchar_t* wmi_query = (const wchar_t*)arg2;
+    const wchar_t* wmi_query = reinterpret_cast<const wchar_t*>(arg2);
     if (wmi_query == NULL) return;
 
     char wmi_query_field[PATH_BUFSIZE];

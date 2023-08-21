@@ -68,7 +68,7 @@ const bool ProcessInfo::updateTracedModuleSection(ADDRINT Rva)
 
     if (prevSec != currSec) {
         // update the stored section
-        prevSec = (s_module*)currSec;
+        prevSec = const_cast<s_module*>(currSec);
         return true;
     }
     return false;
