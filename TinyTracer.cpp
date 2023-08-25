@@ -753,6 +753,10 @@ VOID InstrumentInstruction(INS ins, VOID *v)
     }
 #ifdef USE_ANTIDEBUG
     // ANTIDEBUG: memory read instrumentation
+    
+    ////////////////////////////////////
+    // If AntiDebug level is Standard
+    ////////////////////////////////////
     if (m_Settings.antidebug != ANTIDEBUG_DISABLED) {
         if (INS_IsMemoryRead(ins)) {
             // Insert the callback function before memory read instructions
@@ -795,6 +799,22 @@ VOID InstrumentInstruction(INS ins, VOID *v)
                 IARG_CONTEXT,
                 IARG_END
             );
+        }
+        
+        ////////////////////////////////////
+        // If AntiDebug level is Deep
+        ////////////////////////////////////
+        if (m_Settings.antidebug >= ANTIDEBUG_DEEP) {
+            // Check all comparison for 0xCC byte (anti stepinto/stepover checks)
+            if (INS_Opcode(ins) == XED_ICLASS_CMP) {
+                INS_InsertCall(
+                    ins,
+                    IPOINT_BEFORE, (AFUNPTR)AntiDbg::WatchCompareSoftBrk,
+                    IARG_CONTEXT,
+                    IARG_INST_PTR,
+                    IARG_ADDRINT, ins.q(),
+                    IARG_END);
+            }
         }
     }
 #endif

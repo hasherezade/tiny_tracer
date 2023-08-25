@@ -34,6 +34,36 @@ std::map<std::string, std::string> funcToLink;
 typedef VOID AntiDBGCallBack(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5);
 
 /* ==================================================================== */
+// Compute Effective Address, given an INS
+/* ==================================================================== */
+
+ADDRINT computeEA(const CONTEXT* ctxt, INS ins, UINT32 opIdx)
+{
+    REG baseReg = INS_OperandMemoryBaseReg(ins, opIdx);
+    REG indexReg = INS_OperandMemoryIndexReg(ins, opIdx);
+    INT32 scale = INS_OperandMemoryScale(ins, opIdx);
+    INT32 disp = INS_OperandMemoryDisplacement(ins, opIdx);
+
+    // Calculate the effective memory address
+    ADDRINT memAddress = 0;
+    if (baseReg != REG_INVALID())
+    {
+        ADDRINT baseValue;
+        PIN_GetContextRegval(ctxt, baseReg, reinterpret_cast<UINT8*>(&baseValue));
+        memAddress += baseValue;
+    }
+    if (indexReg != REG_INVALID())
+    {
+        ADDRINT indexValue;
+        PIN_GetContextRegval(ctxt, indexReg, reinterpret_cast<UINT8*>(&indexValue));
+        memAddress += indexValue * scale;
+    }
+    memAddress += disp;
+
+    return memAddress;
+}
+
+/* ==================================================================== */
 // Leveraging the existing paramToStr, extracts only the string after '->'
 /* ==================================================================== */
 std::wstring paramToStrSplit(VOID* arg1)
@@ -145,6 +175,43 @@ VOID AntiDbg::WatchMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr
     }
 #endif
 }
+
+/* ==================================================================== */
+// Callback function to be executed when a compare is executed
+/* ==================================================================== */
+
+std::map<ADDRINT, size_t> cmpOccurrences;
+VOID AntiDbg::WatchCompareSoftBrk(const CONTEXT* ctxt, ADDRINT Address, ADDRINT insArg)
+{
+    PinLocker locker;
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    INS ins;
+    ins.q_set(insArg);
+    if (!ins.is_valid() || INS_OperandCount(ins) < 2) {
+        return;
+    }
+
+    bool isSet = false;
+    const UINT32 opIdx = 1;
+
+    if (INS_OperandIsImmediate(ins, opIdx) && INS_OperandSize(ins, opIdx) == sizeof(UINT8))
+    {
+        UINT8 val = 0;
+        if ((val = (INS_OperandImmediate(ins, opIdx) & 0xFF)) == 0xCC)
+        {
+            cmpOccurrences[Address]++;
+            if (cmpOccurrences[Address] == 3) isSet = true;
+        }
+    }
+
+    if (isSet) {
+        LogAntiDbg(wType, Address, "Software Breakpoint comparison",
+            "https://anti-debug.checkpoint.com/techniques/process-memory.html#anti-step-over");
+    }
+}
+
 
 std::set<THREADID> popfThreads;
 #define CLEAR_TRAP
