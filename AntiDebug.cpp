@@ -179,60 +179,35 @@ VOID AntiDbg::WatchMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr
 // Callback function to be executed when a compare is executed
 /* ==================================================================== */
 
+std::map<ADDRINT, size_t> cmpOccurrences;
 VOID AntiDbg::WatchCompareSoftBrk(const CONTEXT* ctxt, ADDRINT Address, ADDRINT insArg)
 {
     PinLocker locker;
-
     const WatchedType wType = isWatchedAddress(Address);
     if (wType == WatchedType::NOT_WATCHED) return;
 
     INS ins;
     ins.q_set(insArg);
-    // Check all operands
-    for (UINT32 opIdx = 0; opIdx < INS_OperandCount(ins); ++opIdx)
+    if (!ins.is_valid() || INS_OperandCount(ins) < 2) {
+        return;
+    }
+
+    bool isSet = false;
+    const UINT32 opIdx = 1;
+
+    if (INS_OperandIsImmediate(ins, opIdx) && INS_OperandSize(ins, opIdx) == sizeof(UINT8))
     {
-        // Immediate value
-        if (INS_OperandIsImmediate(ins, opIdx))
+        UINT8 val = 0;
+        if ((val = (INS_OperandImmediate(ins, opIdx) & 0xFF)) == 0xCC)
         {
-            if ((INS_OperandImmediate(ins, opIdx) & 0xFF) == 0xCC)
-            {
-                LogAntiDbg(wType, Address, "Software Breakpoint comparison",
-                    "https://anti-debug.checkpoint.com/techniques/process-memory.html#anti-step-over");
-                break;
-            }
+            cmpOccurrences[Address]++;
+            if (cmpOccurrences[Address] == 3) isSet = true;
         }
-        // REG value
-        if (INS_OperandIsReg(ins, opIdx))
-        {
-            // Get the context register value
-            REG reg = INS_OperandReg(ins, opIdx);
+    }
 
-            ADDRINT regValue;
-            PIN_GetContextRegval(ctxt, reg, reinterpret_cast<UINT8*>(&regValue));
-            if ((regValue & 0xFF) == 0xCC)
-            {
-                LogAntiDbg(wType, Address, "Software Breakpoint comparison",
-                    "https://anti-debug.checkpoint.com/techniques/process-memory.html#anti-step-over");
-                break;
-            }
-        }
-        // Memory reference
-        if (INS_OperandIsMemory(ins, opIdx))
-        {
-            ADDRINT memAddress = computeEA(ctxt, ins, opIdx);
-
-            // Read memory contents
-            ADDRINT memValue;
-            if (PIN_SafeCopy(&memValue, reinterpret_cast<const void*>(memAddress), sizeof(ADDRINT)) == sizeof(ADDRINT))
-            {
-                if ((memValue & 0xFF) == 0xCC)
-                {
-                    LogAntiDbg(wType, Address, "Software Breakpoint comparison",
-                        "https://anti-debug.checkpoint.com/techniques/process-memory.html#anti-step-over");
-                    break;
-                }
-            }
-        }
+    if (isSet) {
+        LogAntiDbg(wType, Address, "Software Breakpoint comparison",
+            "https://anti-debug.checkpoint.com/techniques/process-memory.html#anti-step-over");
     }
 }
 
