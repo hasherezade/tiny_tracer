@@ -56,7 +56,7 @@ VOID AntiVm_WmiQueries(const ADDRINT addr, const CHAR* name, uint32_t argCount, 
     const WatchedType wType = isWatchedAddress(addr);
     if (wType == WatchedType::NOT_WATCHED) return;
 
-    const wchar_t* wmi_query = (const wchar_t*)arg2;
+    const wchar_t* wmi_query = reinterpret_cast<const wchar_t*>(arg2);
     if (wmi_query == NULL) return;
 
     char wmi_query_field[PATH_BUFSIZE];
@@ -140,13 +140,13 @@ bool AntiVmAddCallbackBefore(IMG Image, char* fName, uint32_t argNum, AntiVmCall
 
 VOID AntiVm::MonitorAntiVmFunctions(IMG Image)
 {
-	// API needed to trace WMI queries
-	const std::string dllName = util::getDllName(IMG_Name(Image));
-	if (util::iequals(dllName, "fastprox")) {
+    // API needed to trace WMI queries
+    const std::string dllName = util::getDllName(IMG_Name(Image));
+    if (util::iequals(dllName, "fastprox")) {
 #ifdef _WIN64
         AntiVmAddCallbackBefore(Image, "?Get@CWbemObject@@UEAAJPEBGJPEAUtagVARIANT@@PEAJ2@Z", 6, AntiVm_WmiQueries);
 #else
         AntiVmAddCallbackBefore(Image, "?Get@CWbemObject@@UAGJPBGJPAUtagVARIANT@@PAJ2@Z", 6, AntiVm_WmiQueries);
 #endif
-	}
+    }
 }

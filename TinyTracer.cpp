@@ -362,11 +362,11 @@ BOOL fetchInterruptID(const ADDRINT Address, int &intID)
     unsigned char copyBuf[2] = { 0 };
     int fetchedSize = 1;
     std::string mnem;
-    if (!PIN_FetchCode(copyBuf, (void*)Address, fetchedSize, NULL)) return FALSE;
+    if (!PIN_FetchCode(copyBuf, (const void*)Address, fetchedSize, NULL)) return FALSE;
 
     if (copyBuf[0] == 0xCD) { // INT
         fetchedSize = 2;
-        if (!PIN_FetchCode(copyBuf, (void*)Address, fetchedSize, NULL)) return FALSE;
+        if (!PIN_FetchCode(copyBuf, (const void*)Address, fetchedSize, NULL)) return FALSE;
     }
     switch (copyBuf[0]) {
         case 0xCC:
@@ -579,7 +579,7 @@ std::wstring paramToStr(VOID *arg1)
         wchar_t* Buffer;
     } T_UNICODE_STRING;
 
-    T_UNICODE_STRING* unicodeS = (T_UNICODE_STRING*)arg1;
+    T_UNICODE_STRING* unicodeS = reinterpret_cast<T_UNICODE_STRING*>(arg1);
 
     const size_t kMaxStr = 300;
 
@@ -587,7 +587,7 @@ std::wstring paramToStr(VOID *arg1)
         && (unicodeS->MaximumLength < kMaxStr) && (unicodeS->Length <= unicodeS->MaximumLength)// check if the length makes sense
         && isValidReadPtr(unicodeS->Buffer))
     {
-        const size_t aLen = util::getAsciiLen((char*)unicodeS->Buffer, 2); // take minimal sample of ASCII string
+        const size_t aLen = util::getAsciiLen(reinterpret_cast<char*>(unicodeS->Buffer), 2); // take minimal sample of ASCII string
         if (aLen == 1) {
             // Must be wide string
             size_t wLen = util::getAsciiLenW(unicodeS->Buffer, unicodeS->MaximumLength);
@@ -602,13 +602,13 @@ std::wstring paramToStr(VOID *arg1)
     }
 
     bool isString = false;
-    const char* val = (char*)arg1;
+    const char* val = reinterpret_cast<char*>(arg1);
     size_t len = util::getAsciiLen(val, kMaxStr);
     if (len > 0) {
         ss << " -> ";
     }
     if (len == 1) { // Possible wideString
-        wchar_t* val = (wchar_t*)arg1;
+        wchar_t* val = reinterpret_cast<wchar_t*>(arg1);
         size_t wLen = util::getAsciiLenW(val, kMaxStr);
         if (wLen >= len) {
             ss << "L\"" << val << "\"";
@@ -621,7 +621,7 @@ std::wstring paramToStr(VOID *arg1)
     }
     if (!isString) {
         ss << " -> {";
-        ss << util::hexdump((const uint8_t*)val, m_Settings.hexdumpSize);
+        ss << util::hexdump(reinterpret_cast<const uint8_t*>(val), m_Settings.hexdumpSize);
         ss << "}";
     }
     return ss.str();
@@ -778,6 +778,16 @@ VOID InstrumentInstruction(INS ins, VOID *v)
                 ins,
                 IPOINT_BEFORE, (AFUNPTR)AntiDbg::FlagsCheck,
                 IARG_CONTEXT,
+                IARG_THREAD_ID,
+                IARG_END
+            );
+
+            INS_InsertCall(
+                ins,
+                IPOINT_AFTER, (AFUNPTR)AntiDbg::FlagsCheck_after,
+                IARG_CONTEXT,
+                IARG_THREAD_ID,
+                IARG_INST_PTR,
                 IARG_END
             );
         }

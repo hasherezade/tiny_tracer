@@ -10,6 +10,7 @@ namespace AntiDbg {
 	VOID WatchThreadStart(THREADID threadid, CONTEXT* ctxt, INT32 flags, VOID* v);
 	VOID WatchCompareSoftBrk(const CONTEXT* ctxt, ADDRINT Address, ADDRINT insArg);
 	VOID MonitorAntiDbgFunctions(IMG Image);
-	VOID FlagsCheck(const CONTEXT* ctxt);
+	VOID FlagsCheck(const CONTEXT* ctxt, THREADID tid);
+	VOID FlagsCheck_after(const CONTEXT* ctxt, THREADID tid, ADDRINT eip);
 	VOID InterruptCheck(const CONTEXT* ctxt);
 };
