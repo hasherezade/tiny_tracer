@@ -34,36 +34,6 @@ std::map<std::string, std::string> funcToLink;
 typedef VOID AntiDBGCallBack(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5);
 
 /* ==================================================================== */
-// Compute Effective Address, given an INS
-/* ==================================================================== */
-
-ADDRINT computeEA(const CONTEXT* ctxt, INS ins, UINT32 opIdx)
-{
-    REG baseReg = INS_OperandMemoryBaseReg(ins, opIdx);
-    REG indexReg = INS_OperandMemoryIndexReg(ins, opIdx);
-    INT32 scale = INS_OperandMemoryScale(ins, opIdx);
-    INT32 disp = INS_OperandMemoryDisplacement(ins, opIdx);
-
-    // Calculate the effective memory address
-    ADDRINT memAddress = 0;
-    if (baseReg != REG_INVALID())
-    {
-        ADDRINT baseValue;
-        PIN_GetContextRegval(ctxt, baseReg, reinterpret_cast<UINT8*>(&baseValue));
-        memAddress += baseValue;
-    }
-    if (indexReg != REG_INVALID())
-    {
-        ADDRINT indexValue;
-        PIN_GetContextRegval(ctxt, indexReg, reinterpret_cast<UINT8*>(&indexValue));
-        memAddress += indexValue * scale;
-    }
-    memAddress += disp;
-
-    return memAddress;
-}
-
-/* ==================================================================== */
 // Leveraging the existing paramToStr, extracts only the string after '->'
 /* ==================================================================== */
 std::wstring paramToStrSplit(VOID* arg1)
@@ -181,7 +151,7 @@ VOID AntiDbg::WatchMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr
 /* ==================================================================== */
 
 std::map<ADDRINT, size_t> cmpOccurrences;
-VOID AntiDbg::WatchCompareSoftBrk(const CONTEXT* ctxt, ADDRINT Address, ADDRINT insArg)
+VOID AntiDbg::WatchCompareSoftBrk(const CONTEXT* ctxt, ADDRINT Address, INT32 insArg)
 {
     PinLocker locker;
     const WatchedType wType = isWatchedAddress(Address);
@@ -195,14 +165,13 @@ VOID AntiDbg::WatchCompareSoftBrk(const CONTEXT* ctxt, ADDRINT Address, ADDRINT 
 
     bool isSet = false;
     const UINT32 opIdx = 1;
+    const size_t kMinOccur = 3;
 
-    if (INS_OperandIsImmediate(ins, opIdx) && INS_OperandSize(ins, opIdx) == sizeof(UINT8))
-    {
-        UINT8 val = 0;
-        if ((val = (INS_OperandImmediate(ins, opIdx) & 0xFF)) == 0xCC)
-        {
+    if (INS_OperandIsImmediate(ins, opIdx) && INS_OperandSize(ins, opIdx) == sizeof(UINT8)) {
+        const UINT8 val = (INS_OperandImmediate(ins, opIdx) & 0xFF);
+        if (val == 0xCC) {
             cmpOccurrences[Address]++;
-            if (cmpOccurrences[Address] == 3) isSet = true;
+            if (cmpOccurrences[Address] == kMinOccur) isSet = true;
         }
     }
 
