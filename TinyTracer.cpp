@@ -23,7 +23,7 @@
 #include "PinLocker.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.7"
+#define VERSION "2.7.1"
 
 #include "Util.h"
 #include "Settings.h"
@@ -810,14 +810,14 @@ VOID InstrumentInstruction(INS ins, VOID *v)
             if (INS_Opcode(ins) == XED_ICLASS_CMP 
                 && INS_OperandCount(ins) >= (opIdx + 1) 
                 && INS_OperandIsImmediate(ins, opIdx)
-                && INS_OperandSize(ins, opIdx) == sizeof(UINT8))
+                && INS_OperandWidth(ins, opIdx) == (sizeof(UINT8)*8))
             {
+                UINT64 imm = INS_OperandImmediate(ins, opIdx);
                 INS_InsertCall(
                     ins,
                     IPOINT_BEFORE, (AFUNPTR)AntiDbg::WatchCompareSoftBrk,
-                    IARG_FAST_ANALYSIS_CALL,
                     IARG_INST_PTR,
-                    IARG_ADDRINT, INS_OperandImmediate(ins, opIdx),
+                    IARG_UINT64, imm,
                     IARG_END);
             }
         }

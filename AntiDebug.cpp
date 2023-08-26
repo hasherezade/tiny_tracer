@@ -151,7 +151,7 @@ VOID AntiDbg::WatchMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr
 /* ==================================================================== */
 
 std::map<ADDRINT, size_t> cmpOccurrences;
-VOID AntiDbg::WatchCompareSoftBrk(ADDRINT Address, ADDRINT immVal)
+VOID AntiDbg::WatchCompareSoftBrk(ADDRINT Address, UINT64 immVal)
 {
     PinLocker locker;
     const WatchedType wType = isWatchedAddress(Address);
@@ -159,7 +159,6 @@ VOID AntiDbg::WatchCompareSoftBrk(ADDRINT Address, ADDRINT immVal)
 
     bool isSet = false;
     const size_t kMinOccur = 3;
-
     const UINT8 val = immVal & 0xFF;
     if (val == 0xCC) {
         cmpOccurrences[Address]++;
