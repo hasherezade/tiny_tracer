@@ -806,13 +806,18 @@ VOID InstrumentInstruction(INS ins, VOID *v)
         ////////////////////////////////////
         if (m_Settings.antidebug >= ANTIDEBUG_DEEP) {
             // Check all comparison for 0xCC byte (anti stepinto/stepover checks)
-            if (INS_Opcode(ins) == XED_ICLASS_CMP) {
+            const UINT32 opIdx = 1;
+            if (INS_Opcode(ins) == XED_ICLASS_CMP 
+                && INS_OperandCount(ins) >= (opIdx + 1) 
+                && INS_OperandIsImmediate(ins, opIdx)
+                && INS_OperandSize(ins, opIdx) == sizeof(UINT8))
+            {
                 INS_InsertCall(
                     ins,
                     IPOINT_BEFORE, (AFUNPTR)AntiDbg::WatchCompareSoftBrk,
-                    IARG_CONTEXT,
+                    IARG_FAST_ANALYSIS_CALL,
                     IARG_INST_PTR,
-                    IARG_ADDRINT, ins.q(),
+                    IARG_ADDRINT, INS_OperandImmediate(ins, opIdx),
                     IARG_END);
             }
         }
