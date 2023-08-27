@@ -150,3 +150,31 @@ VOID AntiVm::MonitorAntiVmFunctions(IMG Image)
 #endif
     }
 }
+
+VOID AntiVm::CpuidCheck(CONTEXT* ctxt)
+{
+    PinLocker locker;
+
+    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    ADDRINT EaxVal = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
+    if (EaxVal == 0x0) {
+        return LogAntiVm(wType, Address, "CPUID - vendor check",
+            "https://unprotect.it/technique/cpuid/");
+    }
+    if (EaxVal == 0x1) {
+        return LogAntiVm(wType, Address, "CPUID - HyperVisor bit check",
+            "https://unprotect.it/technique/cpuid/");
+    }
+    if (EaxVal == 0x80000002 || EaxVal == 0x80000003 || EaxVal == 0x80000004) {
+        return LogAntiVm(wType, Address, "CPUID - brand check",
+            "https://unprotect.it/technique/cpuid/");
+    }
+    if (EaxVal == 0x40000000) {
+        return LogAntiVm(wType, Address, "CPUID - HyperVisor vendor check",
+            "https://unprotect.it/technique/cpuid/");
+    }
+}

@@ -18,4 +18,5 @@
 /* ===================================================================== */
 namespace AntiVm {
 	VOID MonitorAntiVmFunctions(IMG Image);
+	VOID CpuidCheck(CONTEXT* ctxt);
 };

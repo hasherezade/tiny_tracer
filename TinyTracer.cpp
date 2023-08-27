@@ -699,6 +699,17 @@ VOID InstrumentInstruction(INS ins, VOID *v)
             IARG_CONTEXT,
             IARG_END
         );
+#ifdef USE_ANTIVM
+        // ANTIVM: Register Function instrumentation needed for AntiVm
+        if (m_Settings.antivm) {
+            INS_InsertCall(
+                ins,
+                IPOINT_BEFORE, (AFUNPTR)AntiVm::CpuidCheck,
+                IARG_CONTEXT,
+                IARG_END
+            );
+        }
+#endif
     }
 
     if (m_Settings.traceINT) {
