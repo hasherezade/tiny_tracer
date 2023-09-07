@@ -226,6 +226,10 @@ VOID AntiDbg::InterruptCheck(const CONTEXT* ctxt)
     int interruptID = 0;
     if (!fetchInterruptID(Address, interruptID)) return;
 
+    if (interruptID == 1) {
+        LogAntiDbg(wType, Address, "INT1",
+            "https://anti-debug.checkpoint.com/techniques/assembly.html#ice");
+    }
     if (interruptID == 3) {
         LogAntiDbg(wType, Address, "INT3",
             "https://anti-debug.checkpoint.com/techniques/assembly.html#int3");
