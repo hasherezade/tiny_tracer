@@ -277,6 +277,23 @@ VOID AntiDbg_LoadLibrary(const ADDRINT Address, const CHAR* name, uint32_t argCo
     loadedLib.push_back(_argStr);
 }
 
+size_t BlockInputOccurrences = 0;
+VOID AntiDbg_BlockInput(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+{
+    if (!argCount) return;
+
+    PinLocker locker;
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    // Check if BlockInput is called more than one time
+    BlockInputOccurrences++;
+    if (BlockInputOccurrences > 1) {
+        return LogAntiDbg(wType, Address, "^ user32!BlockInput()",
+            "https://anti-debug.checkpoint.com/techniques/interactive.html#blockinput");
+    }
+}
+
 VOID AntiDbg_RaiseException(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (!argCount) return;
@@ -525,6 +542,10 @@ VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
     funcToLink["CsrGetProcessId"] = "https://anti-debug.checkpoint.com/techniques/object-handles.html#openprocess";
     funcToLink["SetUnhandledExceptionFilter"] = "https://anti-debug.checkpoint.com/techniques/exceptions.html#unhandledexceptionfilter";
     funcToLink["RaiseException"] = "https://anti-debug.checkpoint.com/techniques/exceptions.html#raiseexception";
+    funcToLink["DebugActiveProcess"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#self-debugging";
+    funcToLink["DbgUiDebugActiveProcess"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#self-debugging";
+    funcToLink["NtDebugActiveProcess"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#self-debugging";
+    funcToLink["GenerateConsoleCtrlEvent"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#generateconsolectrlevent";
 
     // API needed for Antidebug
     const std::string dllName = util::getDllName(IMG_Name(Image));
@@ -534,6 +555,8 @@ VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
         AntiDbgAddCallbackBefore(Image, "RtlQueryProcessDebugInformation", 3, AntiDbgLogFuncOccurrence);
         AntiDbgAddCallbackBefore(Image, "NtQueryInformationProcess", 5, AntiDbg_NtQueryInformationProcess);
         AntiDbgAddCallbackBefore(Image, "NtQuerySystemInformation", 4, AntiDbg_NtQuerySystemInformation);
+        AntiDbgAddCallbackBefore(Image, "DbgUiDebugActiveProcess", 1, AntiDbgLogFuncOccurrence);
+        AntiDbgAddCallbackBefore(Image, "NtDebugActiveProcess", 2, AntiDbgLogFuncOccurrence);
 
         ////////////////////////////////////
         // If AntiDebug level is Deep
@@ -552,6 +575,11 @@ VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
         AntiDbgAddCallbackBefore(Image, "HeapWalk", 2, AntiDbgLogFuncOccurrence);
         AntiDbgAddCallbackBefore(Image, "SetUnhandledExceptionFilter", 1, AntiDbgLogFuncOccurrence);
         AntiDbgAddCallbackBefore(Image, "RaiseException", 4, AntiDbg_RaiseException);
+        AntiDbgAddCallbackBefore(Image, "DebugActiveProcess", 1, AntiDbgLogFuncOccurrence);
+        AntiDbgAddCallbackBefore(Image, "GenerateConsoleCtrlEvent", 2, AntiDbgLogFuncOccurrence);
+    }
+    if (util::iequals(dllName, "user32")) {
+        AntiDbgAddCallbackBefore(Image, "BlockInput", 1, AntiDbg_BlockInput);
     }
 
     // CloseHandle return value hook
