@@ -294,6 +294,25 @@ VOID AntiDbg_BlockInput(const ADDRINT Address, const CHAR* name, uint32_t argCou
     }
 }
 
+VOID AntiDbg_NtSetInformationThread(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+{
+    if (!argCount) return;
+
+    PinLocker locker;
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    enum ThreadInformationClass { ThreadHideFromDebugger = 0x11 };
+    uint32_t NtCurrentThread = -2;
+
+    // Check if NtSetInformationThread has been called with parameter ThreadHideFromDebugger
+    if (int((size_t)arg1) == NtCurrentThread &&
+        int((size_t)arg2) == ThreadInformationClass::ThreadHideFromDebugger) {
+        return LogAntiDbg(wType, Address, "^ ntdll!NtSetInformationThread()",
+            "https://anti-debug.checkpoint.com/techniques/interactive.html#ntsetinformationthread");
+    }
+}
+
 VOID AntiDbg_RaiseException(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (!argCount) return;
@@ -557,6 +576,7 @@ VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
         AntiDbgAddCallbackBefore(Image, "NtQuerySystemInformation", 4, AntiDbg_NtQuerySystemInformation);
         AntiDbgAddCallbackBefore(Image, "DbgUiDebugActiveProcess", 1, AntiDbgLogFuncOccurrence);
         AntiDbgAddCallbackBefore(Image, "NtDebugActiveProcess", 2, AntiDbgLogFuncOccurrence);
+        AntiDbgAddCallbackBefore(Image, "NtSetInformationThread", 4, AntiDbg_NtSetInformationThread);
 
         ////////////////////////////////////
         // If AntiDebug level is Deep
