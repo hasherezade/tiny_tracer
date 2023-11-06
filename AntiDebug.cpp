@@ -567,6 +567,7 @@ VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
     funcToLink["GenerateConsoleCtrlEvent"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#generateconsolectrlevent";
     funcToLink["GetWindowTextA"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#suspendthread";
     funcToLink["GetWindowTextW"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#suspendthread";
+    funcToLink["SwitchDesktop"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#switchdesktop";
 
     // API needed for Antidebug
     const std::string dllName = util::getDllName(IMG_Name(Image));
@@ -602,6 +603,7 @@ VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
     }
     if (util::iequals(dllName, "user32")) {
         AntiDbgAddCallbackBefore(Image, "BlockInput", 1, AntiDbg_BlockInput);
+        AntiDbgAddCallbackBefore(Image, "SwitchDesktop", 1, AntiDbgLogFuncOccurrence);
 
         ////////////////////////////////////
         // If AntiDebug level is Deep
