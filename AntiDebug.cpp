@@ -565,6 +565,8 @@ VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
     funcToLink["DbgUiDebugActiveProcess"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#self-debugging";
     funcToLink["NtDebugActiveProcess"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#self-debugging";
     funcToLink["GenerateConsoleCtrlEvent"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#generateconsolectrlevent";
+    funcToLink["GetWindowTextA"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#suspendthread";
+    funcToLink["GetWindowTextW"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#suspendthread";
 
     // API needed for Antidebug
     const std::string dllName = util::getDllName(IMG_Name(Image));
@@ -600,6 +602,14 @@ VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
     }
     if (util::iequals(dllName, "user32")) {
         AntiDbgAddCallbackBefore(Image, "BlockInput", 1, AntiDbg_BlockInput);
+
+        ////////////////////////////////////
+        // If AntiDebug level is Deep
+        ////////////////////////////////////
+        if (m_Settings.antidebug >= ANTIDEBUG_DEEP) {
+            AntiDbgAddCallbackBefore(Image, "GetWindowTextA", 3, AntiDbgLogFuncOccurrence);
+            AntiDbgAddCallbackBefore(Image, "GetWindowTextW", 3, AntiDbgLogFuncOccurrence);
+        }
     }
 
     // CloseHandle return value hook
