@@ -67,6 +67,9 @@ WATCH_BEFORE=$PIN_TOOLS_DIR"/params.txt"
 # The file must be a list of records in a format: `[dll_name];[func_name]`
 EXCLUDED_FUNC=$PIN_TOOLS_DIR"/excluded.txt"
 
+# List of stop offsets: RVAs of the traced module where the execution should pause
+STOP_OFFSETS=$PIN_TOOLS_DIR"/stop_offsets.txt"
+
 # SYSCALLS_TABLE - a CSV file, mapping syscall ID to a function name. Format: [syscallID:hex],[functionName]
 SYSCALLS_TABLE=$PIN_TOOLS_DIR"/linux_syscalls.txt"
 
@@ -92,5 +95,5 @@ else
     exit
 fi
 
-$PIN_DIR/pin -t "$PINTOOL" -s "$SETTINGS_FILE" -b "$WATCH_BEFORE" -x "$EXCLUDED_FUNC" -m "$TRACED_MODULE_BASENAME" -o "$TAG_FILE" -l "$SYSCALLS_TABLE" -- "$TARGET_APP" $EXE_ARGS
+$PIN_DIR/pin -t "$PINTOOL" -s "$SETTINGS_FILE" -b "$WATCH_BEFORE" -x "$EXCLUDED_FUNC" -p "$STOP_OFFSETS" -m "$TRACED_MODULE_BASENAME" -o "$TAG_FILE" -l "$SYSCALLS_TABLE" -- "$TARGET_APP" $EXE_ARGS
 
