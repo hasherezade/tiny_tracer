@@ -174,6 +174,26 @@ void Settings::stripComments(std::string &str)
     }
 }
 
+size_t Settings::loadOffsetsList(const std::string& filename, std::set<ADDRINT>& offsetsList)
+{
+    std::ifstream myfile(filename);
+    if (!myfile.is_open()) {
+        std::cerr << "Coud not open file: " << filename << std::endl;
+        return 0;
+    }
+    const size_t MAX_LINE = 300;
+    char line[MAX_LINE] = { 0 };
+    while (!myfile.eof()) {
+        myfile.getline(line, MAX_LINE);
+
+        const int rva = util::loadInt(line, true);
+        if (rva) {
+            offsetsList.insert(rva);
+        }
+    }
+    return offsetsList.size();
+}
+
 bool Settings::saveINI(const std::string &filename)
 {
     std::ofstream myfile(filename.c_str());

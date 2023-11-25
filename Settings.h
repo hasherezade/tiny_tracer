@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <set>
 
 #include "FuncWatch.h"
 
@@ -59,6 +60,7 @@ class Settings {
 
 public:
     static void stripComments(std::string& str);
+    static size_t loadOffsetsList(const std::string& filename, std::set<ADDRINT>& offsetsList);
 
     Settings() 
         : followShellcode(SHELLC_FOLLOW_FIRST),
@@ -98,4 +100,5 @@ public:
     SyscallsTable syscallsTable; //Syscalls table: mapping the syscall ID to the function name
     FuncWatchList funcWatch; //List of functions, arguments of which are going to be logged
     FuncList excludedFuncs; //List of functions that will NOT be logged
+    std::set<ADDRINT> stopOffsets; //List of offsets at which the execution should pause
 };

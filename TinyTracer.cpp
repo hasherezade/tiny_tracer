@@ -77,6 +77,9 @@ KNOB<std::string> KnobSyscallsTable(KNOB_MODE_WRITEONCE, "pintool",
 KNOB<std::string> KnobExcludedListFile(KNOB_MODE_WRITEONCE, "pintool",
     "x", "", "A list of functions excluded from watching");
 
+KNOB<std::string> KnobStopOffsets(KNOB_MODE_WRITEONCE, "pintool",
+    "p", "", "A list of stop offsets: RVAs of the traced module where the execution should pause");
+
 /* ===================================================================== */
 // Utilities
 /* ===================================================================== */
@@ -331,6 +334,59 @@ VOID RdtscCalled(const CONTEXT* ctxt)
     if (wType == WatchedType::NOT_WATCHED) return;
 
     LogMsgAtAddress(wType, Address, nullptr, "RDTSC", nullptr);
+}
+
+VOID PauseAtOffset(const CONTEXT* ctxt)
+{
+    PinLocker locker;
+    if (!m_Settings.stopOffsets.size()) return;
+
+    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType != WatchedType::WATCHED_MY_MODULE) return;
+
+    const std::string prompt = "TT> ";
+    ADDRINT rva = addr_to_rva(Address); // convert to RVA
+    if (m_Settings.stopOffsets.find(rva) != m_Settings.stopOffsets.end()) {
+        std::cout << "Stop offset reached: " << std::hex << rva << ". Press 'C' to continue, '?' for more info...\n";
+        char cmd = '?';
+        while (true) {
+            std::cout << prompt;
+            std::cin >> cmd;
+
+            if (cmd == 'C') break;
+            else if (cmd == '?') {
+                std::cout << "Available commands:\n"
+                    << "C - continue execution\n"
+                    << "D - delete the current stop offset (" << std::hex << rva << ")\n"
+                    << "F - print the path to the file where the stop offsets are defined\n"
+                    << "P - print active stop offsets\n"
+                    << "? - info: print all available commands\n"
+                    << std::endl;
+            }
+            else if (cmd == 'D') {
+                m_Settings.stopOffsets.erase(rva);
+                std::cout << "Stop offset deleted.\n";
+            }
+            else if (cmd == 'F') {
+                std::cout << "Stop offsets defined in: " << KnobStopOffsets.ValueString() << "\n";
+            }
+            else if (cmd == 'P') {
+                if (m_Settings.stopOffsets.size() == 0) {
+                    std::cout << "No active stop offsets\n";
+                    continue;
+                }
+                std::cout << "Active stop offsets:\n";
+                for (auto it = m_Settings.stopOffsets.begin(); it != m_Settings.stopOffsets.end(); ++it) {
+                    std::cout << std::hex << *it << "\n";
+                }
+            }
+            else if (isalnum(cmd)) {
+                std::cout << "Invalid command: " << cmd << "\n";
+            }
+        }
+        std::cout << "Continuing the execution...\n";
+    }
 }
 
 VOID CpuidCalled(const CONTEXT* ctxt)
@@ -692,6 +748,14 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
 
 VOID InstrumentInstruction(INS ins, VOID *v)
 {
+    if (m_Settings.stopOffsets.size() > 0) {
+        INS_InsertCall(
+            ins,
+            IPOINT_BEFORE, (AFUNPTR)PauseAtOffset,
+            IARG_CONTEXT,
+            IARG_END
+        );
+    }
     if (util::isStrEqualI(INS_Mnemonic(ins), "cpuid")) {
         INS_InsertCall(
             ins,
@@ -959,6 +1023,13 @@ int main(int argc, char *argv[])
     }
     PIN_InitSymbolsAlt(mode);
 
+    if (KnobStopOffsets.Enabled()) {
+        std::string stopOffsetsFile = KnobStopOffsets.ValueString();
+        if (stopOffsetsFile.length()) {
+            const size_t loaded = Settings::loadOffsetsList(stopOffsetsFile, m_Settings.stopOffsets);
+            std::cout << "Loaded " << loaded << " stop offsets\n";
+        }
+    }
     if (KnobExcludedListFile.Enabled()) {
         std::string excludedList = KnobExcludedListFile.ValueString();
         if (excludedList.length()) {
