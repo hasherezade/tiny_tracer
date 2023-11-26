@@ -336,6 +336,18 @@ VOID RdtscCalled(const CONTEXT* ctxt)
     LogMsgAtAddress(wType, Address, nullptr, "RDTSC", nullptr);
 }
 
+VOID PrintContext(const CONTEXT* ctxt)
+{
+    const int registers[] = { REG_GDI, REG_GSI, REG_GBP, REG_STACK_PTR, REG_GBX, REG_GDX, REG_GCX, REG_GAX, REG_GFLAGS, REG_INST_PTR };
+    const char *reg_names[] = { "GDI", "GSI", "GBP", "STACK_PTR", "GBX", "GDX", "GCX", "GAX", "FLAGS", "REG_INST_PTR"};
+    const size_t regs_count = sizeof(registers) / sizeof(int);
+
+    for (int i = 0; i < regs_count; i++) {
+        auto value = PIN_GetContextReg(ctxt, (LEVEL_BASE::REG)registers[i]);
+        std::cout << reg_names[i] << " = " << value << "\n";
+    }
+}
+
 VOID PauseAtOffset(const CONTEXT* ctxt)
 {
     PinLocker locker;
@@ -361,6 +373,7 @@ VOID PauseAtOffset(const CONTEXT* ctxt)
                     << "D - delete the current stop offset (" << std::hex << rva << ")\n"
                     << "F - print the path to the file where the stop offsets are defined\n"
                     << "P - print active stop offsets\n"
+                    << "R - print current context\n"
                     << "? - info: print all available commands\n"
                     << std::endl;
             }
@@ -380,6 +393,9 @@ VOID PauseAtOffset(const CONTEXT* ctxt)
                 for (auto it = m_Settings.stopOffsets.begin(); it != m_Settings.stopOffsets.end(); ++it) {
                     std::cout << std::hex << *it << "\n";
                 }
+            }
+            else if (cmd == 'R') {
+                PrintContext(ctxt);
             }
             else if (isalnum(cmd)) {
                 std::cout << "Invalid command: " << cmd << "\n";
