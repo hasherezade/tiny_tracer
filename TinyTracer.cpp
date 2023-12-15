@@ -812,8 +812,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
             REG_GAX,
             IARG_END);
     }
-
-    if ((INS_IsControlFlow(ins) || INS_IsFarJump(ins))) {
+    if (INS_IsControlFlow(ins)) {
         BOOL isIndirect = INS_IsIndirectControlFlow(ins) && !INS_IsRet(ins);
         INS_InsertCall(
             ins,
