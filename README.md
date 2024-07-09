@@ -39,7 +39,7 @@ i.e.
 
 ### On Windows 
 
-To compile the prepared project you need to use [Visual Studio >= 2012](https://visualstudio.microsoft.com/downloads/). It was tested with [Intel Pin 3.30](https://software.intel.com/en-us/articles/pin-a-binary-instrumentation-tool-downloads).<br/>
+To compile the prepared project you need to use [Visual Studio >= 2012](https://visualstudio.microsoft.com/downloads/) and lower than 2022. It was tested with [Intel Pin 3.30](https://software.intel.com/en-us/articles/pin-a-binary-instrumentation-tool-downloads).<br/>
 Clone this repo into `\source\tools` that is inside your Pin root directory. Open the project in Visual Studio and build. Detailed description available [here](https://github.com/hasherezade/tiny_tracer/wiki/Installation#on-windows).<br/>
 To build with Intel Pin < 3.26 on Windows, use the appropriate legacy Visual Studio project.
 
