@@ -16,7 +16,7 @@ build:
   verbosity: detailed
   
 environment:
-  projName: tiny-tracer
+  projName: $(APPVEYOR_PROJECT_SLUG)
   buildPlatform: $(PLATFORM)
   artifactName: $(APPVEYOR_PROJECT_NAME)-$(APPVEYOR_REPO_COMMIT)-$(PLATFORM)
   
