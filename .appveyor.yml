@@ -36,7 +36,7 @@ build_script:
   - ps: msbuild TinyTracer.vcxproj "/p:platform=$env:platform;configuration=$env:configuration"
   
 after_build:
-  - mkdir C:\projects\tiny-tracer\install32_64\%artifactName%
+  - mkdir C:\projects\%projName%\install32_64\%artifactName%
   - if [%buildPlatform%]==[x64] ( cp x64\Release\TinyTracer.dll C:\projects\%projName%\install32_64\%artifactName%\TinyTracer64.dll )
   - if [%buildPlatform%]==[x86] ( cp Release\TinyTracer.dll C:\projects\%projName%\install32_64\%artifactName%\TinyTracer32.dll )
  
