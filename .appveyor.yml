@@ -22,9 +22,9 @@ environment:
   
 install:
   - cd ..
-  - curl -fsS -o pin.zip https://software.intel.com/sites/landingpage/pintool/downloads/pin-3.30-98830-g1d7b601b3-msvc-windows.zip
+  - curl -fsS -o pin.zip https://software.intel.com/sites/landingpage/pintool/downloads/pin-external-3.31-98861-g71afcc22f-msvc-windows.zip
   - 7z x pin.zip
-  - cd pin-3.30-98830-g1d7b601b3-msvc-windows
+  - cd pin-external-3.31-98861-g71afcc22f-msvc-windows
   - cd source
   - cd tools
   - cp -r ../../../%projName% ./
