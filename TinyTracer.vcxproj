@@ -96,7 +96,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <AdditionalOptions>/GR- /GS- /EHs- /EHa- /FP:strict /Oi- /FIinclude/msvc_compat.h %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/GR- /GS- /EHs- /EHa- /Oi- /FIinclude/msvc_compat.h %(AdditionalOptions)</AdditionalOptions>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>..\..\include\pin;..\..\include\pin\gen;..\InstLib;..\..\..\extras\xed-ia32\include\xed;..\..\..\extras\components\include;..\..\..\extras\stlport\include;..\..\..\extras;..\..\..\extras\libstdc++\include;..\..\..\extras\crt\include;..\..\..\extras\crt;..\..\..\extras\crt\include\arch-x86;..\..\..\extras\crt\include\kernel\uapi;..\..\..\extras\crt\include\kernel\uapi\asm-x86;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>TARGET_IA32;HOST_IA32;TARGET_WINDOWS;__PIN__=1;PIN_CRT=1;__i386__</PreprocessorDefinitions>
@@ -142,7 +142,7 @@
       <TargetEnvironment>X64</TargetEnvironment>
     </Midl>
     <ClCompile>
-      <AdditionalOptions>/GR- /GS- /EHs- /EHa- /FP:strict /Oi- /FIinclude/msvc_compat.h %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/GR- /GS- /EHs- /EHa- /Oi- /FIinclude/msvc_compat.h %(AdditionalOptions)</AdditionalOptions>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>..\..\include\pin;..\..\include\pin\gen;..\InstLib;..\..\..\extras\xed-intel64\include\xed;..\..\..\extras\components\include;..\..\..\extras\stlport\include;..\..\..\extras;..\..\..\extras\libstdc++\include;..\..\..\extras\crt\include;..\..\..\extras\crt;..\..\..\extras\crt\include\arch-x86_64;..\..\..\extras\crt\include\kernel\uapi;..\..\..\extras\crt\include\kernel\uapi\asm-x86;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>TARGET_IA32E;HOST_IA32E;TARGET_WINDOWS;__PIN__=1;PIN_CRT=1;__LP64__</PreprocessorDefinitions>
@@ -183,7 +183,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalOptions>/GR- /GS- /EHs- /EHa- /FP:strict /Oi- /FIinclude/msvc_compat.h %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/GR- /GS- /EHs- /EHa- /Oi- /FIinclude/msvc_compat.h %(AdditionalOptions)</AdditionalOptions>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <AdditionalIncludeDirectories>..\..\include\pin;..\..\include\pin\gen;..\InstLib;..\..\..\extras\xed-ia32\include\xed;..\..\..\extras\components\include;..\..\..\extras\stlport\include;..\..\..\extras;..\..\..\extras\libstdc++\include;..\..\..\extras\crt\include;..\..\..\extras\crt;..\..\..\extras\crt\include\arch-x86;..\..\..\extras\crt\include\kernel\uapi;..\..\..\extras\crt\include\kernel\uapi\asm-x86;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -234,7 +234,7 @@
       <TargetEnvironment>X64</TargetEnvironment>
     </Midl>
     <ClCompile>
-      <AdditionalOptions>/GR- /GS- /EHs- /EHa- /FP:strict /Oi- /FIinclude/msvc_compat.h %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/GR- /GS- /EHs- /EHa- /Oi- /FIinclude/msvc_compat.h %(AdditionalOptions)</AdditionalOptions>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <AdditionalIncludeDirectories>..\..\include\pin;..\..\include\pin\gen;..\InstLib;..\..\..\extras\xed-intel64\include\xed;..\..\..\extras\components\include;..\..\..\extras\stlport\include;..\..\..\extras;..\..\..\extras\libstdc++\include;..\..\..\extras\crt\include;..\..\..\extras\crt;..\..\..\extras\crt\include\arch-x86_64;..\..\..\extras\crt\include\kernel\uapi;..\..\..\extras\crt\include\kernel\uapi\asm-x86;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
