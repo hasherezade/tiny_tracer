@@ -770,6 +770,15 @@ VOID InstrumentInstruction(INS ins, VOID *v)
                 ins,
                 IPOINT_BEFORE, (AFUNPTR)AntiVm::CpuidCheck,
                 IARG_CONTEXT,
+                IARG_THREAD_ID,
+                IARG_END
+            );
+
+            INS_InsertCall(
+                ins,
+                IPOINT_AFTER, (AFUNPTR)AntiVm::CpuidCheck_after,
+                IARG_CONTEXT,
+                IARG_THREAD_ID,
                 IARG_END
             );
         }

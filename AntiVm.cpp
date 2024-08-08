@@ -151,7 +151,9 @@ VOID AntiVm::MonitorAntiVmFunctions(IMG Image)
     }
 }
 
-VOID AntiVm::CpuidCheck(CONTEXT* ctxt)
+std::map<THREADID, ADDRINT> cpuidThreads;
+#define CLEAR_CPUID_HYPERVISOR
+VOID AntiVm::CpuidCheck(CONTEXT* ctxt, THREADID tid)
 {
     PinLocker locker;
 
@@ -160,27 +162,72 @@ VOID AntiVm::CpuidCheck(CONTEXT* ctxt)
     const WatchedType wType = isWatchedAddress(Address);
     if (wType == WatchedType::NOT_WATCHED) return;
 
-    ADDRINT EaxVal = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
-    if (EaxVal == 0x0) {
+    ADDRINT opId = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
+#ifdef CLEAR_CPUID_HYPERVISOR
+    cpuidThreads[tid] = opId;
+#endif
+    if (opId == 0x0) {
         return LogAntiVm(wType, Address, "CPUID - vendor check",
             "https://unprotect.it/technique/cpuid/");
     }
-    if (EaxVal == 0x1) {
+    if (opId == 0x1) {
         return LogAntiVm(wType, Address, "CPUID - HyperVisor bit check",
             "https://unprotect.it/technique/cpuid/");
     }
-    if (EaxVal == 0x80000002 || EaxVal == 0x80000003 || EaxVal == 0x80000004) {
+    if (opId == 0x80000002 || opId == 0x80000003 || opId == 0x80000004) {
         return LogAntiVm(wType, Address, "CPUID - brand check",
             "https://unprotect.it/technique/cpuid/");
     }
-    if (EaxVal == 0x40000000) {
+    if (opId == 0x40000000) {
         return LogAntiVm(wType, Address, "CPUID - HyperVisor vendor check",
             "https://unprotect.it/technique/cpuid/");
     }
-    if (EaxVal == 0x40000002) {
+    if (opId == 0x40000002) {
         return LogAntiVm(wType, Address, "CPUID - HyperVisor system identity");
     }
-    if (EaxVal == 0x40000003) {
+    if (opId == 0x40000003) {
         return LogAntiVm(wType, Address, "CPUID - HyperVisor feature identification");
+    }
+}
+
+VOID AntiVm::CpuidCheck_after(CONTEXT* ctxt, THREADID tid)
+{
+    PinLocker locker;
+
+    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    auto itr = cpuidThreads.find(tid);
+    if (itr == cpuidThreads.end()) return;
+
+    const ADDRINT opId = itr->second;
+
+    ADDRINT EaxVal = PIN_GetContextReg(ctxt, REG_GAX);
+    std::stringstream ss;
+    if (opId == 0x1 || opId == 0x40000000 || opId == 0x40000003) {
+        
+        ADDRINT outs[3] = { 0 };
+        outs[0] = PIN_GetContextReg(ctxt, REG_GBX);
+        outs[1] = PIN_GetContextReg(ctxt, REG_GCX);
+        outs[2] = PIN_GetContextReg(ctxt, REG_GDX);
+        
+        ss << "CPUID - HyperVisor res:"
+            << std::hex
+            << " EAX: " << EaxVal
+            << " EBX: " << outs[0]
+            << " ECX: " << outs[1]
+            << " EDX: " << outs[2];
+        if (opId == 0x40000000) {
+            char str[sizeof(INT32) * 3 + 1] = { 0 };
+            for (int i = 0; i < 3; i++)
+                ::memcpy(str + sizeof(INT32) * i, &outs[i], sizeof(INT32));
+            ss << " -> " << str;
+        }
+    }
+
+    if (ss.str().length()) {
+        return LogAntiVm(wType, Address, ss.str().c_str());
     }
 }
