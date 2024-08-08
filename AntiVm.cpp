@@ -207,7 +207,14 @@ namespace AntiVm
         const ADDRINT opId = itr->second;
         std::stringstream ss;
         ss << "CPUID - HyperVisor res:" << std::hex;
-
+        if (opId == 0x1) {
+            if (reg == REG_GCX) {
+                ss << " ECX: " << regVal;
+                ADDRINT hv_bit = (ADDRINT)0x1 << 31;
+                regVal &= ~hv_bit;
+            }
+            isSet = TRUE;
+        }
         if (opId == 0x40000000) {
             //GenuineIntel
             // 47 65 6E 75 | 69 6E 65 49 | 6E 74 65 6C
