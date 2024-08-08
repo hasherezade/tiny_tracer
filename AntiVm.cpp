@@ -207,14 +207,19 @@ namespace AntiVm
         const ADDRINT opId = itr->second;
         std::stringstream ss;
         ss << "CPUID - HyperVisor res:" << std::hex;
+
+#ifdef HYPERVISOR_BIT_CLEAR
         if (opId == 0x1) {
             if (reg == REG_GCX) {
                 ss << " ECX: " << regVal;
-                ADDRINT hv_bit = (ADDRINT)0x1 << 31;
+                const ADDRINT hv_bit = (ADDRINT)0x1 << 31;
                 regVal &= ~hv_bit;
-            }
-            isSet = TRUE;
+                ss << " -> " << regVal;
+                isSet = TRUE;
+            }   
         }
+#endif //HYPERVISOR_BIT_CLEAR
+
         if (opId == 0x40000000) {
             //GenuineIntel
             // 47 65 6E 75 | 69 6E 65 49 | 6E 74 65 6C
@@ -223,12 +228,15 @@ namespace AntiVm
             } else if (reg == REG_GBX) {
                 ss << " EBX: " << regVal;
                 regVal = 0x7263694d;
+                ss << " -> " << regVal;
             } else if (reg == REG_GCX) {
                 ss << " ECX: " << regVal;
                 regVal = 0x666f736f;
+                ss << " -> " << regVal;
             } else if (reg == REG_GDX) {
                 ss << " EDX: " << regVal;
                 regVal = 0x76482074;
+                ss << " -> " << regVal;
             }
             isSet = TRUE;
         }
@@ -236,15 +244,19 @@ namespace AntiVm
             if (reg == REG_GAX) {
                 ss << " EAX: " << regVal;
                 regVal = 0x3fff;
+                ss << " -> " << regVal;
             } else if (reg == REG_GBX) {
                 ss << " EBX: " << regVal;
                 regVal = 0x2bb9ff;
+                ss << " -> " << regVal;
             } else if (reg == REG_GCX) {
                 ss << " ECX: " << regVal;
                 regVal = 0;
+                ss << " -> " << regVal;
             } else if (reg == REG_GDX) {
                 ss << " EDX: " << regVal;
                 regVal = 0;
+                ss << " -> " << regVal;
             }
             isSet = TRUE;
         }
