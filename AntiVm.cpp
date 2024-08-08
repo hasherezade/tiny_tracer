@@ -177,4 +177,10 @@ VOID AntiVm::CpuidCheck(CONTEXT* ctxt)
         return LogAntiVm(wType, Address, "CPUID - HyperVisor vendor check",
             "https://unprotect.it/technique/cpuid/");
     }
+    if (EaxVal == 0x40000002) {
+        return LogAntiVm(wType, Address, "CPUID - HyperVisor system identity");
+    }
+    if (EaxVal == 0x40000003) {
+        return LogAntiVm(wType, Address, "CPUID - HyperVisor feature identification");
+    }
 }
