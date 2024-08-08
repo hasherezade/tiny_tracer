@@ -208,17 +208,17 @@ namespace AntiVm
         std::stringstream ss;
         ss << "CPUID - HyperVisor res:" << std::hex;
 
-#ifdef HYPERVISOR_BIT_CLEAR
         if (opId == 0x1) {
             if (reg == REG_GCX) {
                 ss << " ECX: " << regVal;
+#ifdef HYPERVISOR_BIT_CLEAR
                 const ADDRINT hv_bit = (ADDRINT)0x1 << 31;
                 regVal &= ~hv_bit;
                 ss << " -> " << regVal;
-                isSet = TRUE;
-            }   
-        }
 #endif //HYPERVISOR_BIT_CLEAR
+                isSet = TRUE;
+            }  
+        }
 
         if (opId == 0x40000000) {
             //GenuineIntel
