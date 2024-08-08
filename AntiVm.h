@@ -20,4 +20,9 @@ namespace AntiVm {
 	VOID MonitorAntiVmFunctions(IMG Image);
 	VOID CpuidCheck(CONTEXT* ctxt, THREADID tid);
 	VOID CpuidCheck_after(CONTEXT* ctxt, THREADID tid);
+
+	ADDRINT AlterCpuidValueEax(CONTEXT* ctxt, THREADID tid);
+	ADDRINT AlterCpuidValueEbx(CONTEXT* ctxt, THREADID tid);
+	ADDRINT AlterCpuidValueEcx(CONTEXT* ctxt, THREADID tid);
+	ADDRINT AlterCpuidValueEdx(CONTEXT* ctxt, THREADID tid);
 };

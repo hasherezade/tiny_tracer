@@ -190,44 +190,74 @@ VOID AntiVm::CpuidCheck(CONTEXT* ctxt, THREADID tid)
     }
 }
 
-VOID AntiVm::CpuidCheck_after(CONTEXT* ctxt, THREADID tid)
+namespace AntiVm
 {
-    PinLocker locker;
 
-    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+    BOOL _AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg, ADDRINT& regVal)
+    {
+        const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
 
-    const WatchedType wType = isWatchedAddress(Address);
-    if (wType == WatchedType::NOT_WATCHED) return;
+        const WatchedType wType = isWatchedAddress(Address);
+        if (wType == WatchedType::NOT_WATCHED) return FALSE;
 
-    auto itr = cpuidThreads.find(tid);
-    if (itr == cpuidThreads.end()) return;
+        auto itr = cpuidThreads.find(tid);
+        if (itr == cpuidThreads.end()) return FALSE;
 
-    const ADDRINT opId = itr->second;
+        const ADDRINT opId = itr->second;
+        std::stringstream ss;
+        ss << "CPUID - HyperVisor res:" << std::hex;
 
-    ADDRINT EaxVal = PIN_GetContextReg(ctxt, REG_GAX);
-    std::stringstream ss;
-    if (opId == 0x1 || opId == 0x40000000 || opId == 0x40000003) {
-        
-        ADDRINT outs[3] = { 0 };
-        outs[0] = PIN_GetContextReg(ctxt, REG_GBX);
-        outs[1] = PIN_GetContextReg(ctxt, REG_GCX);
-        outs[2] = PIN_GetContextReg(ctxt, REG_GDX);
-        
-        ss << "CPUID - HyperVisor res:"
-            << std::hex
-            << " EAX: " << EaxVal
-            << " EBX: " << outs[0]
-            << " ECX: " << outs[1]
-            << " EDX: " << outs[2];
+        ADDRINT EaxVal = PIN_GetContextReg(ctxt, REG_GAX);
         if (opId == 0x40000000) {
-            char str[sizeof(INT32) * 3 + 1] = { 0 };
-            for (int i = 0; i < 3; i++)
-                ::memcpy(str + sizeof(INT32) * i, &outs[i], sizeof(INT32));
-            ss << " -> " << str;
+            //GenuineIntel
+            // 47 65 6E 75 | 69 6E 65 49 | 6E 74 65 6C
+            if (reg == REG_GAX) {
+                ss << " EAX: " << regVal;
+            } else if (reg == REG_GBX) {
+                ss << " EBX: " << regVal;
+                regVal = 0x7263694d;
+            } else if (reg == REG_GCX) {
+                ss << " ECX: " << regVal;
+                regVal = 0x666f736f;
+            } else if (reg == REG_GDX) {
+                ss << " EDX: " << regVal;
+                regVal = 0x76482074;
+            }
+            if (ss.str().length()) {
+                LogAntiVm(wType, Address, ss.str().c_str());
+            }
+            return TRUE;
         }
+        return FALSE;
     }
 
-    if (ss.str().length()) {
-        return LogAntiVm(wType, Address, ss.str().c_str());
+    ADDRINT AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg)
+    {
+        PinLocker locker;
+        ADDRINT regVal = PIN_GetContextReg(ctxt, reg);
+        _AlterCpuidValue(ctxt, tid, reg, regVal);
+        return regVal;
     }
+
+}; //namespace AntiVm
+
+
+ADDRINT AntiVm::AlterCpuidValueEax(CONTEXT* ctxt, THREADID tid)
+{
+    return AlterCpuidValue(ctxt, tid, REG_GAX);
+}
+
+ADDRINT AntiVm::AlterCpuidValueEbx(CONTEXT* ctxt, THREADID tid)
+{
+    return AlterCpuidValue(ctxt, tid, REG_GBX);
+}
+
+ADDRINT AntiVm::AlterCpuidValueEcx(CONTEXT* ctxt, THREADID tid)
+{
+    return AlterCpuidValue(ctxt, tid, REG_GCX);
+}
+
+ADDRINT AntiVm::AlterCpuidValueEdx(CONTEXT* ctxt, THREADID tid)\
+{
+    return AlterCpuidValue(ctxt, tid, REG_GDX);
 }
