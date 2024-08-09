@@ -25,11 +25,16 @@ using namespace LEVEL_PINCLIENT;
 /* ================================================================== */
 // Global variables used by AntiDebug
 /* ================================================================== */
-ADDRINT pebAddr = 0;
-ADDRINT heapFlags = 0;
-ADDRINT heapForceFlags = 0;
-std::vector<std::string> loadedLib;
-std::map<std::string, std::string> funcToLink;
+namespace AntiDbg
+{
+    ADDRINT pebAddr = 0;
+    ADDRINT heapFlags = 0;
+    ADDRINT heapForceFlags = 0;
+    std::vector<std::string> loadedLib;
+    std::map<std::string, std::string> funcToLink;
+
+}; // namespace AntiDebug
+
 
 typedef VOID AntiDBGCallBack(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5);
 
@@ -253,8 +258,8 @@ VOID AntiDbgLogFuncOccurrence(const ADDRINT Address, const CHAR* name, uint32_t 
 
     std::stringstream ss;
     ss << "^ " << name;
-    auto itr = funcToLink.find(name);
-    if (itr != funcToLink.end()) {
+    auto itr = AntiDbg::funcToLink.find(name);
+    if (itr != AntiDbg::funcToLink.end()) {
         return LogAntiDbg(wType, Address, ss.str().c_str(),
             itr->second.c_str());
     }
@@ -274,7 +279,7 @@ VOID AntiDbg_LoadLibrary(const ADDRINT Address, const CHAR* name, uint32_t argCo
     std::wstring argStr = paramToStrSplit(arg1);
     // Convert from wide string for comparison
     std::string _argStr(argStr.begin(), argStr.end());
-    loadedLib.push_back(_argStr);
+    AntiDbg::loadedLib.push_back(_argStr);
 }
 
 size_t BlockInputOccurrences = 0;
@@ -417,8 +422,8 @@ VOID AntiDbg_CreateFile(const ADDRINT Address, const CHAR* name, uint32_t argCou
         }
 
         // Check if open is done on loaded libraries
-        for (size_t i = 0; i < loadedLib.size(); i++) {
-            if (util::isStrEqualI(_argStr, loadedLib[i])) {
+        for (size_t i = 0; i < AntiDbg::loadedLib.size(); i++) {
+            if (util::isStrEqualI(_argStr, AntiDbg::loadedLib[i])) {
                 return LogAntiDbg(wType, Address, "^ kernel32!CreateFile on loaded lib",
                     "https://anti-debug.checkpoint.com/techniques/object-handles.html#loadlibrary");
             }
