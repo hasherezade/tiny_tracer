@@ -367,10 +367,17 @@ VOID AntiDbg_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, u
     const WatchedType wType = isWatchedAddress(Address);
     if (wType == WatchedType::NOT_WATCHED) return;
 
-    enum SystemInformationClass { SystemKernelDebuggerInformation = 0x23 };
+    enum SystemInformationClass {
+        SystemKernelDebuggerInformation = 0x23,
+        SystemFirmwareTableInformation = 0x4C
+    };
     // function ntdll!NtQuerySystemInformation() with first parameter set to 0x23 (SystemKernelDebuggerInformation)
     if (int((size_t)arg1) == SystemInformationClass::SystemKernelDebuggerInformation) {
         return LogAntiDbg(wType, Address, "^ ntdll!NtQuerySystemInformation (SystemKernelDebuggerInformation)",
+            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-ntquerysysteminformation");
+    }
+    if (int((size_t)arg1) == SystemInformationClass::SystemFirmwareTableInformation) {
+        return LogAntiDbg(wType, Address, "^ ntdll!NtQuerySystemInformation (SystemFirmwareTableInformation)",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checks-ntquerysysteminformation");
     }
 }
@@ -639,6 +646,55 @@ BOOL AntiDbg::Init()
 
     isInit = TRUE;
     return isInit;
+}
+
+namespace AntiDbg {
+    AntiDFuncInfo* fetchFunctionInfo(const std::string& dllName, const std::string& funcName)
+    {
+        for (size_t i = 0; i < watchedFuncs.funcs.size(); i++) {
+            if (util::iequals(dllName, watchedFuncs.funcs[i].dllName)) {
+                AntiDFuncInfo& wfunc = watchedFuncs.funcs[i];
+                if (wfunc.funcName != funcName) {
+                    continue;
+                }
+                if (wfunc.type > m_Settings.antidebug) {
+                    break;
+                }
+                return &wfunc;
+            }
+        }
+        return nullptr;
+    }
+
+};
+
+VOID AntiDbg::MonitorSyscall(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
+{
+    AntiDFuncInfo* wfunc = AntiDbg::fetchFunctionInfo("ntdll", name);
+    if (!wfunc) {
+        wfunc = AntiDbg::fetchFunctionInfo("win32u", name);
+    }
+    if (!wfunc) return;
+
+    AntiDBGCallBack* callback = wfunc->callback;
+    if (!callback) {
+        callback = AntiDbgLogFuncOccurrence;
+    }
+    const size_t argCount = wfunc->paramCount;
+    const size_t args_max = 5;
+    VOID* syscall_args[args_max] = { 0 };
+
+    for (size_t i = 0; i < args_max; i++) {
+        if (i == argCount) break;
+        syscall_args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
+    }
+    callback(Address,
+        name, argCount,
+        syscall_args[0],
+        syscall_args[1],
+        syscall_args[2],
+        syscall_args[3],
+        syscall_args[4]);
 }
 
 VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)

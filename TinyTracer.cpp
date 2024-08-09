@@ -561,7 +561,13 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
             }
         }
     }
-#endif
+#ifdef USE_ANTIDEBUG
+    if (m_Settings.antidebug != ANTIDEBUG_DISABLED) {
+        AntiDbg::MonitorSyscall(syscallFuncName.c_str(), ctxt, std, address);
+    }
+#endif //USE_ANTIDEBUG
+
+#endif //_WIN32
 }
 
 ADDRINT _setTimer(const CONTEXT* ctxt, bool isEax)
