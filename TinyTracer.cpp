@@ -562,7 +562,7 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
         }
     }
 #ifdef USE_ANTIDEBUG
-    if (m_Settings.antidebug != ANTIDEBUG_DISABLED) {
+    if (m_Settings.antidebug != WATCH_DISABLED) {
         AntiDbg::MonitorSyscall(syscallFuncName.c_str(), ctxt, std, address);
     }
 #endif //USE_ANTIDEBUG
@@ -882,7 +882,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
     ////////////////////////////////////
     // If AntiDebug level is Standard
     ////////////////////////////////////
-    if (m_Settings.antidebug != ANTIDEBUG_DISABLED) {
+    if (m_Settings.antidebug != WATCH_DISABLED) {
         if (INS_IsMemoryRead(ins)) {
             // Insert the callback function before memory read instructions
             INS_InsertCall(ins, IPOINT_BEFORE, AFUNPTR(AntiDbg::WatchMemoryAccess),
@@ -929,7 +929,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
         ////////////////////////////////////
         // If AntiDebug level is Deep
         ////////////////////////////////////
-        if (m_Settings.antidebug >= ANTIDEBUG_DEEP) {
+        if (m_Settings.antidebug >= WATCH_DEEP) {
             // Check all comparison for 0xCC byte (anti stepinto/stepover checks)
             const UINT32 opIdx = 1;
             if (INS_Opcode(ins) == XED_ICLASS_CMP 
@@ -998,7 +998,7 @@ VOID ImageLoad(IMG Image, VOID *v)
     }
 #ifdef USE_ANTIDEBUG
     // ANTIDEBUG: Register Function instrumentation needed for AntiDebug
-    if (m_Settings.antidebug != ANTIDEBUG_DISABLED) {
+    if (m_Settings.antidebug != WATCH_DISABLED) {
         // Register functions
         AntiDbg::MonitorAntiDbgFunctions(Image);
     }
@@ -1115,7 +1115,7 @@ int main(int argc, char *argv[])
     INS_AddInstrumentFunction(InstrumentInstruction, NULL);
 #ifdef USE_ANTIDEBUG
     // ANTIDEBUG: collect some info on thread start
-    if (m_Settings.antidebug != ANTIDEBUG_DISABLED) {
+    if (m_Settings.antidebug != WATCH_DISABLED) {
         PIN_AddThreadStartFunction(AntiDbg::WatchThreadStart, 0);
     }
 #endif

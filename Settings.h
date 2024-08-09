@@ -6,6 +6,7 @@
 #include <set>
 
 #include "FuncWatch.h"
+#include "EvasionWatch.h"
 
 typedef enum {
     SHELLC_DO_NOT_FOLLOW = 0,    // trace only the main target module
@@ -16,19 +17,6 @@ typedef enum {
 } t_shellc_options;
 
 t_shellc_options ConvertShcOption(int value);
-
-//---
-
-// ANTIDEBUG: settings management
-
-typedef enum {
-    ANTIDEBUG_DISABLED = 0,      // AntiDebug detection is disabled
-    ANTIDEBUG_STANDARD = 1,      // Track "standard" and easily identifiable techniques
-    ANTIDEBUG_DEEP = 2,          // Track more techniques, may lead to false positives
-    ANTIDEBUG_OPTIONS_COUNT
-} t_antidebug_options;
-
-t_antidebug_options ConvertAntidebugOption(int value);
 
 //---
 
@@ -72,8 +60,8 @@ public:
         shortLogging(true),
         logIndirect(false),
         hexdumpSize(8),
-        antidebug(ANTIDEBUG_DISABLED),
-        antivm(false),
+        antidebug(WATCH_DISABLED),
+        antivm(WATCH_DISABLED),
         useDebugSym(false),
         isHyperVSet(false)
     {
@@ -94,8 +82,8 @@ public:
     size_t hexdumpSize;
     bool hookSleep;
     size_t sleepTime;
-    t_antidebug_options antidebug;
-    bool antivm; // Trace Anti-VM techniques (WMI queries)
+    t_watch_level antidebug;
+    t_watch_level antivm; // Trace Anti-VM techniques (WMI queries)
     bool useDebugSym;
     bool isHyperVSet;
 

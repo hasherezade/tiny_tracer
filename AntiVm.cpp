@@ -12,6 +12,8 @@
 #include "PinLocker.h"
 #include "TinyTracer.h"
 
+#include "EvasionWatch.h"
+
 #define ANTIVM_LABEL "[ANTIVM] --> "
 
 using namespace LEVEL_PINCLIENT;
@@ -34,6 +36,23 @@ using namespace LEVEL_PINCLIENT;
 #define WMI_NAME         "NAME"
 
 typedef VOID AntiVmCallBack(const ADDRINT addr, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6);
+
+
+/* ================================================================== */
+// Global variables used by AntiVm
+/* ================================================================== */
+
+namespace AntiVm
+{
+    std::map<std::string, std::string> funcToLink;
+    FuncList<EvasionFuncInfo> watchedFuncs;
+    BOOL isInit = FALSE;
+}; // namespace AntiDebug
+
+BOOL Init()
+{
+    return FALSE;
+}
 
 /* ==================================================================== */
 // Log info with AntiVm label

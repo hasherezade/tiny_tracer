@@ -17,6 +17,7 @@
 // Prototypes
 /* ===================================================================== */
 namespace AntiVm {
+	BOOL Init();
 	VOID MonitorAntiVmFunctions(IMG Image);
 	VOID CpuidCheck(CONTEXT* ctxt, THREADID tid);
 	ADDRINT AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg);

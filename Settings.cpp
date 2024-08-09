@@ -32,15 +32,6 @@ t_shellc_options ConvertShcOption(int value)
     return (t_shellc_options)value;
 }
 
-t_antidebug_options ConvertAntidebugOption(int value)
-{
-    if (value >= ANTIDEBUG_OPTIONS_COUNT) {
-        // choose the last option:
-        return t_antidebug_options(ANTIDEBUG_OPTIONS_COUNT - 1);
-    }
-    return (t_antidebug_options)value;
-}
-
 //----
 
 std::string SyscallsTable::getName(int syscallID)
@@ -153,11 +144,12 @@ bool fillSettings(Settings &s, std::string line)
     }
     if (util::iequals(valName, KEY_ANTIDEBUG)) {
         const int val = util::loadInt(valStr);
-        s.antidebug = ConvertAntidebugOption(val);
+        s.antidebug = ConvertWatchLevel(val);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_ANTIVM)) {
-        s.antivm = loadBoolean(valStr, s.antivm);
+        const int val = util::loadInt(valStr);
+        s.antivm = ConvertWatchLevel(val);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_USE_DEBUG_SYMBOLS)) {
