@@ -151,8 +151,10 @@ VOID AntiVm::MonitorAntiVmFunctions(IMG Image)
     }
 }
 
-std::map<THREADID, ADDRINT> cpuidThreads;
-#define CLEAR_CPUID_HYPERVISOR
+namespace AntiVm {
+    std::map<THREADID, ADDRINT> cpuidThreads;
+}; //namespace AntiVm
+
 VOID AntiVm::CpuidCheck(CONTEXT* ctxt, THREADID tid)
 {
     PinLocker locker;
@@ -163,9 +165,7 @@ VOID AntiVm::CpuidCheck(CONTEXT* ctxt, THREADID tid)
     if (wType == WatchedType::NOT_WATCHED) return;
 
     ADDRINT opId = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
-#ifdef CLEAR_CPUID_HYPERVISOR
     cpuidThreads[tid] = opId;
-#endif
     if (opId == 0x0) {
         return LogAntiVm(wType, Address, "CPUID - vendor check",
             "https://unprotect.it/technique/cpuid/");
