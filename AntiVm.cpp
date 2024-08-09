@@ -195,6 +195,7 @@ namespace AntiVm
 
     BOOL _AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg, ADDRINT& regVal)
     {
+        BOOL isSet = FALSE;
         const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
 
         const WatchedType wType = isWatchedAddress(Address);
@@ -207,7 +208,6 @@ namespace AntiVm
         std::stringstream ss;
         ss << "CPUID - HyperVisor res:" << std::hex;
 
-        ADDRINT EaxVal = PIN_GetContextReg(ctxt, REG_GAX);
         if (opId == 0x40000000) {
             //GenuineIntel
             // 47 65 6E 75 | 69 6E 65 49 | 6E 74 65 6C
@@ -223,12 +223,28 @@ namespace AntiVm
                 ss << " EDX: " << regVal;
                 regVal = 0x76482074;
             }
-            if (ss.str().length()) {
-                LogAntiVm(wType, Address, ss.str().c_str());
-            }
-            return TRUE;
+            isSet = TRUE;
         }
-        return FALSE;
+        else if (opId == 0x40000003) {
+            if (reg == REG_GAX) {
+                ss << " EAX: " << regVal;
+                regVal = 0x3fff;
+            } else if (reg == REG_GBX) {
+                ss << " EBX: " << regVal;
+                regVal = 0x2bb9ff;
+            } else if (reg == REG_GCX) {
+                ss << " ECX: " << regVal;
+                regVal = 0;
+            } else if (reg == REG_GDX) {
+                ss << " EDX: " << regVal;
+                regVal = 0;
+            }
+            isSet = TRUE;
+        }
+        if (isSet && ss.str().length()) {
+            LogAntiVm(wType, Address, ss.str().c_str());
+        }
+        return isSet;
     }
 
     ADDRINT AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg)
