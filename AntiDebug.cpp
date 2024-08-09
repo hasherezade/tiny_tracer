@@ -176,8 +176,10 @@ VOID AntiDbg::WatchCompareSoftBrk(ADDRINT Address, UINT64 immVal)
     }
 }
 
+namespace AntiDbg {
+    std::set<THREADID> popfThreads;
+}; // namespace AntiDbg
 
-std::set<THREADID> popfThreads;
 #define CLEAR_TRAP
 VOID AntiDbg::FlagsCheck(const CONTEXT* ctxt, THREADID tid)
 {
