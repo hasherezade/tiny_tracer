@@ -195,6 +195,7 @@ namespace AntiVm
 
     BOOL _AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg, ADDRINT& regVal)
     {
+        const BOOL isHyperVisorSet = m_Settings.isHyperVSet;
         BOOL isSet = FALSE;
         const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
 
@@ -208,59 +209,85 @@ namespace AntiVm
         std::stringstream ss;
         ss << "CPUID - HyperVisor res:" << std::hex;
 
+        const ADDRINT prev = regVal;
+
         if (opId == 0x1) {
             if (reg == REG_GCX) {
                 ss << " ECX: " << regVal;
-#ifdef HYPERVISOR_BIT_CLEAR
                 const ADDRINT hv_bit = (ADDRINT)0x1 << 31;
-                regVal &= ~hv_bit;
-                ss << " -> " << regVal;
-#endif //HYPERVISOR_BIT_CLEAR
+                if (isHyperVisorSet) {
+                    regVal |= hv_bit; //set bit
+                }
+                else {
+                    regVal &= ~hv_bit; //clear bit
+                }
                 isSet = TRUE;
             }  
         }
 
         if (opId == 0x40000000) {
-            //GenuineIntel
-            // 47 65 6E 75 | 69 6E 65 49 | 6E 74 65 6C
             if (reg == REG_GAX) {
                 ss << " EAX: " << regVal;
+                if (!isHyperVisorSet) {
+                    regVal = 0xc1c;
+                }
             } else if (reg == REG_GBX) {
                 ss << " EBX: " << regVal;
-                regVal = 0x7263694d;
-                ss << " -> " << regVal;
+                if (isHyperVisorSet) {
+                    regVal = 0x7263694d;
+                }
+                else {
+                    regVal = 0x14b4;
+                }
             } else if (reg == REG_GCX) {
                 ss << " ECX: " << regVal;
-                regVal = 0x666f736f;
-                ss << " -> " << regVal;
+                if (isHyperVisorSet) {
+                    regVal = 0x666f736f;
+                }
+                else {
+                    regVal = 0x64;
+                }
             } else if (reg == REG_GDX) {
                 ss << " EDX: " << regVal;
-                regVal = 0x76482074;
-                ss << " -> " << regVal;
+                if (isHyperVisorSet) {
+                    regVal = 0x76482074;
+                }
+                else {
+                    regVal = 0;
+                }
             }
             isSet = TRUE;
         }
         else if (opId == 0x40000003) {
             if (reg == REG_GAX) {
                 ss << " EAX: " << regVal;
-                regVal = 0x3fff;
-                ss << " -> " << regVal;
+                if (isHyperVisorSet) {
+                    regVal = 0x3fff;
+                }
+                else {
+                    regVal = 0x14b4;
+                }
             } else if (reg == REG_GBX) {
                 ss << " EBX: " << regVal;
-                regVal = 0x2bb9ff;
-                ss << " -> " << regVal;
+                if (isHyperVisorSet) {
+                    regVal = 0x2bb9ff;
+                }
+                else {
+                    regVal = 0x64;
+                }
             } else if (reg == REG_GCX) {
                 ss << " ECX: " << regVal;
                 regVal = 0;
-                ss << " -> " << regVal;
             } else if (reg == REG_GDX) {
                 ss << " EDX: " << regVal;
                 regVal = 0;
-                ss << " -> " << regVal;
             }
             isSet = TRUE;
         }
         if (isSet && ss.str().length()) {
+            if (prev != regVal) {
+                ss << " -> " << regVal;
+            }
             LogAntiVm(wType, Address, ss.str().c_str());
         }
         return isSet;
