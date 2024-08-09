@@ -21,6 +21,7 @@
 #define KEY_ANTIDEBUG                   "ANTIDEBUG"
 #define KEY_ANTIVM                      "ANTIVM"
 #define KEY_USE_DEBUG_SYMBOLS           "USE_DEBUG_SYMBOLS"
+#define KEY_HYPREV_SET                  "EMULATE_HYPERV"
 
 t_shellc_options ConvertShcOption(int value)
 {
@@ -163,6 +164,10 @@ bool fillSettings(Settings &s, std::string line)
         s.useDebugSym = loadBoolean(valStr, s.useDebugSym);
         isFilled = true;
     }
+    if (util::iequals(valName, KEY_HYPREV_SET)) {
+        s.isHyperVSet = loadBoolean(valStr, s.isHyperVSet);
+        isFilled = true;
+    }
     return isFilled;
 }
 
@@ -215,6 +220,7 @@ bool Settings::saveINI(const std::string &filename)
     myfile << LOG_INDIRECT << DELIM << this->logIndirect << "\r\n";
     myfile << KEY_ANTIDEBUG << DELIM << this->antidebug << "\r\n";
     myfile << KEY_ANTIVM << DELIM << this->antivm << "\r\n";
+    myfile << KEY_HYPREV_SET << DELIM << this->isHyperVSet << "\r\n";
     myfile.close();
     return true;
 }

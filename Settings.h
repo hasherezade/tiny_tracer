@@ -74,7 +74,8 @@ public:
         hexdumpSize(8),
         antidebug(ANTIDEBUG_DISABLED),
         antivm(false),
-        useDebugSym(false)
+        useDebugSym(false),
+        isHyperVSet(false)
     {
     }
 
@@ -96,6 +97,7 @@ public:
     t_antidebug_options antidebug;
     bool antivm; // Trace Anti-VM techniques (WMI queries)
     bool useDebugSym;
+    bool isHyperVSet;
 
     SyscallsTable syscallsTable; //Syscalls table: mapping the syscall ID to the function name
     FuncWatchList funcWatch; //List of functions, arguments of which are going to be logged

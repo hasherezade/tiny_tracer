@@ -770,6 +770,47 @@ VOID InstrumentInstruction(INS ins, VOID *v)
                 ins,
                 IPOINT_BEFORE, (AFUNPTR)AntiVm::CpuidCheck,
                 IARG_CONTEXT,
+                IARG_THREAD_ID,
+                IARG_END
+            );
+
+            INS_InsertCall(
+                ins,
+                IPOINT_AFTER, (AFUNPTR)AntiVm::AlterCpuidValueEax,
+                IARG_CONTEXT,
+                IARG_THREAD_ID,
+                IARG_RETURN_REGS,
+                REG_GAX,
+                IARG_END
+            );
+
+            INS_InsertCall(
+                ins,
+                IPOINT_AFTER, (AFUNPTR)AntiVm::AlterCpuidValueEbx,
+                IARG_CONTEXT,
+                IARG_THREAD_ID,
+                IARG_RETURN_REGS,
+                REG_GBX,
+                IARG_END
+            );
+
+            INS_InsertCall(
+                ins,
+                IPOINT_AFTER, (AFUNPTR)AntiVm::AlterCpuidValueEcx,
+                IARG_CONTEXT,
+                IARG_THREAD_ID,
+                IARG_RETURN_REGS,
+                REG_GCX,
+                IARG_END
+            );
+
+            INS_InsertCall(
+                ins,
+                IPOINT_AFTER, (AFUNPTR)AntiVm::AlterCpuidValueEdx,
+                IARG_CONTEXT,
+                IARG_THREAD_ID,
+                IARG_RETURN_REGS,
+                REG_GDX,
                 IARG_END
             );
         }

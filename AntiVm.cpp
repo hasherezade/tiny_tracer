@@ -151,7 +151,11 @@ VOID AntiVm::MonitorAntiVmFunctions(IMG Image)
     }
 }
 
-VOID AntiVm::CpuidCheck(CONTEXT* ctxt)
+namespace AntiVm {
+    std::map<THREADID, ADDRINT> cpuidThreads;
+}; //namespace AntiVm
+
+VOID AntiVm::CpuidCheck(CONTEXT* ctxt, THREADID tid)
 {
     PinLocker locker;
 
@@ -160,27 +164,162 @@ VOID AntiVm::CpuidCheck(CONTEXT* ctxt)
     const WatchedType wType = isWatchedAddress(Address);
     if (wType == WatchedType::NOT_WATCHED) return;
 
-    ADDRINT EaxVal = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
-    if (EaxVal == 0x0) {
+    ADDRINT opId = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
+    cpuidThreads[tid] = opId;
+    if (opId == 0x0) {
         return LogAntiVm(wType, Address, "CPUID - vendor check",
             "https://unprotect.it/technique/cpuid/");
     }
-    if (EaxVal == 0x1) {
+    if (opId == 0x1) {
         return LogAntiVm(wType, Address, "CPUID - HyperVisor bit check",
             "https://unprotect.it/technique/cpuid/");
     }
-    if (EaxVal == 0x80000002 || EaxVal == 0x80000003 || EaxVal == 0x80000004) {
+    if (opId == 0x80000002 || opId == 0x80000003 || opId == 0x80000004) {
         return LogAntiVm(wType, Address, "CPUID - brand check",
             "https://unprotect.it/technique/cpuid/");
     }
-    if (EaxVal == 0x40000000) {
+    if (opId == 0x40000000) {
         return LogAntiVm(wType, Address, "CPUID - HyperVisor vendor check",
             "https://unprotect.it/technique/cpuid/");
     }
-    if (EaxVal == 0x40000002) {
+    if (opId == 0x40000002) {
         return LogAntiVm(wType, Address, "CPUID - HyperVisor system identity");
     }
-    if (EaxVal == 0x40000003) {
+    if (opId == 0x40000003) {
         return LogAntiVm(wType, Address, "CPUID - HyperVisor feature identification");
     }
+}
+
+namespace AntiVm
+{
+
+    BOOL _AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg, ADDRINT& regVal)
+    {
+        const BOOL isHyperVisorSet = m_Settings.isHyperVSet;
+        BOOL isSet = FALSE;
+        const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+
+        const WatchedType wType = isWatchedAddress(Address);
+        if (wType == WatchedType::NOT_WATCHED) return FALSE;
+
+        auto itr = cpuidThreads.find(tid);
+        if (itr == cpuidThreads.end()) return FALSE;
+
+        const ADDRINT opId = itr->second;
+        std::stringstream ss;
+        ss << "CPUID - HyperVisor res:" << std::hex;
+
+        const ADDRINT prev = regVal;
+
+        if (opId == 0x1) {
+            if (reg == REG_GCX) {
+                ss << " ECX: " << regVal;
+                const ADDRINT hv_bit = (ADDRINT)0x1 << 31;
+                if (isHyperVisorSet) {
+                    regVal |= hv_bit; //set bit
+                }
+                else {
+                    regVal &= ~hv_bit; //clear bit
+                }
+                isSet = TRUE;
+            }  
+        }
+
+        if (opId == 0x40000000) {
+            if (reg == REG_GAX) {
+                ss << " EAX: " << regVal;
+                if (!isHyperVisorSet) {
+                    regVal = 0xc1c;
+                }
+            } else if (reg == REG_GBX) {
+                ss << " EBX: " << regVal;
+                if (isHyperVisorSet) {
+                    regVal = 0x7263694d;
+                }
+                else {
+                    regVal = 0x14b4;
+                }
+            } else if (reg == REG_GCX) {
+                ss << " ECX: " << regVal;
+                if (isHyperVisorSet) {
+                    regVal = 0x666f736f;
+                }
+                else {
+                    regVal = 0x64;
+                }
+            } else if (reg == REG_GDX) {
+                ss << " EDX: " << regVal;
+                if (isHyperVisorSet) {
+                    regVal = 0x76482074;
+                }
+                else {
+                    regVal = 0;
+                }
+            }
+            isSet = TRUE;
+        }
+        else if (opId == 0x40000003) {
+            if (reg == REG_GAX) {
+                ss << " EAX: " << regVal;
+                if (isHyperVisorSet) {
+                    regVal = 0x3fff;
+                }
+                else {
+                    regVal = 0x14b4;
+                }
+            } else if (reg == REG_GBX) {
+                ss << " EBX: " << regVal;
+                if (isHyperVisorSet) {
+                    regVal = 0x2bb9ff;
+                }
+                else {
+                    regVal = 0x64;
+                }
+            } else if (reg == REG_GCX) {
+                ss << " ECX: " << regVal;
+                regVal = 0;
+            } else if (reg == REG_GDX) {
+                ss << " EDX: " << regVal;
+                regVal = 0;
+            }
+            isSet = TRUE;
+        }
+        if (isSet && ss.str().length()) {
+            if (prev != regVal) {
+                ss << " -> " << regVal;
+            }
+            LogAntiVm(wType, Address, ss.str().c_str());
+        }
+        return isSet;
+    }
+
+    ADDRINT AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg)
+    {
+        PinLocker locker;
+        ADDRINT regVal = PIN_GetContextReg(ctxt, reg);
+        _AlterCpuidValue(ctxt, tid, reg, regVal);
+        return regVal;
+    }
+
+}; //namespace AntiVm
+
+
+ADDRINT AntiVm::AlterCpuidValueEax(CONTEXT* ctxt, THREADID tid)
+{
+    return AlterCpuidValue(ctxt, tid, REG_GAX);
+}
+
+ADDRINT AntiVm::AlterCpuidValueEbx(CONTEXT* ctxt, THREADID tid)
+{
+    return AlterCpuidValue(ctxt, tid, REG_GBX);
+}
+
+ADDRINT AntiVm::AlterCpuidValueEcx(CONTEXT* ctxt, THREADID tid)
+{
+    return AlterCpuidValue(ctxt, tid, REG_GCX);
+}
+
+ADDRINT AntiVm::AlterCpuidValueEdx(CONTEXT* ctxt, THREADID tid)\
+{
+    return AlterCpuidValue(ctxt, tid, REG_GDX);
 }
