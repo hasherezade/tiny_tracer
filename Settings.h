@@ -101,6 +101,6 @@ public:
 
     SyscallsTable syscallsTable; //Syscalls table: mapping the syscall ID to the function name
     FuncWatchList funcWatch; //List of functions, arguments of which are going to be logged
-    FuncList excludedFuncs; //List of functions that will NOT be logged
+    FuncList<WFuncInfo> excludedFuncs; //List of functions that will NOT be logged
     std::set<ADDRINT> stopOffsets; //List of offsets at which the execution should pause
 };

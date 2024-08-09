@@ -6,6 +6,7 @@
 // Prototypes
 /* ===================================================================== */
 namespace AntiDbg {
+	BOOL Init();
 	VOID WatchMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr);
 	VOID WatchThreadStart(THREADID threadid, CONTEXT* ctxt, INT32 flags, VOID* v);
 	VOID WatchCompareSoftBrk(ADDRINT Address, UINT64 immVal);
