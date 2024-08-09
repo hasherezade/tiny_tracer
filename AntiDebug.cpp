@@ -648,6 +648,23 @@ namespace AntiDbg {
         return nullptr;
     }
 
+    VOID installCallbacks(IMG Image)
+    {
+        const std::string dllName = util::getDllName(IMG_Name(Image));
+        for (size_t i = 0; i < watchedFuncs.funcs.size(); i++) {
+            if (util::iequals(dllName, watchedFuncs.funcs[i].dllName)) {
+                EvasionFuncInfo& wfunc = watchedFuncs.funcs[i];
+                if (wfunc.type > m_Settings.antidebug) {
+                    continue;
+                }
+                EvasionWatchCallBack* callback = wfunc.callback;
+                if (!callback) {
+                    callback = AntiDbgLogFuncOccurrence;
+                }
+                AntiDbgAddCallbackBefore(Image, wfunc.funcName.c_str(), wfunc.paramCount, callback);
+            }
+        }
+    }
 };
 
 VOID AntiDbg::MonitorSyscall(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
@@ -685,21 +702,9 @@ VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
         AntiDbg::Init();
     }
 
-    const std::string dllName = util::getDllName(IMG_Name(Image));
-    for (size_t i = 0; i < watchedFuncs.funcs.size(); i++) {
-        if (util::iequals(dllName, watchedFuncs.funcs[i].dllName)) {
-            EvasionFuncInfo& wfunc = watchedFuncs.funcs[i];
-            if (wfunc.type > m_Settings.antidebug) {
-                continue;
-            }
-            EvasionWatchCallBack*callback = wfunc.callback;
-            if (!callback) {
-                callback = AntiDbgLogFuncOccurrence;
-            }
-            AntiDbgAddCallbackBefore(Image, wfunc.funcName.c_str(), wfunc.paramCount, callback);
-        }
-    }
+    AntiDbg::installCallbacks(Image);
 
+    const std::string dllName = util::getDllName(IMG_Name(Image));
     if (util::iequals(dllName, "kernel32")) {
         // CloseHandle return value hook
         RTN funcRtn = find_by_unmangled_name(Image, "CloseHandle");
