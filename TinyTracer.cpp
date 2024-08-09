@@ -776,9 +776,10 @@ VOID InstrumentInstruction(INS ins, VOID *v)
 
             INS_InsertCall(
                 ins,
-                IPOINT_AFTER, (AFUNPTR)AntiVm::AlterCpuidValueEax,
+                IPOINT_AFTER, (AFUNPTR)AntiVm::AlterCpuidValue,
                 IARG_CONTEXT,
                 IARG_THREAD_ID,
+                IARG_UINT32, REG_GAX,
                 IARG_RETURN_REGS,
                 REG_GAX,
                 IARG_END
@@ -786,9 +787,10 @@ VOID InstrumentInstruction(INS ins, VOID *v)
 
             INS_InsertCall(
                 ins,
-                IPOINT_AFTER, (AFUNPTR)AntiVm::AlterCpuidValueEbx,
+                IPOINT_AFTER, (AFUNPTR)AntiVm::AlterCpuidValue,
                 IARG_CONTEXT,
                 IARG_THREAD_ID,
+                IARG_UINT32, REG_GBX,
                 IARG_RETURN_REGS,
                 REG_GBX,
                 IARG_END
@@ -796,9 +798,10 @@ VOID InstrumentInstruction(INS ins, VOID *v)
 
             INS_InsertCall(
                 ins,
-                IPOINT_AFTER, (AFUNPTR)AntiVm::AlterCpuidValueEcx,
+                IPOINT_AFTER, (AFUNPTR)AntiVm::AlterCpuidValue,
                 IARG_CONTEXT,
                 IARG_THREAD_ID,
+                IARG_UINT32, REG_GCX,
                 IARG_RETURN_REGS,
                 REG_GCX,
                 IARG_END
@@ -806,9 +809,10 @@ VOID InstrumentInstruction(INS ins, VOID *v)
 
             INS_InsertCall(
                 ins,
-                IPOINT_AFTER, (AFUNPTR)AntiVm::AlterCpuidValueEdx,
+                IPOINT_AFTER, (AFUNPTR)AntiVm::AlterCpuidValue,
                 IARG_CONTEXT,
                 IARG_THREAD_ID,
+                IARG_UINT32, REG_GDX,
                 IARG_RETURN_REGS,
                 REG_GDX,
                 IARG_END

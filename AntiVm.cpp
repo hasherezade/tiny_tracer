@@ -295,33 +295,13 @@ namespace AntiVm
         return isSet;
     }
 
-    ADDRINT AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg)
-    {
-        PinLocker locker;
-        ADDRINT regVal = PIN_GetContextReg(ctxt, reg);
-        _AlterCpuidValue(ctxt, tid, reg, regVal);
-        return regVal;
-    }
-
 }; //namespace AntiVm
 
 
-ADDRINT AntiVm::AlterCpuidValueEax(CONTEXT* ctxt, THREADID tid)
+ADDRINT AntiVm::AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg)
 {
-    return AlterCpuidValue(ctxt, tid, REG_GAX);
-}
-
-ADDRINT AntiVm::AlterCpuidValueEbx(CONTEXT* ctxt, THREADID tid)
-{
-    return AlterCpuidValue(ctxt, tid, REG_GBX);
-}
-
-ADDRINT AntiVm::AlterCpuidValueEcx(CONTEXT* ctxt, THREADID tid)
-{
-    return AlterCpuidValue(ctxt, tid, REG_GCX);
-}
-
-ADDRINT AntiVm::AlterCpuidValueEdx(CONTEXT* ctxt, THREADID tid)\
-{
-    return AlterCpuidValue(ctxt, tid, REG_GDX);
+    PinLocker locker;
+    ADDRINT regVal = PIN_GetContextReg(ctxt, reg);
+    _AlterCpuidValue(ctxt, tid, reg, regVal);
+    return regVal;
 }
