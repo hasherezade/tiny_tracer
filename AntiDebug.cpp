@@ -219,7 +219,7 @@ VOID AntiDbg::FlagsCheck_after(const CONTEXT* ctxt, THREADID tid, ADDRINT eip)
         popfThreads.erase(tid); // erase the stored TID
     }
     EXCEPTION_INFO exc;
-    PIN_InitWindowsExceptionInfo(&exc, 0x80000004L, eip); // NTSTATUS_STATUS_SINGLE_STEP
+    exc.Init(EXCEPTCODE_DBG_SINGLE_STEP_TRAP, eip);
     PIN_RaiseException(ctxt, tid, &exc);
 }
 
