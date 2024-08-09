@@ -228,9 +228,11 @@ namespace AntiVm
         if (opId == 0x40000000) {
             if (reg == REG_GAX) {
                 ss << " EAX: " << regVal;
-                if (!isHyperVisorSet) {
+                if (isHyperVisorSet) {
+                    regVal = 0x40000006;
+                } else {
                     regVal = 0xc1c;
-                }
+                } 
             } else if (reg == REG_GBX) {
                 ss << " EBX: " << regVal;
                 if (isHyperVisorSet) {
