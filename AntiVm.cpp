@@ -155,10 +155,10 @@ bool AntiVmAddCallbackBefore(IMG Image, char* fName, uint32_t argNum, AntiVmCall
 
 VOID AntiVm::MonitorAntiVmFunctions(IMG Image)
 {
-    m_AntiVm.installCallbacks(Image, nullptr, m_Settings.antivm);
+    m_AntiVm.installCallbacksBefore(Image, nullptr, m_Settings.antivm);
 }
 
-VOID AntiVm::MonitorSyscall(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
+VOID AntiVm::MonitorSyscallEntry(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
 {
     EvasionFuncInfo* wfunc = m_AntiVm.fetchSyscallFuncInfo(name, m_Settings.antivm);
     if (!wfunc) return;

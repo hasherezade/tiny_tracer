@@ -601,7 +601,7 @@ BOOL AntiDbgWatch::Init()
     return isInit;
 }
 
-VOID AntiDbg::MonitorSyscall(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
+VOID AntiDbg::MonitorSyscallEntry(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
 {
     EvasionFuncInfo* wfunc = m_AntiDbg.fetchSyscallFuncInfo(name, m_Settings.antidebug);
     if (!wfunc) return;
@@ -629,7 +629,7 @@ VOID AntiDbg::MonitorSyscall(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STAN
 
 VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
 {
-    m_AntiDbg.installCallbacks(Image, AntiDbgLogFuncOccurrence, m_Settings.antidebug);
+    m_AntiDbg.installCallbacksBefore(Image, AntiDbgLogFuncOccurrence, m_Settings.antidebug);
 
     const std::string dllName = util::getDllName(IMG_Name(Image));
     if (util::iequals(dllName, "kernel32")) {

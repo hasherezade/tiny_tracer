@@ -47,7 +47,7 @@ public:
     EvasionFuncInfo* fetchFunctionInfo(const std::string& dllName, const std::string& funcName, t_watch_level maxLevel);
     EvasionFuncInfo* fetchSyscallFuncInfo(const std::string& funcName, t_watch_level maxLevel);
 
-    size_t installCallbacks(IMG Image, EvasionWatchCallBack defaultCallback, t_watch_level maxLevel);
+    size_t installCallbacksBefore(IMG Image, EvasionWatchCallBack defaultCallback, t_watch_level maxLevel);
     FuncList<EvasionFuncInfo> watchedFuncs;
 
 protected:

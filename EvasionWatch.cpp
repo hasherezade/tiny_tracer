@@ -59,7 +59,7 @@ EvasionFuncInfo* EvasionWatch::fetchSyscallFuncInfo(const std::string& funcName,
     return wfunc;
 }
 
-size_t EvasionWatch::installCallbacks(IMG Image, EvasionWatchCallBack defaultCallback, t_watch_level maxLevel)
+size_t EvasionWatch::installCallbacksBefore(IMG Image, EvasionWatchCallBack defaultCallback, t_watch_level maxLevel)
 {
     if (!isInit) {
         return 0;
