@@ -2,6 +2,7 @@
 
 #include "pin.H"
 #include "FuncWatch.h"
+#include <map>
 
 typedef enum {
     WATCH_DISABLED = 0,      // Evasion detection is disabled
@@ -33,4 +34,22 @@ struct EvasionFuncInfo : public WFuncInfo
 
     EvasionWatchCallBack* callback;
     t_watch_level type;
+};
+
+class EvasionWatch
+{
+public:
+    static bool EvasionAddCallbackBefore(IMG Image, const char* fName, uint32_t argNum, EvasionWatchCallBack callback);
+
+    EvasionWatch() : isInit(FALSE) { }
+
+    virtual BOOL Init() = 0;
+    EvasionFuncInfo* fetchFunctionInfo(const std::string& dllName, const std::string& funcName, t_watch_level maxLevel);
+    EvasionFuncInfo* fetchSyscallFuncInfo(const std::string& funcName, t_watch_level maxLevel);
+
+    size_t installCallbacks(IMG Image, EvasionWatchCallBack defaultCallback, t_watch_level maxLevel);
+    FuncList<EvasionFuncInfo> watchedFuncs;
+
+protected:
+    BOOL isInit;
 };

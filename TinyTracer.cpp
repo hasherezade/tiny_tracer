@@ -566,6 +566,11 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
         AntiDbg::MonitorSyscall(syscallFuncName.c_str(), ctxt, std, address);
     }
 #endif //USE_ANTIDEBUG
+#ifdef USE_ANTIVM
+    if (m_Settings.antivm != WATCH_DISABLED) {
+        AntiVm::MonitorSyscall(syscallFuncName.c_str(), ctxt, std, address);
+    }
+#endif //USE_ANTIVM
 
 #endif //_WIN32
 }

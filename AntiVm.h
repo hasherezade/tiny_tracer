@@ -17,8 +17,8 @@
 // Prototypes
 /* ===================================================================== */
 namespace AntiVm {
-	BOOL Init();
 	VOID MonitorAntiVmFunctions(IMG Image);
+	VOID MonitorSyscall(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address);
 	VOID CpuidCheck(CONTEXT* ctxt, THREADID tid);
 	ADDRINT AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg);
 };
