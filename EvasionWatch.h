@@ -25,7 +25,7 @@ typedef VOID EvasionWatchCallBack(const ADDRINT Address, const CHAR* name, uint3
 struct EvasionFuncInfo : public WFuncInfo
 {
     EvasionFuncInfo(const std::string& _dllName, const std::string& _funcName, const size_t _paramCount, EvasionWatchCallBack* _callback = nullptr, t_watch_level _type = WATCH_STANDARD)
-        : callback(_callback)
+        : callback(_callback), type(_type)
     {
         this->dllName = _dllName;
         this->funcName = _funcName;
