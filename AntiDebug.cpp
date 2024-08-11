@@ -138,7 +138,7 @@ VOID AntiDbg::WatchMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr
         return LogAntiDbg(wType, insAddr, "PEB!BeingDebugged accessed");
     }
     if (addr == 0x7ffe02d4) {
-        return LogAntiDbg(wType, insAddr, "KUSER_SHARED_DATA accessed",
+        return LogAntiDbg(wType, insAddr, "KUSER_SHARED_DATA!KdDebuggerEnabled accessed",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#kuser_shared_data");
     }
 #ifdef _WIN64
@@ -295,15 +295,16 @@ VOID AntiDbg_LoadLibrary(const ADDRINT Address, const CHAR* name, uint32_t argCo
     AntiDbg::loadedLib.push_back(_argStr);
 }
 
-size_t BlockInputOccurrences = 0;
 VOID AntiDbg_BlockInput(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (!argCount) return;
 
     PinLocker locker;
+
     const WatchedType wType = isWatchedAddress(Address);
     if (wType == WatchedType::NOT_WATCHED) return;
 
+    static size_t BlockInputOccurrences = 0;
     // Check if BlockInput is called more than one time
     BlockInputOccurrences++;
     if (BlockInputOccurrences > 1) {
@@ -321,7 +322,7 @@ VOID AntiDbg_NtSetInformationThread(const ADDRINT Address, const CHAR* name, uin
     if (wType == WatchedType::NOT_WATCHED) return;
 
     enum ThreadInformationClass { ThreadHideFromDebugger = 0x11 };
-    uint32_t NtCurrentThread = -2;
+    const uint32_t NtCurrentThread = -2;
 
     // Check if NtSetInformationThread has been called with parameter ThreadHideFromDebugger
     if (int((size_t)arg1) == NtCurrentThread &&
