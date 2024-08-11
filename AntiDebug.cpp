@@ -18,6 +18,8 @@
 #include "win/win_paths.h"
 #endif
 
+#include "EvasionWatch.h"
+
 #define ANTIDBG_LABEL "[ANTIDEBUG] --> "
 
 using namespace LEVEL_PINCLIENT;
@@ -25,18 +27,25 @@ using namespace LEVEL_PINCLIENT;
 /* ================================================================== */
 // Global variables used by AntiDebug
 /* ================================================================== */
+
 namespace AntiDbg
 {
     ADDRINT pebAddr = 0;
     ADDRINT heapFlags = 0;
     ADDRINT heapForceFlags = 0;
     std::vector<std::string> loadedLib;
-    std::map<std::string, std::string> funcToLink;
-
 }; // namespace AntiDebug
 
+class AntiDbgWatch : public EvasionWatch
+{
+public:
+    AntiDbgWatch() { Init(); }
+    virtual BOOL Init();
 
-typedef VOID AntiDBGCallBack(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5);
+    std::map<std::string, std::string> funcToLink;
+};
+
+AntiDbgWatch m_AntiDbg;
 
 /* ==================================================================== */
 // Leveraging the existing paramToStr, extracts only the string after '->'
@@ -129,7 +138,7 @@ VOID AntiDbg::WatchMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr
         return LogAntiDbg(wType, insAddr, "PEB!BeingDebugged accessed");
     }
     if (addr == 0x7ffe02d4) {
-        return LogAntiDbg(wType, insAddr, "KUSER_SHARED_DATA accessed",
+        return LogAntiDbg(wType, insAddr, "KUSER_SHARED_DATA!KdDebuggerEnabled accessed",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#kuser_shared_data");
     }
 #ifdef _WIN64
@@ -154,8 +163,10 @@ VOID AntiDbg::WatchMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr
 /* ==================================================================== */
 // Callback function to be executed when a compare is executed
 /* ==================================================================== */
+namespace AntiDbg {
+    std::map<ADDRINT, size_t> cmpOccurrences;
+}; // namespace AntiDbg
 
-std::map<ADDRINT, size_t> cmpOccurrences;
 VOID AntiDbg::WatchCompareSoftBrk(ADDRINT Address, UINT64 immVal)
 {
     PinLocker locker;
@@ -260,8 +271,8 @@ VOID AntiDbgLogFuncOccurrence(const ADDRINT Address, const CHAR* name, uint32_t 
 
     std::stringstream ss;
     ss << "^ " << name;
-    auto itr = AntiDbg::funcToLink.find(name);
-    if (itr != AntiDbg::funcToLink.end()) {
+    auto itr = m_AntiDbg.funcToLink.find(name);
+    if (itr != m_AntiDbg.funcToLink.end()) {
         return LogAntiDbg(wType, Address, ss.str().c_str(),
             itr->second.c_str());
     }
@@ -284,15 +295,16 @@ VOID AntiDbg_LoadLibrary(const ADDRINT Address, const CHAR* name, uint32_t argCo
     AntiDbg::loadedLib.push_back(_argStr);
 }
 
-size_t BlockInputOccurrences = 0;
 VOID AntiDbg_BlockInput(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (!argCount) return;
 
     PinLocker locker;
+
     const WatchedType wType = isWatchedAddress(Address);
     if (wType == WatchedType::NOT_WATCHED) return;
 
+    static size_t BlockInputOccurrences = 0;
     // Check if BlockInput is called more than one time
     BlockInputOccurrences++;
     if (BlockInputOccurrences > 1) {
@@ -310,12 +322,12 @@ VOID AntiDbg_NtSetInformationThread(const ADDRINT Address, const CHAR* name, uin
     if (wType == WatchedType::NOT_WATCHED) return;
 
     enum ThreadInformationClass { ThreadHideFromDebugger = 0x11 };
-    uint32_t NtCurrentThread = -2;
+    const uint32_t NtCurrentThread = -2;
 
     // Check if NtSetInformationThread has been called with parameter ThreadHideFromDebugger
     if (int((size_t)arg1) == NtCurrentThread &&
         int((size_t)arg2) == ThreadInformationClass::ThreadHideFromDebugger) {
-        return LogAntiDbg(wType, Address, "^ ntdll!NtSetInformationThread()",
+        return LogAntiDbg(wType, Address, "^ ntdll!NtSetInformationThread (NtCurrentThread -> ThreadHideFromDebugger)",
             "https://anti-debug.checkpoint.com/techniques/interactive.html#ntsetinformationthread");
     }
 }
@@ -345,7 +357,9 @@ VOID AntiDbg_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, u
     const WatchedType wType = isWatchedAddress(Address);
     if (wType == WatchedType::NOT_WATCHED) return;
 
-    enum SystemInformationClass { SystemKernelDebuggerInformation = 0x23 };
+    enum SystemInformationClass {
+        SystemKernelDebuggerInformation = 0x23
+    };
     // function ntdll!NtQuerySystemInformation() with first parameter set to 0x23 (SystemKernelDebuggerInformation)
     if (int((size_t)arg1) == SystemInformationClass::SystemKernelDebuggerInformation) {
         return LogAntiDbg(wType, Address, "^ ntdll!NtQuerySystemInformation (SystemKernelDebuggerInformation)",
@@ -521,44 +535,13 @@ VOID AntiDbg_After_CloseHandle(ADDRINT Address, ADDRINT result)
     }
 }
 
-/* ==================================================================== */
-// Add single function
-/* ==================================================================== */
-
-bool AntiDbgAddCallbackBefore(IMG Image, char* fName, uint32_t argNum, AntiDBGCallBack callback)
-{
-    const size_t argMax = 5;
-    if (argNum > argMax) argNum = argMax;
-
-    RTN funcRtn = find_by_unmangled_name(Image, fName);
-    if (RTN_Valid(funcRtn)) {
-        RTN_Open(funcRtn);
-
-        RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(callback),
-            IARG_RETURN_IP,
-            IARG_ADDRINT, fName,
-            IARG_UINT32, argNum,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
-            IARG_END
-        );
-
-        RTN_Close(funcRtn);
-        return true;
-    }
-
-    return false;
-}
 
 /* ==================================================================== */
 // Add to monitored functions all the API needed for AntiDebug.
 // Called by ImageLoad
 /* ==================================================================== */
 
-VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
+BOOL AntiDbgWatch::Init()
 {
     funcToLink["IsDebuggerPresent"] = "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-isdebuggerpresent";
     funcToLink["CheckRemoteDebuggerPresent"] = "https://anti-debug.checkpoint.com/techniques/debug-flags.html#using-win32-api-checkremotedebuggerpresent";
@@ -578,69 +561,90 @@ VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
     funcToLink["OutputDebugStringA"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#outputdebugstring";
     funcToLink["OutputDebugStringW"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#outputdebugstring";
 
-    // API needed for Antidebug
+    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "CsrGetProcessId", 0));
+    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "RtlQueryProcessHeapInformation", 1));
+    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "RtlQueryProcessDebugInformation", 3));
+    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "DbgUiDebugActiveProcess", 1));
+    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "NtQueryInformationProcess", 5, AntiDbg_NtQueryInformationProcess));
+    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "NtQuerySystemInformation", 4, AntiDbg_NtQuerySystemInformation));
+    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "NtDebugActiveProcess", 2));
+    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "NtSetInformationThread", 4, AntiDbg_NtSetInformationThread));
+
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "LoadLibraryW", 1, AntiDbg_LoadLibrary));
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "LoadLibraryA", 1, AntiDbg_LoadLibrary));
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "CreateFileW", 5, AntiDbg_CreateFile));
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "CreateFileA", 5, AntiDbg_CreateFile));
+
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "IsDebuggerPresent", 5));
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "CheckRemoteDebuggerPresent", 5));
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "HeapWalk", 5));
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "SetUnhandledExceptionFilter", 5));
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "RaiseException", 5));
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "DebugActiveProcess", 5));
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "GenerateConsoleCtrlEvent", 5));
+
+    watchedFuncs.appendFunc(EvasionFuncInfo("user32", "BlockInput", 1, AntiDbg_BlockInput));
+    watchedFuncs.appendFunc(EvasionFuncInfo("user32", "SwitchDesktop", 1, AntiDbgLogFuncOccurrence));
+
+
+    ////////////////////////////////////
+    // If AntiDebug level is Deep
+    ////////////////////////////////////
+    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "NtQueryObject", 5, AntiDbg_NtQueryObject, WATCH_DEEP));
+
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "OutputDebugStringA", 5, nullptr, WATCH_DEEP));
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "OutputDebugStringA", 5, nullptr, WATCH_DEEP));
+
+    watchedFuncs.appendFunc(EvasionFuncInfo("user32", "GetWindowTextA", 3, nullptr, WATCH_DEEP));
+    watchedFuncs.appendFunc(EvasionFuncInfo("user32", "GetWindowTextW", 3, nullptr, WATCH_DEEP));
+
+    isInit = TRUE;
+    return isInit;
+}
+
+VOID AntiDbg::MonitorSyscallEntry(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
+{
+    EvasionFuncInfo* wfunc = m_AntiDbg.fetchSyscallFuncInfo(name, m_Settings.antidebug);
+    if (!wfunc) return;
+
+    EvasionWatchCallBack* callback = wfunc->callback;
+    if (!callback) {
+        callback = AntiDbgLogFuncOccurrence;
+    }
+    const size_t argCount = wfunc->paramCount;
+    const size_t args_max = 5;
+    VOID* syscall_args[args_max] = { 0 };
+
+    for (size_t i = 0; i < args_max; i++) {
+        if (i == argCount) break;
+        syscall_args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
+    }
+    callback(Address,
+        name, argCount,
+        syscall_args[0],
+        syscall_args[1],
+        syscall_args[2],
+        syscall_args[3],
+        syscall_args[4]);
+}
+
+VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
+{
+    m_AntiDbg.installCallbacksBefore(Image, AntiDbgLogFuncOccurrence, m_Settings.antidebug);
+
     const std::string dllName = util::getDllName(IMG_Name(Image));
-    if (util::iequals(dllName, "ntdll")) {
-        AntiDbgAddCallbackBefore(Image, "CsrGetProcessId", 0, AntiDbgLogFuncOccurrence);
-        AntiDbgAddCallbackBefore(Image, "RtlQueryProcessHeapInformation", 1, AntiDbgLogFuncOccurrence);
-        AntiDbgAddCallbackBefore(Image, "RtlQueryProcessDebugInformation", 3, AntiDbgLogFuncOccurrence);
-        AntiDbgAddCallbackBefore(Image, "NtQueryInformationProcess", 5, AntiDbg_NtQueryInformationProcess);
-        AntiDbgAddCallbackBefore(Image, "NtQuerySystemInformation", 4, AntiDbg_NtQuerySystemInformation);
-        AntiDbgAddCallbackBefore(Image, "DbgUiDebugActiveProcess", 1, AntiDbgLogFuncOccurrence);
-        AntiDbgAddCallbackBefore(Image, "NtDebugActiveProcess", 2, AntiDbgLogFuncOccurrence);
-        AntiDbgAddCallbackBefore(Image, "NtSetInformationThread", 4, AntiDbg_NtSetInformationThread);
-
-        ////////////////////////////////////
-        // If AntiDebug level is Deep
-        ////////////////////////////////////
-        if (m_Settings.antidebug >= ANTIDEBUG_DEEP) {
-            AntiDbgAddCallbackBefore(Image, "NtQueryObject", 5, AntiDbg_NtQueryObject);
-        }
-    }
     if (util::iequals(dllName, "kernel32")) {
-        AntiDbgAddCallbackBefore(Image, "LoadLibraryW", 1, AntiDbg_LoadLibrary);
-        AntiDbgAddCallbackBefore(Image, "LoadLibraryA", 1, AntiDbg_LoadLibrary);
-        AntiDbgAddCallbackBefore(Image, "CreateFileW", 5, AntiDbg_CreateFile);
-        AntiDbgAddCallbackBefore(Image, "CreateFileA", 5, AntiDbg_CreateFile);
-        AntiDbgAddCallbackBefore(Image, "IsDebuggerPresent", 0, AntiDbgLogFuncOccurrence);
-        AntiDbgAddCallbackBefore(Image, "CheckRemoteDebuggerPresent", 2, AntiDbgLogFuncOccurrence);
-        AntiDbgAddCallbackBefore(Image, "HeapWalk", 2, AntiDbgLogFuncOccurrence);
-        AntiDbgAddCallbackBefore(Image, "SetUnhandledExceptionFilter", 1, AntiDbgLogFuncOccurrence);
-        AntiDbgAddCallbackBefore(Image, "RaiseException", 4, AntiDbg_RaiseException);
-        AntiDbgAddCallbackBefore(Image, "DebugActiveProcess", 1, AntiDbgLogFuncOccurrence);
-        AntiDbgAddCallbackBefore(Image, "GenerateConsoleCtrlEvent", 2, AntiDbgLogFuncOccurrence);
+        // CloseHandle return value hook
+        RTN funcRtn = find_by_unmangled_name(Image, "CloseHandle");
+        if (!RTN_Valid(funcRtn)) return; // failed
 
-        ////////////////////////////////////
-        // If AntiDebug level is Deep
-        ////////////////////////////////////
-        if (m_Settings.antidebug >= ANTIDEBUG_DEEP) {
-            AntiDbgAddCallbackBefore(Image, "OutputDebugStringA", 1, AntiDbgLogFuncOccurrence);
-            AntiDbgAddCallbackBefore(Image, "OutputDebugStringW", 1, AntiDbgLogFuncOccurrence);
-        }
+        RTN_Open(funcRtn);
+
+        RTN_InsertCall(funcRtn, IPOINT_AFTER, AFUNPTR(AntiDbg_After_CloseHandle),
+            IARG_RETURN_IP,
+            IARG_FUNCRET_EXITPOINT_VALUE,
+            IARG_END);
+
+        RTN_Close(funcRtn);
     }
-    if (util::iequals(dllName, "user32")) {
-        AntiDbgAddCallbackBefore(Image, "BlockInput", 1, AntiDbg_BlockInput);
-        AntiDbgAddCallbackBefore(Image, "SwitchDesktop", 1, AntiDbgLogFuncOccurrence);
-
-        ////////////////////////////////////
-        // If AntiDebug level is Deep
-        ////////////////////////////////////
-        if (m_Settings.antidebug >= ANTIDEBUG_DEEP) {
-            AntiDbgAddCallbackBefore(Image, "GetWindowTextA", 3, AntiDbgLogFuncOccurrence);
-            AntiDbgAddCallbackBefore(Image, "GetWindowTextW", 3, AntiDbgLogFuncOccurrence);
-        }
-    }
-
-    // CloseHandle return value hook
-    RTN funcRtn = find_by_unmangled_name(Image, "CloseHandle");
-    if (!RTN_Valid(funcRtn)) return; // failed
-
-    RTN_Open(funcRtn);
-
-    RTN_InsertCall(funcRtn, IPOINT_AFTER, AFUNPTR(AntiDbg_After_CloseHandle),
-        IARG_RETURN_IP,
-        IARG_FUNCRET_EXITPOINT_VALUE,
-        IARG_END);
-
-    RTN_Close(funcRtn);
 }

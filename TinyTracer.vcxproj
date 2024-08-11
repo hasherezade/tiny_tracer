@@ -279,6 +279,7 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="EvasionWatch.cpp" />
     <ClCompile Include="AntiVm.cpp" />
     <ClCompile Include="ModuleInfo.cpp" />
     <ClCompile Include="ProcessInfo.cpp" />
@@ -290,6 +291,7 @@
     <ClCompile Include="Settings.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="EvasionWatch.h" />
     <ClInclude Include="AntiDebug.h" />
     <ClInclude Include="AntiVm.h" />
     <ClInclude Include="TinyTracer.h" />

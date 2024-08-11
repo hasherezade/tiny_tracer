@@ -12,6 +12,8 @@
 #include "PinLocker.h"
 #include "TinyTracer.h"
 
+#include "EvasionWatch.h"
+
 #define ANTIVM_LABEL "[ANTIVM] --> "
 
 using namespace LEVEL_PINCLIENT;
@@ -35,6 +37,19 @@ using namespace LEVEL_PINCLIENT;
 
 typedef VOID AntiVmCallBack(const ADDRINT addr, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6);
 
+
+/* ================================================================== */
+// Global variables used by AntiVm
+/* ================================================================== */
+
+class AntiVmWatch : public EvasionWatch
+{
+public:
+    AntiVmWatch() { Init(); }
+    virtual BOOL Init();
+};
+
+AntiVmWatch m_AntiVm;
 /* ==================================================================== */
 // Log info with AntiVm label
 /* ==================================================================== */
@@ -48,7 +63,7 @@ VOID LogAntiVm(const WatchedType wType, const ADDRINT Address, const char* msg, 
 // Process API calls (related to AntiVm techniques)
 /* ==================================================================== */
 
-VOID AntiVm_WmiQueries(const ADDRINT addr, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6)
+VOID AntiVm_WmiQueries(const ADDRINT addr, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {   
     if (!argCount) return;
 
@@ -140,17 +155,36 @@ bool AntiVmAddCallbackBefore(IMG Image, char* fName, uint32_t argNum, AntiVmCall
 
 VOID AntiVm::MonitorAntiVmFunctions(IMG Image)
 {
-    // API needed to trace WMI queries
-    const std::string dllName = util::getDllName(IMG_Name(Image));
-    if (util::iequals(dllName, "fastprox")) {
-#ifdef _WIN64
-        AntiVmAddCallbackBefore(Image, "?Get@CWbemObject@@UEAAJPEBGJPEAUtagVARIANT@@PEAJ2@Z", 6, AntiVm_WmiQueries);
-#else
-        AntiVmAddCallbackBefore(Image, "?Get@CWbemObject@@UAGJPBGJPAUtagVARIANT@@PAJ2@Z", 6, AntiVm_WmiQueries);
-#endif
-    }
+    m_AntiVm.installCallbacksBefore(Image, nullptr, m_Settings.antivm);
 }
 
+VOID AntiVm::MonitorSyscallEntry(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
+{
+    EvasionFuncInfo* wfunc = m_AntiVm.fetchSyscallFuncInfo(name, m_Settings.antivm);
+    if (!wfunc) return;
+
+    EvasionWatchCallBack* callback = wfunc->callback;
+    if (!callback) {
+        return;
+    }
+    const size_t argCount = wfunc->paramCount;
+    const size_t args_max = 5;
+    VOID* syscall_args[args_max] = { 0 };
+
+    for (size_t i = 0; i < args_max; i++) {
+        if (i == argCount) break;
+        syscall_args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
+    }
+    callback(Address,
+        name, argCount,
+        syscall_args[0],
+        syscall_args[1],
+        syscall_args[2],
+        syscall_args[3],
+        syscall_args[4]);
+}
+
+//---
 namespace AntiVm {
     std::map<THREADID, ADDRINT> cpuidThreads;
 }; //namespace AntiVm
@@ -304,4 +338,37 @@ ADDRINT AntiVm::AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg)
     ADDRINT regVal = PIN_GetContextReg(ctxt, reg);
     _AlterCpuidValue(ctxt, tid, reg, regVal);
     return regVal;
+}
+
+//---
+
+VOID AntiVm_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+{
+    if (!argCount) return;
+
+    PinLocker locker;
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    enum SystemInformationClass {
+        SystemFirmwareTableInformation = 0x4C
+    };
+
+    if (int((size_t)arg1) == SystemInformationClass::SystemFirmwareTableInformation) {
+        return LogAntiVm(wType, Address, "^ ntdll!NtQuerySystemInformation (SystemFirmwareTableInformation)",
+            "https://revers.engineering/evading-trivial-acpi-checks/");
+    }
+}
+
+BOOL AntiVmWatch::Init()
+{
+    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "NtQuerySystemInformation", 4, AntiVm_NtQuerySystemInformation));
+    // API needed to trace WMI queries:
+#ifdef _WIN64
+    watchedFuncs.appendFunc(EvasionFuncInfo("fastprox", "?Get@CWbemObject@@UEAAJPEBGJPEAUtagVARIANT@@PEAJ2@Z", 5, AntiVm_WmiQueries));
+#else
+    watchedFuncs.appendFunc(EvasionFuncInfo("fastprox", "?Get@CWbemObject@@UAGJPBGJPAUtagVARIANT@@PAJ2@Z", 5, AntiVm_WmiQueries));
+#endif
+    isInit = TRUE;
+    return isInit;
 }
