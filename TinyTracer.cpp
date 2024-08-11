@@ -776,7 +776,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
         );
 #ifdef USE_ANTIVM
         // ANTIVM: Register Function instrumentation needed for AntiVm
-        if (m_Settings.antivm) {
+        if (m_Settings.antivm != WATCH_DISABLED) {
             INS_InsertCall(
                 ins,
                 IPOINT_BEFORE, (AFUNPTR)AntiVm::CpuidCheck,
