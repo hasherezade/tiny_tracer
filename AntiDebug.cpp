@@ -262,7 +262,7 @@ VOID AntiDbg::InterruptCheck(const CONTEXT* ctxt)
 // Process API calls (related to AntiDebug techniques)
 /* ==================================================================== */
 
-VOID AntiDbgLogFuncOccurrence(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiDbgLogFuncOccurrence(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     PinLocker locker;
 
@@ -279,7 +279,7 @@ VOID AntiDbgLogFuncOccurrence(const ADDRINT Address, const CHAR* name, uint32_t 
     return LogAntiDbg(wType, Address, ss.str().c_str());
 }
 
-VOID AntiDbg_LoadLibrary(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiDbg_LoadLibrary(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (!argCount) return;
 
@@ -295,7 +295,7 @@ VOID AntiDbg_LoadLibrary(const ADDRINT Address, const CHAR* name, uint32_t argCo
     AntiDbg::loadedLib.push_back(_argStr);
 }
 
-VOID AntiDbg_BlockInput(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiDbg_BlockInput(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (!argCount) return;
 
@@ -313,7 +313,7 @@ VOID AntiDbg_BlockInput(const ADDRINT Address, const CHAR* name, uint32_t argCou
     }
 }
 
-VOID AntiDbg_NtSetInformationThread(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiDbg_NtSetInformationThread(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (!argCount) return;
 
@@ -349,7 +349,7 @@ VOID AntiDbg_RaiseException(const ADDRINT Address, const CHAR* name, uint32_t ar
     }
 }
 
-VOID AntiDbg_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiDbg_NtQuerySystemInformation(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (!argCount) return;
 
@@ -367,7 +367,7 @@ VOID AntiDbg_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, u
     }
 }
 
-VOID AntiDbg_NtQueryInformationProcess(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiDbg_NtQueryInformationProcess(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (argCount < 2) return;
 
@@ -394,7 +394,7 @@ VOID AntiDbg_NtQueryInformationProcess(const ADDRINT Address, const CHAR* name, 
     }
 }
 
-VOID AntiDbg_NtQueryObject(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiDbg_NtQueryObject(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (argCount < 2) return;
 
@@ -410,7 +410,7 @@ VOID AntiDbg_NtQueryObject(const ADDRINT Address, const CHAR* name, uint32_t arg
     }
 }
 
-VOID AntiDbg_CreateFile(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiDbg_CreateFile(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (argCount < 3) return;
 
@@ -445,6 +445,24 @@ VOID AntiDbg_CreateFile(const ADDRINT Address, const CHAR* name, uint32_t argCou
             }
         }
     }
+}
+
+//* ==================================================================== */
+// "CloseHandle" instrumentation, detects invalid handlers
+/* ===================================================================== */
+
+VOID AntiDbg_CloseHandle_after(ADDRINT Address, THREADID threadid, const CHAR* name, ADDRINT result)
+{
+    PinLocker locker;
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    if (!result) {
+        // Invalid closure
+        return LogAntiDbg(wType, Address, "^ kernel32!CloseHandle (INVALID_HNDL_VAL)",
+            "https://anti-debug.checkpoint.com/techniques/object-handles.html#closehandle");
+    }
+
 }
 
 /* ==================================================================== */
@@ -517,28 +535,8 @@ VOID AntiDbg::WatchThreadStart(THREADID threadid, CONTEXT* ctxt, INT32 flags, VO
 #endif 
 }
 
-//* ==================================================================== */
-// "CloseHandle" instrumentation, detects invalid handlers
-/* ===================================================================== */
-
-VOID AntiDbg_After_CloseHandle(ADDRINT Address, ADDRINT result)
-{
-    PinLocker locker;
-
-    const WatchedType wType = isWatchedAddress(Address);
-    if (wType == WatchedType::NOT_WATCHED) return;
-
-    if (!result) {
-        // Invalid closure
-        return LogAntiDbg(wType, Address, "^ kernel32!CloseHandle (INVALID_HNDL_VAL)",
-            "https://anti-debug.checkpoint.com/techniques/object-handles.html#closehandle");
-    }
-}
-
-
 /* ==================================================================== */
 // Add to monitored functions all the API needed for AntiDebug.
-// Called by ImageLoad
 /* ==================================================================== */
 
 BOOL AntiDbgWatch::Init()
@@ -575,6 +573,8 @@ BOOL AntiDbgWatch::Init()
     watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "CreateFileW", 5, AntiDbg_CreateFile));
     watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "CreateFileA", 5, AntiDbg_CreateFile));
 
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "CloseHandle", 1, nullptr, AntiDbg_CloseHandle_after));
+
     watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "IsDebuggerPresent", 5));
     watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "CheckRemoteDebuggerPresent", 5));
     watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "HeapWalk", 5));
@@ -590,27 +590,34 @@ BOOL AntiDbgWatch::Init()
     ////////////////////////////////////
     // If AntiDebug level is Deep
     ////////////////////////////////////
-    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "NtQueryObject", 5, AntiDbg_NtQueryObject, WATCH_DEEP));
+    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "NtQueryObject", 5, AntiDbg_NtQueryObject, nullptr, WATCH_DEEP));
 
-    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "OutputDebugStringA", 5, nullptr, WATCH_DEEP));
-    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "OutputDebugStringA", 5, nullptr, WATCH_DEEP));
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "OutputDebugStringA", 5, nullptr, nullptr, WATCH_DEEP));
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "OutputDebugStringA", 5, nullptr, nullptr, WATCH_DEEP));
 
-    watchedFuncs.appendFunc(EvasionFuncInfo("user32", "GetWindowTextA", 3, nullptr, WATCH_DEEP));
-    watchedFuncs.appendFunc(EvasionFuncInfo("user32", "GetWindowTextW", 3, nullptr, WATCH_DEEP));
+    watchedFuncs.appendFunc(EvasionFuncInfo("user32", "GetWindowTextA", 3, nullptr, nullptr, WATCH_DEEP));
+    watchedFuncs.appendFunc(EvasionFuncInfo("user32", "GetWindowTextW", 3, nullptr, nullptr, WATCH_DEEP));
 
     isInit = TRUE;
     return isInit;
 }
 
-VOID AntiDbg::MonitorSyscallEntry(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
+VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
+{
+    m_AntiDbg.installCallbacks(Image, AntiDbgLogFuncOccurrence, m_Settings.antidebug);
+}
+
+VOID AntiDbg::MonitorSyscallEntry(const THREADID tid, const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
 {
     EvasionFuncInfo* wfunc = m_AntiDbg.fetchSyscallFuncInfo(name, m_Settings.antidebug);
     if (!wfunc) return;
 
-    EvasionWatchCallBack* callback = wfunc->callback;
-    if (!callback) {
-        callback = AntiDbgLogFuncOccurrence;
+    EvasionWatchBeforeCallBack* callbackBefore = wfunc->callbackBefore;
+    if (!callbackBefore && !wfunc->callbackAfter) {
+        callbackBefore = AntiDbgLogFuncOccurrence;
     }
+    if (!callbackBefore) return;
+
     const size_t argCount = wfunc->paramCount;
     const size_t args_max = 5;
     VOID* syscall_args[args_max] = { 0 };
@@ -619,32 +626,12 @@ VOID AntiDbg::MonitorSyscallEntry(const CHAR* name, const CONTEXT* ctxt, SYSCALL
         if (i == argCount) break;
         syscall_args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
     }
-    callback(Address,
+    callbackBefore(Address,
+        tid,
         name, argCount,
         syscall_args[0],
         syscall_args[1],
         syscall_args[2],
         syscall_args[3],
         syscall_args[4]);
-}
-
-VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
-{
-    m_AntiDbg.installCallbacksBefore(Image, AntiDbgLogFuncOccurrence, m_Settings.antidebug);
-
-    const std::string dllName = util::getDllName(IMG_Name(Image));
-    if (util::iequals(dllName, "kernel32")) {
-        // CloseHandle return value hook
-        RTN funcRtn = find_by_unmangled_name(Image, "CloseHandle");
-        if (!RTN_Valid(funcRtn)) return; // failed
-
-        RTN_Open(funcRtn);
-
-        RTN_InsertCall(funcRtn, IPOINT_AFTER, AFUNPTR(AntiDbg_After_CloseHandle),
-            IARG_RETURN_IP,
-            IARG_FUNCRET_EXITPOINT_VALUE,
-            IARG_END);
-
-        RTN_Close(funcRtn);
-    }
 }

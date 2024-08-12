@@ -23,7 +23,7 @@
 #include "PinLocker.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.7.5"
+#define VERSION "2.7.7"
 
 #include "Util.h"
 #include "Settings.h"
@@ -489,10 +489,8 @@ VOID LogSyscallsArgs(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std
         syscall_args[10]);
 }
 
-
-VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
+BOOL _fetchSyscallData(CONTEXT* ctxt, SYSCALL_STANDARD &std, ADDRINT &address)
 {
-    PinLocker locker;
 #ifdef _WIN64
     // Since Windows 10 TH2, NTDLL's syscall routines have changed: syscalls can
     // now be performed with the SYSCALL instruction, and with the INT 2E
@@ -503,13 +501,13 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
         PIN_SafeCopy(&instruction, insPtr, sizeof(instruction));
         if (instruction != 0x2ECD) { // INT 2E
             // Not a relevant interrupt, return now.
-            return;
+            return FALSE;
         }
         std = SYSCALL_STANDARD_IA32E_WINDOWS_FAST;
     }
 #endif
 
-    const auto address = [&]() -> ADDRINT {
+    const auto _address = [&]() -> ADDRINT {
         if (std == SYSCALL_STANDARD_WOW64) {
             // Note: In this case, the current instruction address is in a 64-bit
             // code portion. The address that we're interested in is the return
@@ -518,12 +516,27 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
         }
         return PIN_GetContextReg(ctxt, REG_INST_PTR);
     }();
-    
+
+    if (_address == UNKNOWN_ADDR) return FALSE; //invalid
+    address = _address;
+    return TRUE;
+}
+
+std::map<THREADID, ADDRINT> syscallFromThread;
+VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
+{
+    PinLocker locker;
+    syscallFromThread[tid] = UNKNOWN_ADDR; // reset just in case
+    ADDRINT address = UNKNOWN_ADDR;
+    if (!_fetchSyscallData(ctxt, std, address)) {
+        return;
+    }
     const WatchedType wType = isWatchedAddress(address);
     if (wType == WatchedType::NOT_WATCHED) return;
     
     const ADDRINT syscallNum = PIN_GetSyscallNumber(ctxt, std);
     if (syscallNum == UNKNOWN_ADDR) return; //invalid
+    syscallFromThread[tid] = syscallNum;
 
     std::string funcName = m_Settings.syscallsTable.getName(syscallNum);
 
@@ -563,16 +576,43 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
     }
 #ifdef USE_ANTIDEBUG
     if (m_Settings.antidebug != WATCH_DISABLED) {
-        AntiDbg::MonitorSyscallEntry(syscallFuncName.c_str(), ctxt, std, address);
+        AntiDbg::MonitorSyscallEntry(tid, syscallFuncName.c_str(), ctxt, std, address);
     }
 #endif //USE_ANTIDEBUG
+
 #ifdef USE_ANTIVM
     if (m_Settings.antivm != WATCH_DISABLED) {
-        AntiVm::MonitorSyscallEntry(syscallFuncName.c_str(), ctxt, std, address);
+        AntiVm::MonitorSyscallEntry(tid, syscallFuncName.c_str(), ctxt, std, address);
     }
 #endif //USE_ANTIVM
 
 #endif //_WIN32
+}
+
+VOID SyscallCalledAfter(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
+{
+    PinLocker locker;
+    ADDRINT address = UNKNOWN_ADDR;
+    if (!_fetchSyscallData(ctxt, std, address)) {
+        return;
+    }
+    const WatchedType wType = isWatchedAddress(address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    auto itr = syscallFromThread.find(tid);
+    if (itr == syscallFromThread.end() || itr->second == UNKNOWN_ADDR) {
+        return;
+    }
+    const ADDRINT syscallNum = itr->second;
+    if (syscallNum == UNKNOWN_ADDR) return; //invalid
+
+    const std::string syscallFuncName = SyscallsTable::convertNameToNt(m_Settings.syscallsTable.getName(syscallNum));
+
+#ifdef USE_ANTIVM
+    if (m_Settings.antivm != WATCH_DISABLED) {
+        AntiVm::MonitorSyscallExit(tid, syscallFuncName.c_str(), ctxt, std, address);
+    }
+#endif //USE_ANTIVM
 }
 
 ADDRINT _setTimer(const CONTEXT* ctxt, bool isEax)
@@ -1050,7 +1090,7 @@ int main(int argc, char *argv[])
     {
         return Usage();
     }
-
+    
     std::string app_name = KnobModuleName.Value();
     if (app_name.length() == 0) {
         // init App Name:
@@ -1128,6 +1168,7 @@ int main(int argc, char *argv[])
         // Register function to be called before every syscall instruction
         // (i.e., syscall, sysenter, int 2Eh)
         PIN_AddSyscallEntryFunction(SyscallCalled, NULL);
+        PIN_AddSyscallExitFunction(SyscallCalledAfter, NULL);
     }
 
     // Register context changes

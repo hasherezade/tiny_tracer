@@ -3,8 +3,10 @@
 #include "TinyTracer.h"
 #include "ModuleInfo.h"
 
-bool EvasionWatch::EvasionAddCallbackBefore(IMG Image, const char* fName, uint32_t argNum, EvasionWatchCallBack callback)
+bool EvasionWatch::EvasionAddCallbackBefore(IMG Image, const char* fName, uint32_t argNum, EvasionWatchBeforeCallBack callback)
 {
+    if (!callback) return false;
+
     const size_t argMax = 5;
     if (argNum > argMax) argNum = argMax;
 
@@ -14,6 +16,7 @@ bool EvasionWatch::EvasionAddCallbackBefore(IMG Image, const char* fName, uint32
 
         RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(callback),
             IARG_RETURN_IP,
+            IARG_THREAD_ID,
             IARG_ADDRINT, fName,
             IARG_UINT32, argNum,
             IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
@@ -27,7 +30,27 @@ bool EvasionWatch::EvasionAddCallbackBefore(IMG Image, const char* fName, uint32
         RTN_Close(funcRtn);
         return true;
     }
+    return false;
+}
 
+bool EvasionWatch::EvasionAddCallbackAfter(IMG Image, const char* fName, EvasionWatchAfterCallBack callback)
+{
+    if (!callback) return false;
+
+    RTN funcRtn = find_by_unmangled_name(Image, fName);
+    if (RTN_Valid(funcRtn)) {
+        RTN_Open(funcRtn);
+
+        RTN_InsertCall(funcRtn, IPOINT_AFTER, AFUNPTR(callback),
+            IARG_RETURN_IP,
+            IARG_THREAD_ID,
+            IARG_ADDRINT, fName,
+            IARG_FUNCRET_EXITPOINT_VALUE,
+            IARG_END);
+
+        RTN_Close(funcRtn);
+        return true;
+    }
     return false;
 }
 
@@ -59,11 +82,13 @@ EvasionFuncInfo* EvasionWatch::fetchSyscallFuncInfo(const std::string& funcName,
     return wfunc;
 }
 
-size_t EvasionWatch::installCallbacksBefore(IMG Image, EvasionWatchCallBack defaultCallback, t_watch_level maxLevel)
+size_t EvasionWatch::installCallbacks(IMG Image, EvasionWatchBeforeCallBack defaultCallback, t_watch_level maxLevel)
 {
     if (!isInit) {
         return 0;
     }
+
+    // callbacks before:
     size_t added = 0;
     const std::string dllName = util::getDllName(IMG_Name(Image));
     for (size_t i = 0; i < watchedFuncs.funcs.size(); i++) {
@@ -72,14 +97,31 @@ size_t EvasionWatch::installCallbacksBefore(IMG Image, EvasionWatchCallBack defa
             if (wfunc.type > maxLevel) {
                 continue;
             }
-            EvasionWatchCallBack* callback = wfunc.callback;
-            if (!callback) {
-                callback = defaultCallback;
+            EvasionWatchBeforeCallBack* callbackBefore = wfunc.callbackBefore;
+            if (!callbackBefore && !wfunc.callbackAfter) {
+                callbackBefore = defaultCallback;
             }
-            if (EvasionAddCallbackBefore(Image, wfunc.funcName.c_str(), wfunc.paramCount, callback)) {
+            if (EvasionAddCallbackBefore(Image, wfunc.funcName.c_str(), wfunc.paramCount, callbackBefore)) {
                 added++;
             }
+            if (wfunc.callbackAfter)
+                if (EvasionAddCallbackAfter(Image, wfunc.funcName.c_str(), wfunc.callbackAfter)) {
+                    added++;
+                }
         }
+    }
+
+    // callbacks after: do not verify the DLL name, because the function can be proxied
+    for (size_t i = 0; i < watchedFuncs.funcs.size(); i++) {
+
+        EvasionFuncInfo& wfunc = watchedFuncs.funcs[i];
+        if (wfunc.type > maxLevel) {
+            continue;
+        }
+        if (EvasionAddCallbackAfter(Image, wfunc.funcName.c_str(), wfunc.callbackAfter)) {
+            added++;
+        }
+
     }
     return added;
 }
