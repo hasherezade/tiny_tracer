@@ -87,6 +87,8 @@ size_t EvasionWatch::installCallbacks(IMG Image, EvasionWatchBeforeCallBack defa
     if (!isInit) {
         return 0;
     }
+
+    // callbacks before:
     size_t added = 0;
     const std::string dllName = util::getDllName(IMG_Name(Image));
     for (size_t i = 0; i < watchedFuncs.funcs.size(); i++) {
@@ -107,6 +109,19 @@ size_t EvasionWatch::installCallbacks(IMG Image, EvasionWatchBeforeCallBack defa
                     added++;
                 }
         }
+    }
+
+    // callbacks after: do not verify the DLL name, because the function can be proxied
+    for (size_t i = 0; i < watchedFuncs.funcs.size(); i++) {
+
+        EvasionFuncInfo& wfunc = watchedFuncs.funcs[i];
+        if (wfunc.type > maxLevel) {
+            continue;
+        }
+        if (EvasionAddCallbackAfter(Image, wfunc.funcName.c_str(), wfunc.callbackAfter)) {
+            added++;
+        }
+
     }
     return added;
 }

@@ -453,7 +453,6 @@ VOID AntiDbg_CreateFile(const ADDRINT Address, const THREADID tid, const CHAR* n
 
 VOID AntiDbg_CloseHandle_after(ADDRINT Address, THREADID threadid, const CHAR* name, ADDRINT result)
 {
-    std::cout << __FUNCTION__ << std::endl;
     PinLocker locker;
     const WatchedType wType = isWatchedAddress(Address);
     if (wType == WatchedType::NOT_WATCHED) return;
@@ -463,10 +462,7 @@ VOID AntiDbg_CloseHandle_after(ADDRINT Address, THREADID threadid, const CHAR* n
         return LogAntiDbg(wType, Address, "^ kernel32!CloseHandle (INVALID_HNDL_VAL)",
             "https://anti-debug.checkpoint.com/techniques/object-handles.html#closehandle");
     }
-    else {
-        return LogAntiDbg(wType, Address, "^ kernel32!CloseHandle (OK)",
-            "https://anti-debug.checkpoint.com/techniques/object-handles.html#closehandle");
-    }
+
 }
 
 /* ==================================================================== */
