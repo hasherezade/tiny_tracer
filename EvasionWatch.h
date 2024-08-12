@@ -20,6 +20,32 @@ inline t_watch_level ConvertWatchLevel(int value)
     return (t_watch_level)value;
 }
 
+//---
+
+struct FuncData
+{
+public:
+    FuncData() : name(""), argsNum(0) { }
+
+    FuncData(const std::string& _name, size_t _argsNum) : name(_name), argsNum(_argsNum)
+    {
+        ::memset(args, 0, sizeof(args));
+    }
+
+    FuncData(const FuncData& other)
+    {
+        name = other.name;
+        argsNum = other.argsNum;
+        ::memcpy(args, other.args, sizeof(args));
+    }
+
+    std::string name;
+    size_t argsNum;
+    VOID* args[5];
+};
+
+//---
+
 typedef VOID EvasionWatchCallBack(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5);
 
 struct EvasionFuncInfo : public WFuncInfo
@@ -34,6 +60,8 @@ struct EvasionFuncInfo : public WFuncInfo
     EvasionWatchCallBack* callbackAfter;
     t_watch_level type;
 };
+
+//---
 
 class EvasionWatch
 {

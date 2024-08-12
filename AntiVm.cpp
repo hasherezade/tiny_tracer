@@ -50,6 +50,10 @@ public:
 };
 
 AntiVmWatch m_AntiVm;
+
+namespace AntiVm {
+    std::map<THREADID, FuncData> m_funcData;
+}; // namespace AntiVm 
 /* ==================================================================== */
 // Log info with AntiVm label
 /* ==================================================================== */
@@ -159,31 +163,6 @@ VOID AntiVm::MonitorAntiVmFunctions(IMG Image)
     m_AntiVm.installCallbacksBefore(Image, nullptr, m_Settings.antivm);
 }
 
-
-struct FuncData
-{
-public:
-    FuncData() : name(""), argsNum(0) { }
-
-    FuncData(const std::string &_name, size_t _argsNum) : name(_name), argsNum(_argsNum)
-    {
-        ::memset(args, 0, sizeof(args));
-    }
-
-    FuncData(const FuncData& other)
-    {
-        name = other.name;
-        argsNum = other.argsNum;
-        ::memcpy(args, other.args, sizeof(args));
-    }
-
-    std::string name;
-    size_t argsNum;
-    VOID* args[5];
-};
-
-std::map<THREADID, FuncData> g_funcData;
-
 //Functions handles:
 
 VOID AntiVm_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, BOOL isAfter = FALSE)
@@ -242,7 +221,10 @@ VOID AntiVm::MonitorSyscallEntry(THREADID tid, const CHAR* name, const CONTEXT* 
         if (i == argCount) break;
         data.args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
     }
-    g_funcData[tid] = data;
+    if (wfunc->callbackAfter) {
+        //store to be used by the callback after:
+        m_funcData[tid] = data;
+    }
     EvasionWatchCallBack* callback = wfunc->callbackBefore;
     if (!callback) {
         return;
@@ -265,7 +247,7 @@ VOID AntiVm::MonitorSyscallExit(THREADID tid, const CHAR* name, const CONTEXT* c
     if (!callback) {
         return;
     }
-    FuncData& data = g_funcData[tid];
+    FuncData& data = m_funcData[tid];
     if (data.name != wfunc->funcName) {
         return;
     }
