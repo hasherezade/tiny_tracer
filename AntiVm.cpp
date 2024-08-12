@@ -120,69 +120,8 @@ VOID AntiVm_WmiQueries(const ADDRINT addr, const THREADID tid, const CHAR* name,
 }
 
 /* ==================================================================== */
-// Add single hooking function
+// Add to monitored functions all the API calls needed for AntiVM.
 /* ==================================================================== */
-
-bool AntiVmAddCallbackBefore(IMG Image, char* fName, uint32_t argNum, AntiVmCallBack callback)
-{
-    const size_t argMax = 6;
-    if (argNum > argMax) argNum = argMax;
-
-    RTN funcRtn = RTN_FindByName(Image, fName);
-    if (RTN_Valid(funcRtn)) {
-        RTN_Open(funcRtn);
-
-        RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(callback),
-            IARG_RETURN_IP,
-            IARG_ADDRINT, fName,
-            IARG_UINT32, argNum,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
-            IARG_END
-        );
-
-        RTN_Close(funcRtn);
-        return true;
-    }
-
-    return false;
-}
-
-/* ==================================================================== */
-// Add to monitored functions all the API calls or WMI queries needed for AntiVM.
-// Called by ImageLoad
-/* ==================================================================== */
-
-
-VOID AntiVm::MonitorAntiVmFunctions(IMG Image)
-{
-    m_AntiVm.installCallbacksBefore(Image, nullptr, m_Settings.antivm);
-}
-
-VOID storeData(THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
-{
-    FuncData data(name, argCount);
-    data.args[0] = arg1;
-    data.args[1] = arg2;
-    data.args[2] = arg3;
-    data.args[3] = arg4;
-    data.args[4] = arg5;
-    AntiVm::m_funcData[tid] = data;
-}
-
-BOOL retrieveData(THREADID tid, const CHAR* name, FuncData &data)
-{
-    FuncData& _data = AntiVm::m_funcData[tid];
-    if (_data.name != name) {
-        return FALSE;
-    }
-    data = _data;
-    return TRUE;
-}
 
 //Functions handles:
 
@@ -204,31 +143,33 @@ VOID AntiVm_NtQuerySystemInformation(const ADDRINT Address, const THREADID tid, 
         }
         else {
             std::stringstream ss;
-            ss << "^ ntdll!NtQuerySystemInformation (SystemFirmwareTableInformation) - Applying bypass... ";
+            ss << "^ ntdll!NtQuerySystemInformation (SystemFirmwareTableInformation). Bypass: ";
             size_t buf_size = (size_t)arg3;
             if (PIN_CheckWriteAccess(arg2) && PIN_CheckWriteAccess((VOID*)((ADDRINT)arg2 + (buf_size - 1)))) {
                 ::memset(arg2, 0, buf_size);
-                ss << "OK!";
+                ss << "OK";
             }
             else {
                 ss << "Failed";
             }
             return LogAntiVm(wType, Address, ss.str().c_str());
         }
-
     }
 }
 
 VOID AntiVm_NtQuerySystemInformation_before(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
-    storeData(tid, name, argCount, arg1, arg2, arg3, arg4, arg5);
+    storeData(AntiVm::m_funcData, tid, name, argCount, arg1, arg2, arg3, arg4, arg5);
     return AntiVm_NtQuerySystemInformation(Address, tid, name, argCount, arg1, arg2, arg3, arg4, arg5, FALSE);
 }
 
-VOID AntiVm_NtQuerySystemInformation_after(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiVm_NtQuerySystemInformation_after(const ADDRINT Address, const THREADID tid, const CHAR* name, ADDRINT status)
 {
+    if (status != 0) {
+        return; // failed
+    }
     FuncData data;
-    if (!retrieveData(tid, name, data)) {
+    if (!retrieveData(AntiVm::m_funcData, tid, name, data)) {
         return;
     }
     return AntiVm_NtQuerySystemInformation(Address, tid, name, data.argsNum, data.args[0], data.args[1], data.args[2], data.args[3], data.args[4], TRUE);
@@ -239,7 +180,7 @@ VOID AntiVm::MonitorSyscallEntry(THREADID tid, const CHAR* name, const CONTEXT* 
     EvasionFuncInfo* wfunc = m_AntiVm.fetchSyscallFuncInfo(name, m_Settings.antivm);
     if (!wfunc) return;
 
-    EvasionWatchCallBack* callback = wfunc->callbackBefore;
+    EvasionWatchBeforeCallBack* callback = wfunc->callbackBefore;
     if (!callback) {
         return;
     }
@@ -267,18 +208,16 @@ VOID AntiVm::MonitorSyscallExit(THREADID tid, const CHAR* name, const CONTEXT* c
     EvasionFuncInfo* wfunc = m_AntiVm.fetchSyscallFuncInfo(name, m_Settings.antivm);
     if (!wfunc) return;
 
-    EvasionWatchCallBack* callback = wfunc->callbackAfter;
+    EvasionWatchAfterCallBack* callback = wfunc->callbackAfter;
     if (!callback) {
         return;
     }
+    
     callback(Address,
         tid,
-        name, 0,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr);
+        name, 
+        PIN_GetContextReg(ctxt, REG_GAX)
+    );
 }
 
 //---
@@ -439,7 +378,6 @@ ADDRINT AntiVm::AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg)
 
 //---
 
-
 BOOL AntiVmWatch::Init()
 {
     watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "NtQuerySystemInformation", 4, AntiVm_NtQuerySystemInformation_before, AntiVm_NtQuerySystemInformation_after));
@@ -451,4 +389,9 @@ BOOL AntiVmWatch::Init()
 #endif
     isInit = TRUE;
     return isInit;
+}
+
+VOID AntiVm::MonitorAntiVmFunctions(IMG Image)
+{
+    m_AntiVm.installCallbacks(Image, nullptr, m_Settings.antivm);
 }

@@ -579,6 +579,7 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
         AntiDbg::MonitorSyscallEntry(tid, syscallFuncName.c_str(), ctxt, std, address);
     }
 #endif //USE_ANTIDEBUG
+
 #ifdef USE_ANTIVM
     if (m_Settings.antivm != WATCH_DISABLED) {
         AntiVm::MonitorSyscallEntry(tid, syscallFuncName.c_str(), ctxt, std, address);
@@ -605,11 +606,10 @@ VOID SyscallCalledAfter(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID*
     const ADDRINT syscallNum = itr->second;
     if (syscallNum == UNKNOWN_ADDR) return; //invalid
 
-    const std::string funcName = m_Settings.syscallsTable.getName(syscallNum);
     const std::string syscallFuncName = SyscallsTable::convertNameToNt(m_Settings.syscallsTable.getName(syscallNum));
+
 #ifdef USE_ANTIVM
     if (m_Settings.antivm != WATCH_DISABLED) {
-        
         AntiVm::MonitorSyscallExit(tid, syscallFuncName.c_str(), ctxt, std, address);
     }
 #endif //USE_ANTIVM
