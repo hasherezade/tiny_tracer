@@ -153,35 +153,117 @@ bool AntiVmAddCallbackBefore(IMG Image, char* fName, uint32_t argNum, AntiVmCall
 // Called by ImageLoad
 /* ==================================================================== */
 
+
 VOID AntiVm::MonitorAntiVmFunctions(IMG Image)
 {
     m_AntiVm.installCallbacksBefore(Image, nullptr, m_Settings.antivm);
 }
 
-VOID AntiVm::MonitorSyscallEntry(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
+
+struct SyscallData
+{
+public:
+    SyscallData() : name(""), argsNum(0) { }
+
+    SyscallData(const std::string &_name, size_t _argsNum) : name(_name), argsNum(_argsNum)
+    {
+        ::memset(args, 0, sizeof(args));
+    }
+
+    SyscallData(const SyscallData& other)
+    {
+        name = other.name;
+        argsNum = other.argsNum;
+        ::memcpy(args, other.args, sizeof(args));
+    }
+
+    std::string name;
+    size_t argsNum;
+    VOID* args[5];
+};
+
+std::map<THREADID, SyscallData> syscallData;
+
+//Functions handles:
+
+VOID AntiVm_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, BOOL isAfter = FALSE)
+{
+    if (!argCount) return;
+
+    PinLocker locker;
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    enum SystemInformationClass {
+        SystemFirmwareTableInformation = 0x4C
+    };
+    if (int((size_t)arg1) == SystemInformationClass::SystemFirmwareTableInformation) {
+        if (!isAfter) {
+            return LogAntiVm(wType, Address, "^ ntdll!NtQuerySystemInformation (SystemFirmwareTableInformation)",
+                "https://revers.engineering/evading-trivial-acpi-checks/");
+        }
+        else {
+            std::stringstream ss;
+            ss << "^ ntdll!NtQuerySystemInformation (SystemFirmwareTableInformation) After";
+            ss << std::hex << " OutBuf: " << std::hex << arg2;
+            return LogAntiVm(wType, Address, ss.str().c_str());
+        }
+
+    }
+}
+
+VOID AntiVm_NtQuerySystemInformation_before(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+{
+    return AntiVm_NtQuerySystemInformation(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, FALSE);
+}
+
+VOID AntiVm_NtQuerySystemInformation_after(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+{
+    return AntiVm_NtQuerySystemInformation(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, TRUE);
+}
+
+VOID AntiVm::MonitorSyscallEntry(THREADID tid, const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
 {
     EvasionFuncInfo* wfunc = m_AntiVm.fetchSyscallFuncInfo(name, m_Settings.antivm);
     if (!wfunc) return;
 
+    const size_t argCount = wfunc->paramCount;
+    const size_t args_max = 5;
+
+    SyscallData data(name, wfunc->paramCount);
+    for (size_t i = 0; i < args_max; i++) {
+        if (i == argCount) break;
+        data.args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
+    }
+    syscallData[tid] = data;
     EvasionWatchCallBack* callback = wfunc->callback;
     if (!callback) {
         return;
     }
-    const size_t argCount = wfunc->paramCount;
-    const size_t args_max = 5;
-    VOID* syscall_args[args_max] = { 0 };
-
-    for (size_t i = 0; i < args_max; i++) {
-        if (i == argCount) break;
-        syscall_args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
-    }
     callback(Address,
-        name, argCount,
-        syscall_args[0],
-        syscall_args[1],
-        syscall_args[2],
-        syscall_args[3],
-        syscall_args[4]);
+        name, data.argsNum,
+        data.args[0],
+        data.args[1],
+        data.args[2],
+        data.args[3],
+        data.args[4]);
+}
+
+VOID AntiVm::MonitorSyscallExit(THREADID tid, const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
+{
+    SyscallData& data = syscallData[tid];
+    if (data.name != name) {
+        return;
+    }
+    if (strcmp(name,"NtQuerySystemInformation") == 0) {
+        AntiVm_NtQuerySystemInformation_after(Address,
+            name, data.argsNum,
+            data.args[0],
+            data.args[1],
+            data.args[2],
+            data.args[3],
+            data.args[4]);
+    }
 }
 
 //---
@@ -342,27 +424,10 @@ ADDRINT AntiVm::AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg)
 
 //---
 
-VOID AntiVm_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
-{
-    if (!argCount) return;
-
-    PinLocker locker;
-    const WatchedType wType = isWatchedAddress(Address);
-    if (wType == WatchedType::NOT_WATCHED) return;
-
-    enum SystemInformationClass {
-        SystemFirmwareTableInformation = 0x4C
-    };
-
-    if (int((size_t)arg1) == SystemInformationClass::SystemFirmwareTableInformation) {
-        return LogAntiVm(wType, Address, "^ ntdll!NtQuerySystemInformation (SystemFirmwareTableInformation)",
-            "https://revers.engineering/evading-trivial-acpi-checks/");
-    }
-}
 
 BOOL AntiVmWatch::Init()
 {
-    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "NtQuerySystemInformation", 4, AntiVm_NtQuerySystemInformation));
+    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "NtQuerySystemInformation", 4, AntiVm_NtQuerySystemInformation_before));
     // API needed to trace WMI queries:
 #ifdef _WIN64
     watchedFuncs.appendFunc(EvasionFuncInfo("fastprox", "?Get@CWbemObject@@UEAAJPEBGJPEAUtagVARIANT@@PEAJ2@Z", 5, AntiVm_WmiQueries));
