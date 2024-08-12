@@ -14,6 +14,7 @@ bool EvasionWatch::EvasionAddCallbackBefore(IMG Image, const char* fName, uint32
 
         RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(callback),
             IARG_RETURN_IP,
+            IARG_THREAD_ID,
             IARG_ADDRINT, fName,
             IARG_UINT32, argNum,
             IARG_FUNCARG_ENTRYPOINT_VALUE, 0,

@@ -67,7 +67,7 @@ VOID LogAntiVm(const WatchedType wType, const ADDRINT Address, const char* msg, 
 // Process API calls (related to AntiVm techniques)
 /* ==================================================================== */
 
-VOID AntiVm_WmiQueries(const ADDRINT addr, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiVm_WmiQueries(const ADDRINT addr, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {   
     if (!argCount) return;
 
@@ -163,9 +163,30 @@ VOID AntiVm::MonitorAntiVmFunctions(IMG Image)
     m_AntiVm.installCallbacksBefore(Image, nullptr, m_Settings.antivm);
 }
 
+VOID storeData(THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+{
+    FuncData data(name, argCount);
+    data.args[0] = arg1;
+    data.args[1] = arg2;
+    data.args[2] = arg3;
+    data.args[3] = arg4;
+    data.args[4] = arg5;
+    AntiVm::m_funcData[tid] = data;
+}
+
+BOOL retrieveData(THREADID tid, const CHAR* name, FuncData &data)
+{
+    FuncData& _data = AntiVm::m_funcData[tid];
+    if (_data.name != name) {
+        return FALSE;
+    }
+    data = _data;
+    return TRUE;
+}
+
 //Functions handles:
 
-VOID AntiVm_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, BOOL isAfter = FALSE)
+VOID AntiVm_NtQuerySystemInformation(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, BOOL isAfter = FALSE)
 {
     if (!argCount) return;
 
@@ -198,14 +219,19 @@ VOID AntiVm_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, ui
     }
 }
 
-VOID AntiVm_NtQuerySystemInformation_before(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiVm_NtQuerySystemInformation_before(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
-    return AntiVm_NtQuerySystemInformation(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, FALSE);
+    storeData(tid, name, argCount, arg1, arg2, arg3, arg4, arg5);
+    return AntiVm_NtQuerySystemInformation(Address, tid, name, argCount, arg1, arg2, arg3, arg4, arg5, FALSE);
 }
 
-VOID AntiVm_NtQuerySystemInformation_after(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiVm_NtQuerySystemInformation_after(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
-    return AntiVm_NtQuerySystemInformation(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, TRUE);
+    FuncData data;
+    if (!retrieveData(tid, name, data)) {
+        return;
+    }
+    return AntiVm_NtQuerySystemInformation(Address, tid, name, data.argsNum, data.args[0], data.args[1], data.args[2], data.args[3], data.args[4], TRUE);
 }
 
 VOID AntiVm::MonitorSyscallEntry(THREADID tid, const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
@@ -213,29 +239,27 @@ VOID AntiVm::MonitorSyscallEntry(THREADID tid, const CHAR* name, const CONTEXT* 
     EvasionFuncInfo* wfunc = m_AntiVm.fetchSyscallFuncInfo(name, m_Settings.antivm);
     if (!wfunc) return;
 
-    const size_t argCount = wfunc->paramCount;
-    const size_t args_max = 5;
-
-    FuncData data(name, wfunc->paramCount);
-    for (size_t i = 0; i < args_max; i++) {
-        if (i == argCount) break;
-        data.args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
-    }
-    if (wfunc->callbackAfter) {
-        //store to be used by the callback after:
-        m_funcData[tid] = data;
-    }
     EvasionWatchCallBack* callback = wfunc->callbackBefore;
     if (!callback) {
         return;
     }
+
+    const size_t argCount = wfunc->paramCount;
+    const size_t args_max = 5;
+    VOID* syscall_args[args_max] = { 0 };
+
+    for (size_t i = 0; i < args_max; i++) {
+        if (i == argCount) break;
+        syscall_args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
+    }
     callback(Address,
-        name, data.argsNum,
-        data.args[0],
-        data.args[1],
-        data.args[2],
-        data.args[3],
-        data.args[4]);
+        tid,
+        name, argCount,
+        syscall_args[0],
+        syscall_args[1],
+        syscall_args[2],
+        syscall_args[3],
+        syscall_args[4]);
 }
 
 VOID AntiVm::MonitorSyscallExit(THREADID tid, const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
@@ -247,17 +271,14 @@ VOID AntiVm::MonitorSyscallExit(THREADID tid, const CHAR* name, const CONTEXT* c
     if (!callback) {
         return;
     }
-    FuncData& data = m_funcData[tid];
-    if (data.name != wfunc->funcName) {
-        return;
-    }
     callback(Address,
-        name, data.argsNum,
-        data.args[0],
-        data.args[1],
-        data.args[2],
-        data.args[3],
-        data.args[4]);
+        tid,
+        name, 0,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr);
 }
 
 //---

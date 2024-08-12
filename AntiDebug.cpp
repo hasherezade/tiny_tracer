@@ -262,7 +262,7 @@ VOID AntiDbg::InterruptCheck(const CONTEXT* ctxt)
 // Process API calls (related to AntiDebug techniques)
 /* ==================================================================== */
 
-VOID AntiDbgLogFuncOccurrence(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiDbgLogFuncOccurrence(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     PinLocker locker;
 
@@ -279,7 +279,7 @@ VOID AntiDbgLogFuncOccurrence(const ADDRINT Address, const CHAR* name, uint32_t 
     return LogAntiDbg(wType, Address, ss.str().c_str());
 }
 
-VOID AntiDbg_LoadLibrary(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiDbg_LoadLibrary(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (!argCount) return;
 
@@ -295,7 +295,7 @@ VOID AntiDbg_LoadLibrary(const ADDRINT Address, const CHAR* name, uint32_t argCo
     AntiDbg::loadedLib.push_back(_argStr);
 }
 
-VOID AntiDbg_BlockInput(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiDbg_BlockInput(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (!argCount) return;
 
@@ -313,7 +313,7 @@ VOID AntiDbg_BlockInput(const ADDRINT Address, const CHAR* name, uint32_t argCou
     }
 }
 
-VOID AntiDbg_NtSetInformationThread(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiDbg_NtSetInformationThread(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (!argCount) return;
 
@@ -349,7 +349,7 @@ VOID AntiDbg_RaiseException(const ADDRINT Address, const CHAR* name, uint32_t ar
     }
 }
 
-VOID AntiDbg_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiDbg_NtQuerySystemInformation(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (!argCount) return;
 
@@ -367,7 +367,7 @@ VOID AntiDbg_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, u
     }
 }
 
-VOID AntiDbg_NtQueryInformationProcess(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiDbg_NtQueryInformationProcess(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (argCount < 2) return;
 
@@ -394,7 +394,7 @@ VOID AntiDbg_NtQueryInformationProcess(const ADDRINT Address, const CHAR* name, 
     }
 }
 
-VOID AntiDbg_NtQueryObject(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiDbg_NtQueryObject(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (argCount < 2) return;
 
@@ -410,7 +410,7 @@ VOID AntiDbg_NtQueryObject(const ADDRINT Address, const CHAR* name, uint32_t arg
     }
 }
 
-VOID AntiDbg_CreateFile(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
+VOID AntiDbg_CreateFile(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5)
 {
     if (argCount < 3) return;
 
@@ -602,7 +602,7 @@ BOOL AntiDbgWatch::Init()
     return isInit;
 }
 
-VOID AntiDbg::MonitorSyscallEntry(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
+VOID AntiDbg::MonitorSyscallEntry(const THREADID tid, const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
 {
     EvasionFuncInfo* wfunc = m_AntiDbg.fetchSyscallFuncInfo(name, m_Settings.antidebug);
     if (!wfunc) return;
@@ -620,6 +620,7 @@ VOID AntiDbg::MonitorSyscallEntry(const CHAR* name, const CONTEXT* ctxt, SYSCALL
         syscall_args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
     }
     callbackBefore(Address,
+        tid,
         name, argCount,
         syscall_args[0],
         syscall_args[1],

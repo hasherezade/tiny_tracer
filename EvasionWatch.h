@@ -46,7 +46,7 @@ public:
 
 //---
 
-typedef VOID EvasionWatchCallBack(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5);
+typedef VOID EvasionWatchCallBack(const ADDRINT Address, const THREADID tid, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5);
 
 struct EvasionFuncInfo : public WFuncInfo
 {
