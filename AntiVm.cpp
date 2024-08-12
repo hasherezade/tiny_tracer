@@ -160,17 +160,17 @@ VOID AntiVm::MonitorAntiVmFunctions(IMG Image)
 }
 
 
-struct SyscallData
+struct FuncData
 {
 public:
-    SyscallData() : name(""), argsNum(0) { }
+    FuncData() : name(""), argsNum(0) { }
 
-    SyscallData(const std::string &_name, size_t _argsNum) : name(_name), argsNum(_argsNum)
+    FuncData(const std::string &_name, size_t _argsNum) : name(_name), argsNum(_argsNum)
     {
         ::memset(args, 0, sizeof(args));
     }
 
-    SyscallData(const SyscallData& other)
+    FuncData(const FuncData& other)
     {
         name = other.name;
         argsNum = other.argsNum;
@@ -182,7 +182,7 @@ public:
     VOID* args[5];
 };
 
-std::map<THREADID, SyscallData> syscallData;
+std::map<THREADID, FuncData> g_funcData;
 
 //Functions handles:
 
@@ -237,13 +237,13 @@ VOID AntiVm::MonitorSyscallEntry(THREADID tid, const CHAR* name, const CONTEXT* 
     const size_t argCount = wfunc->paramCount;
     const size_t args_max = 5;
 
-    SyscallData data(name, wfunc->paramCount);
+    FuncData data(name, wfunc->paramCount);
     for (size_t i = 0; i < args_max; i++) {
         if (i == argCount) break;
         data.args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
     }
-    syscallData[tid] = data;
-    EvasionWatchCallBack* callback = wfunc->callback;
+    g_funcData[tid] = data;
+    EvasionWatchCallBack* callback = wfunc->callbackBefore;
     if (!callback) {
         return;
     }
@@ -258,19 +258,24 @@ VOID AntiVm::MonitorSyscallEntry(THREADID tid, const CHAR* name, const CONTEXT* 
 
 VOID AntiVm::MonitorSyscallExit(THREADID tid, const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
 {
-    SyscallData& data = syscallData[tid];
-    if (data.name != name) {
+    EvasionFuncInfo* wfunc = m_AntiVm.fetchSyscallFuncInfo(name, m_Settings.antivm);
+    if (!wfunc) return;
+
+    EvasionWatchCallBack* callback = wfunc->callbackAfter;
+    if (!callback) {
         return;
     }
-    if (strcmp(name,"NtQuerySystemInformation") == 0) {
-        AntiVm_NtQuerySystemInformation_after(Address,
-            name, data.argsNum,
-            data.args[0],
-            data.args[1],
-            data.args[2],
-            data.args[3],
-            data.args[4]);
+    FuncData& data = g_funcData[tid];
+    if (data.name != wfunc->funcName) {
+        return;
     }
+    callback(Address,
+        name, data.argsNum,
+        data.args[0],
+        data.args[1],
+        data.args[2],
+        data.args[3],
+        data.args[4]);
 }
 
 //---
@@ -434,7 +439,7 @@ ADDRINT AntiVm::AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg)
 
 BOOL AntiVmWatch::Init()
 {
-    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "NtQuerySystemInformation", 4, AntiVm_NtQuerySystemInformation_before));
+    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "NtQuerySystemInformation", 4, AntiVm_NtQuerySystemInformation_before, AntiVm_NtQuerySystemInformation_after));
     // API needed to trace WMI queries:
 #ifdef _WIN64
     watchedFuncs.appendFunc(EvasionFuncInfo("fastprox", "?Get@CWbemObject@@UEAAJPEBGJPEAUtagVARIANT@@PEAJ2@Z", 5, AntiVm_WmiQueries));

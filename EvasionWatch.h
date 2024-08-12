@@ -24,13 +24,14 @@ typedef VOID EvasionWatchCallBack(const ADDRINT Address, const CHAR* name, uint3
 
 struct EvasionFuncInfo : public WFuncInfo
 {
-    EvasionFuncInfo(const std::string& _dllName, const std::string& _funcName, const size_t _paramCount, EvasionWatchCallBack* _callback = nullptr, t_watch_level _type = WATCH_STANDARD)
-        : callback(_callback), type(_type), 
+    EvasionFuncInfo(const std::string& _dllName, const std::string& _funcName, const size_t _paramCount, EvasionWatchCallBack* _callbackB = nullptr, EvasionWatchCallBack* _callbackA = nullptr, t_watch_level _type = WATCH_STANDARD)
+        : callbackBefore(_callbackB), callbackAfter(_callbackA), type(_type),
         WFuncInfo(_dllName, _funcName, _paramCount) 
     {
     }
 
-    EvasionWatchCallBack* callback;
+    EvasionWatchCallBack* callbackBefore;
+    EvasionWatchCallBack* callbackAfter;
     t_watch_level type;
 };
 

@@ -72,11 +72,11 @@ size_t EvasionWatch::installCallbacksBefore(IMG Image, EvasionWatchCallBack defa
             if (wfunc.type > maxLevel) {
                 continue;
             }
-            EvasionWatchCallBack* callback = wfunc.callback;
-            if (!callback) {
-                callback = defaultCallback;
+            EvasionWatchCallBack* callbackBefore = wfunc.callbackBefore;
+            if (!callbackBefore) {
+                callbackBefore = defaultCallback;
             }
-            if (EvasionAddCallbackBefore(Image, wfunc.funcName.c_str(), wfunc.paramCount, callback)) {
+            if (EvasionAddCallbackBefore(Image, wfunc.funcName.c_str(), wfunc.paramCount, callbackBefore)) {
                 added++;
             }
         }

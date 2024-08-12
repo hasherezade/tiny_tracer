@@ -590,13 +590,13 @@ BOOL AntiDbgWatch::Init()
     ////////////////////////////////////
     // If AntiDebug level is Deep
     ////////////////////////////////////
-    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "NtQueryObject", 5, AntiDbg_NtQueryObject, WATCH_DEEP));
+    watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "NtQueryObject", 5, AntiDbg_NtQueryObject, nullptr, WATCH_DEEP));
 
-    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "OutputDebugStringA", 5, nullptr, WATCH_DEEP));
-    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "OutputDebugStringA", 5, nullptr, WATCH_DEEP));
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "OutputDebugStringA", 5, nullptr, nullptr, WATCH_DEEP));
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "OutputDebugStringA", 5, nullptr, nullptr, WATCH_DEEP));
 
-    watchedFuncs.appendFunc(EvasionFuncInfo("user32", "GetWindowTextA", 3, nullptr, WATCH_DEEP));
-    watchedFuncs.appendFunc(EvasionFuncInfo("user32", "GetWindowTextW", 3, nullptr, WATCH_DEEP));
+    watchedFuncs.appendFunc(EvasionFuncInfo("user32", "GetWindowTextA", 3, nullptr, nullptr, WATCH_DEEP));
+    watchedFuncs.appendFunc(EvasionFuncInfo("user32", "GetWindowTextW", 3, nullptr, nullptr, WATCH_DEEP));
 
     isInit = TRUE;
     return isInit;
@@ -607,9 +607,9 @@ VOID AntiDbg::MonitorSyscallEntry(const CHAR* name, const CONTEXT* ctxt, SYSCALL
     EvasionFuncInfo* wfunc = m_AntiDbg.fetchSyscallFuncInfo(name, m_Settings.antidebug);
     if (!wfunc) return;
 
-    EvasionWatchCallBack* callback = wfunc->callback;
-    if (!callback) {
-        callback = AntiDbgLogFuncOccurrence;
+    EvasionWatchCallBack* callbackBefore = wfunc->callbackBefore;
+    if (!callbackBefore) {
+        callbackBefore = AntiDbgLogFuncOccurrence;
     }
     const size_t argCount = wfunc->paramCount;
     const size_t args_max = 5;
@@ -619,7 +619,7 @@ VOID AntiDbg::MonitorSyscallEntry(const CHAR* name, const CONTEXT* ctxt, SYSCALL
         if (i == argCount) break;
         syscall_args[i] = reinterpret_cast<VOID*>(PIN_GetSyscallArgument(ctxt, std, i));
     }
-    callback(Address,
+    callbackBefore(Address,
         name, argCount,
         syscall_args[0],
         syscall_args[1],
