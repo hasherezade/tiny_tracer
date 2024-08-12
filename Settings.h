@@ -48,7 +48,7 @@ class Settings {
 
 public:
     static void stripComments(std::string& str);
-    static size_t loadOffsetsList(const std::string& filename, std::set<ADDRINT>& offsetsList);
+    static size_t loadOffsetsList(const char* filename, std::set<ADDRINT>& offsetsList);
 
     Settings() 
         : followShellcode(SHELLC_FOLLOW_FIRST),

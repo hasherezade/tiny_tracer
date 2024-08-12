@@ -1121,7 +1121,7 @@ int main(int argc, char *argv[])
     if (KnobStopOffsets.Enabled()) {
         std::string stopOffsetsFile = KnobStopOffsets.ValueString();
         if (stopOffsetsFile.length()) {
-            const size_t loaded = Settings::loadOffsetsList(stopOffsetsFile, m_Settings.stopOffsets);
+            const size_t loaded = Settings::loadOffsetsList(stopOffsetsFile.c_str(), m_Settings.stopOffsets);
             std::cout << "Loaded " << loaded << " stop offsets\n";
         }
     }
