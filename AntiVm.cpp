@@ -204,8 +204,15 @@ VOID AntiVm_NtQuerySystemInformation(const ADDRINT Address, const CHAR* name, ui
         }
         else {
             std::stringstream ss;
-            ss << "^ ntdll!NtQuerySystemInformation (SystemFirmwareTableInformation) After";
-            ss << std::hex << " OutBuf: " << std::hex << arg2;
+            ss << "^ ntdll!NtQuerySystemInformation (SystemFirmwareTableInformation) - Applying bypass... ";
+            size_t buf_size = (size_t)arg3;
+            if (PIN_CheckWriteAccess(arg2) && PIN_CheckWriteAccess((VOID*)((ADDRINT)arg2 + (buf_size - 1)))) {
+                ::memset(arg2, 0, buf_size);
+                ss << "OK!";
+            }
+            else {
+                ss << "Failed";
+            }
             return LogAntiVm(wType, Address, ss.str().c_str());
         }
 
