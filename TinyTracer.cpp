@@ -45,6 +45,8 @@
 #include "AntiVm.h"
 #endif
 
+#define SLEEP_AT_STOP 30
+
 /* ================================================================== */
 // Global variables 
 /* ================================================================== */
@@ -336,6 +338,48 @@ VOID RdtscCalled(const CONTEXT* ctxt)
     LogMsgAtAddress(wType, Address, nullptr, "RDTSC", nullptr);
 }
 
+VOID ManageStopOffsets(ADDRINT rva)
+{
+    const std::string prompt = "TT> ";
+    std::cout << "Stop offset reached: " << std::hex << rva << ". Press 'C' to continue, '?' for more info...\n";
+    char cmd = '?';
+    while (true) {
+        std::cout << prompt;
+        std::cin >> cmd;
+
+        if (cmd == 'C') break;
+        else if (cmd == '?') {
+            std::cout << "Available commands:\n"
+                << "C - continue execution\n"
+                << "D - delete the current stop offset (" << std::hex << rva << ")\n"
+                << "F - print the path to the file where the stop offsets are defined\n"
+                << "P - print active stop offsets\n"
+                << "? - info: print all available commands\n"
+                << std::endl;
+        }
+        else if (cmd == 'D') {
+            m_Settings.stopOffsets.erase(rva);
+            std::cout << "Stop offset deleted.\n";
+        }
+        else if (cmd == 'F') {
+            std::cout << "Stop offsets defined in: " << KnobStopOffsets.ValueString() << "\n";
+        }
+        else if (cmd == 'P') {
+            if (m_Settings.stopOffsets.size() == 0) {
+                std::cout << "No active stop offsets\n";
+                continue;
+            }
+            std::cout << "Active stop offsets:\n";
+            for (auto it = m_Settings.stopOffsets.begin(); it != m_Settings.stopOffsets.end(); ++it) {
+                std::cout << std::hex << *it << "\n";
+            }
+        }
+        else if (isalnum(cmd)) {
+            std::cout << "Invalid command: " << cmd << "\n";
+        }
+    }
+}
+
 VOID PauseAtOffset(const CONTEXT* ctxt)
 {
     PinLocker locker;
@@ -345,47 +389,28 @@ VOID PauseAtOffset(const CONTEXT* ctxt)
     const WatchedType wType = isWatchedAddress(Address);
     if (wType != WatchedType::WATCHED_MY_MODULE) return;
 
-    const std::string prompt = "TT> ";
+    
     ADDRINT rva = addr_to_rva(Address); // convert to RVA
-    if (m_Settings.stopOffsets.find(rva) != m_Settings.stopOffsets.end()) {
-        std::cout << "Stop offset reached: " << std::hex << rva << ". Press 'C' to continue, '?' for more info...\n";
-        char cmd = '?';
-        while (true) {
-            std::cout << prompt;
-            std::cin >> cmd;
+    if (m_Settings.stopOffsets.find(rva) == m_Settings.stopOffsets.end()) {
+        return;
+    }
 
-            if (cmd == 'C') break;
-            else if (cmd == '?') {
-                std::cout << "Available commands:\n"
-                    << "C - continue execution\n"
-                    << "D - delete the current stop offset (" << std::hex << rva << ")\n"
-                    << "F - print the path to the file where the stop offsets are defined\n"
-                    << "P - print active stop offsets\n"
-                    << "? - info: print all available commands\n"
-                    << std::endl;
-            }
-            else if (cmd == 'D') {
-                m_Settings.stopOffsets.erase(rva);
-                std::cout << "Stop offset deleted.\n";
-            }
-            else if (cmd == 'F') {
-                std::cout << "Stop offsets defined in: " << KnobStopOffsets.ValueString() << "\n";
-            }
-            else if (cmd == 'P') {
-                if (m_Settings.stopOffsets.size() == 0) {
-                    std::cout << "No active stop offsets\n";
-                    continue;
-                }
-                std::cout << "Active stop offsets:\n";
-                for (auto it = m_Settings.stopOffsets.begin(); it != m_Settings.stopOffsets.end(); ++it) {
-                    std::cout << std::hex << *it << "\n";
-                }
-            }
-            else if (isalnum(cmd)) {
-                std::cout << "Invalid command: " << cmd << "\n";
-            }
-        }
-        std::cout << "Continuing the execution...\n";
+    {//log info
+        std::stringstream ss;
+        ss << "# Stop offset reached: RVA = 0x" << std::hex << rva << ". Sleeping " << SLEEP_AT_STOP << " s.";
+        traceLog.logLine(ss.str());
+        std::cerr << ss.str() << std::endl;
+    }
+
+    const int sleepMs = SLEEP_AT_STOP * 1000;
+    PIN_Sleep(sleepMs);
+
+    {//log info
+        std::stringstream ss;
+        ss.clear();
+        ss << "# Continuing the execution";
+        traceLog.logLine(ss.str());
+        std::cerr << ss.str() << std::endl;
     }
 }
 
