@@ -93,11 +93,15 @@ size_t FuncWatchList::loadList(const char* filename, FuncList* exclusions)
     const size_t MAX_LINE = 300;
     char line[MAX_LINE] = { 0 };
     while (!myfile.eof()) {
-        myfile.getline(line, MAX_LINE);
 
+        myfile.getline(line, MAX_LINE);
+        const std::string str = line;
+        if (!str.size() || str[0] == '#') { // skip empty lines and comments
+            continue;
+        }
         // Try to parse as a syscall
         WSyscallInfo syscall_info;
-        if (syscall_info.load(line, FuncList::DELIM)) {
+        if (syscall_info.load(str, FuncList::DELIM)) {
             appendSyscall(syscall_info);
             continue;
         }

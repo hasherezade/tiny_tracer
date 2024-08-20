@@ -71,6 +71,25 @@ size_t SyscallsTable::load(const std::string& filename)
 }
 //----
 
+bool StopOffset::load(const std::string& sline, char delimiter)
+{
+    std::vector<std::string> args;
+    util::splitList(sline, delimiter, args);
+    if (!args.size()) return false;
+
+    this->rva = util::loadInt(args[0], true);
+    if (!this->rva) {
+        return false;
+    }
+    // optional argument:
+    if (args.size() >= 2) {
+        this->times = util::loadInt(args[1], false);
+    }
+    return true;
+}
+
+//---
+
 bool loadBoolean(const std::string &str, bool defaultVal)
 {
     if (util::iequals(str, "True") || util::iequals(str, "on") || util::iequals(str, "yes")) {
@@ -176,7 +195,7 @@ void Settings::stripComments(std::string &str)
     }
 }
 
-size_t Settings::loadOffsetsList(const char* filename, std::set<ADDRINT>& offsetsList)
+size_t Settings::loadOffsetsList(const char* filename, std::set<StopOffset>& offsetsList)
 {
     std::ifstream myfile(filename);
     if (!myfile.is_open()) {
@@ -187,10 +206,13 @@ size_t Settings::loadOffsetsList(const char* filename, std::set<ADDRINT>& offset
     char line[MAX_LINE] = { 0 };
     while (!myfile.eof()) {
         myfile.getline(line, MAX_LINE);
-
-        const int rva = util::loadInt(line, true);
-        if (rva) {
-            offsetsList.insert(rva);
+        std::string str = line;
+        if (!str.size() || str[0] == '#') { // skip empty lines and comments
+            continue;
+        }
+        StopOffset so;
+        if (so.load(str, LIST_DELIMITER)) {
+            offsetsList.insert(so);
         }
     }
     return offsetsList.size();

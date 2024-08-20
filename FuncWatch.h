@@ -8,6 +8,8 @@
 #include <map>
 #include <vector>
 
+#define LIST_DELIMITER ';'
+
 struct RoutineInfo
 {
     RoutineInfo() : paramCount(0) {};
@@ -79,7 +81,7 @@ struct WSyscallInfo : public RoutineInfo
 template <class WFuncInfo_T>
 class FuncList {
 public:
-    static const char DELIM = ';';
+    static const char DELIM = LIST_DELIMITER;
 
     FuncList()
     {
@@ -183,4 +185,3 @@ public:
 private:
     void appendSyscall(WSyscallInfo& syscall_info);
 };
-
