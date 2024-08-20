@@ -53,6 +53,11 @@ Detailed description available [here](https://github.com/hasherezade/tiny_tracer
 
 📖 Details about the usage you will find on [the project's Wiki](https://github.com/hasherezade/tiny_tracer/wiki).<br/>
 
+## Helpers
+
+For automatic generation of [`params.txt` for API arguments tracing](https://github.com/hasherezade/tiny_tracer/wiki/Tracing-parameters-of-functions), try [IAT-Tracer](https://github.com/YoavLevi/IAT-Tracer) by [YoavLevi](https://github.com/YoavLevi)
+
+
 ## WARNINGS
 
 +  In order for Pin to work correctly, Kernel Debugging must be **DISABLED**.
