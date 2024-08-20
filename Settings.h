@@ -63,7 +63,8 @@ public:
         antidebug(WATCH_DISABLED),
         antivm(WATCH_DISABLED),
         useDebugSym(false),
-        isHyperVSet(false)
+        isHyperVSet(false),
+        stopOffsetTime(30)
     {
     }
 
@@ -81,7 +82,8 @@ public:
     bool logIndirect;
     size_t hexdumpSize;
     bool hookSleep;
-    size_t sleepTime;
+    size_t sleepTime; // Define the time that will be passed to the hooked sleep function (in miliseconds)
+    size_t stopOffsetTime; // Sleep time at the stop offset (in seconds)
     t_watch_level antidebug;
     t_watch_level antivm; // Trace Anti-VM techniques (WMI queries)
     bool useDebugSym;

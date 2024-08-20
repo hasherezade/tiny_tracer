@@ -22,6 +22,7 @@
 #define KEY_ANTIVM                      "ANTIVM"
 #define KEY_USE_DEBUG_SYMBOLS           "USE_DEBUG_SYMBOLS"
 #define KEY_HYPREV_SET                  "EMULATE_HYPERV"
+#define KEY_STOP_OFFSET_TIME            "STOP_OFFSET_TIME"
 
 t_shellc_options ConvertShcOption(int value)
 {
@@ -142,6 +143,10 @@ bool fillSettings(Settings &s, std::string line)
         s.sleepTime = util::loadInt(valStr);
         isFilled = true;
     }
+    if (util::iequals(valName, KEY_STOP_OFFSET_TIME)) {
+        s.stopOffsetTime = util::loadInt(valStr);
+        isFilled = true;
+    }
     if (util::iequals(valName, KEY_ANTIDEBUG)) {
         const int val = util::loadInt(valStr);
         s.antidebug = ConvertWatchLevel(val);
@@ -175,7 +180,7 @@ size_t Settings::loadOffsetsList(const char* filename, std::set<ADDRINT>& offset
 {
     std::ifstream myfile(filename);
     if (!myfile.is_open()) {
-        std::cerr << "Coud not open file: " << filename << std::endl;
+        std::cerr << "Failed to open file: " << filename << std::endl;
         return 0;
     }
     const size_t MAX_LINE = 300;
@@ -205,14 +210,14 @@ bool Settings::saveINI(const std::string &filename)
     myfile << KEY_LOG_SHELLCODES_TRANSITIONS << DELIM << this->logShelcTrans << "\r\n";
     myfile << KEY_SHORT_LOGGING << DELIM << this->shortLogging << "\r\n";
     myfile << KEY_USE_DEBUG_SYMBOLS << DELIM << this->useDebugSym << "\r\n";
-    myfile << HEXDUMP_SIZE << DELIM << this->hexdumpSize << "\r\n";
-
+    myfile << HEXDUMP_SIZE << DELIM << std::dec << this->hexdumpSize << "\r\n";
     myfile << HOOK_SLEEP << DELIM << this->hookSleep << "\r\n";
-    myfile << SLEEP_TIME << DELIM << this->sleepTime << "\r\n";
+    myfile << SLEEP_TIME << DELIM << std::dec << this->sleepTime << "\r\n";
     myfile << LOG_INDIRECT << DELIM << this->logIndirect << "\r\n";
     myfile << KEY_ANTIDEBUG << DELIM << this->antidebug << "\r\n";
     myfile << KEY_ANTIVM << DELIM << this->antivm << "\r\n";
     myfile << KEY_HYPREV_SET << DELIM << this->isHyperVSet << "\r\n";
+    myfile << KEY_STOP_OFFSET_TIME << std::dec << this->stopOffsetTime << "\r\n";
     myfile.close();
     return true;
 }

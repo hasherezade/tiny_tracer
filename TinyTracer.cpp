@@ -45,7 +45,6 @@
 #include "AntiVm.h"
 #endif
 
-#define SLEEP_AT_STOP 30
 
 /* ================================================================== */
 // Global variables 
@@ -397,18 +396,18 @@ VOID PauseAtOffset(const CONTEXT* ctxt)
 
     {//log info
         std::stringstream ss;
-        ss << "# Stop offset reached: RVA = 0x" << std::hex << rva << ". Sleeping " << SLEEP_AT_STOP << " s.";
+        ss << "# Stop offset reached: RVA = 0x" << std::hex << rva << ". Sleeping " << std::dec << m_Settings.stopOffsetTime << " s.";
         traceLog.logLine(ss.str());
         std::cerr << ss.str() << std::endl;
     }
 
-    const int sleepMs = SLEEP_AT_STOP * 1000;
+    const int sleepMs = m_Settings.stopOffsetTime * 1000;
     PIN_Sleep(sleepMs);
 
     {//log info
         std::stringstream ss;
         ss.clear();
-        ss << "# Continuing the execution";
+        ss << "# Resuming the execution";
         traceLog.logLine(ss.str());
         std::cerr << ss.str() << std::endl;
     }
