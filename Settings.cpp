@@ -22,6 +22,7 @@
 #define KEY_ANTIVM                      "ANTIVM"
 #define KEY_USE_DEBUG_SYMBOLS           "USE_DEBUG_SYMBOLS"
 #define KEY_HYPREV_SET                  "EMULATE_HYPERV"
+#define KEY_STOP_OFFSET_TIME            "STOP_OFFSET_TIME"
 
 t_shellc_options ConvertShcOption(int value)
 {
@@ -69,6 +70,25 @@ size_t SyscallsTable::load(const std::string& filename)
     return syscallToFuncName.size();
 }
 //----
+
+bool StopOffset::load(const std::string& sline, char delimiter)
+{
+    std::vector<std::string> args;
+    util::splitList(sline, delimiter, args);
+    if (!args.size()) return false;
+
+    this->rva = util::loadInt(args[0], true);
+    if (!this->rva) {
+        return false;
+    }
+    // optional argument:
+    if (args.size() >= 2) {
+        this->times = util::loadInt(args[1], false);
+    }
+    return true;
+}
+
+//---
 
 bool loadBoolean(const std::string &str, bool defaultVal)
 {
@@ -142,6 +162,10 @@ bool fillSettings(Settings &s, std::string line)
         s.sleepTime = util::loadInt(valStr);
         isFilled = true;
     }
+    if (util::iequals(valName, KEY_STOP_OFFSET_TIME)) {
+        s.stopOffsetTime = util::loadInt(valStr);
+        isFilled = true;
+    }
     if (util::iequals(valName, KEY_ANTIDEBUG)) {
         const int val = util::loadInt(valStr);
         s.antidebug = ConvertWatchLevel(val);
@@ -171,21 +195,24 @@ void Settings::stripComments(std::string &str)
     }
 }
 
-size_t Settings::loadOffsetsList(const char* filename, std::set<ADDRINT>& offsetsList)
+size_t Settings::loadOffsetsList(const char* filename, std::set<StopOffset>& offsetsList)
 {
     std::ifstream myfile(filename);
     if (!myfile.is_open()) {
-        std::cerr << "Coud not open file: " << filename << std::endl;
+        std::cerr << "Failed to open file: " << filename << std::endl;
         return 0;
     }
     const size_t MAX_LINE = 300;
     char line[MAX_LINE] = { 0 };
     while (!myfile.eof()) {
         myfile.getline(line, MAX_LINE);
-
-        const int rva = util::loadInt(line, true);
-        if (rva) {
-            offsetsList.insert(rva);
+        std::string str = line;
+        if (!str.size() || str[0] == '#') { // skip empty lines and comments
+            continue;
+        }
+        StopOffset so;
+        if (so.load(str, LIST_DELIMITER)) {
+            offsetsList.insert(so);
         }
     }
     return offsetsList.size();
@@ -205,14 +232,14 @@ bool Settings::saveINI(const std::string &filename)
     myfile << KEY_LOG_SHELLCODES_TRANSITIONS << DELIM << this->logShelcTrans << "\r\n";
     myfile << KEY_SHORT_LOGGING << DELIM << this->shortLogging << "\r\n";
     myfile << KEY_USE_DEBUG_SYMBOLS << DELIM << this->useDebugSym << "\r\n";
-    myfile << HEXDUMP_SIZE << DELIM << this->hexdumpSize << "\r\n";
-
+    myfile << HEXDUMP_SIZE << DELIM << std::dec << this->hexdumpSize << "\r\n";
     myfile << HOOK_SLEEP << DELIM << this->hookSleep << "\r\n";
-    myfile << SLEEP_TIME << DELIM << this->sleepTime << "\r\n";
+    myfile << SLEEP_TIME << DELIM << std::dec << this->sleepTime << "\r\n";
     myfile << LOG_INDIRECT << DELIM << this->logIndirect << "\r\n";
     myfile << KEY_ANTIDEBUG << DELIM << this->antidebug << "\r\n";
     myfile << KEY_ANTIVM << DELIM << this->antivm << "\r\n";
     myfile << KEY_HYPREV_SET << DELIM << this->isHyperVSet << "\r\n";
+    myfile << KEY_STOP_OFFSET_TIME << std::dec << this->stopOffsetTime << "\r\n";
     myfile.close();
     return true;
 }

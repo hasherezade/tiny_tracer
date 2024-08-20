@@ -20,7 +20,6 @@ t_shellc_options ConvertShcOption(int value);
 
 //---
 
-
 class SyscallsTable {
 public:
     
@@ -44,11 +43,42 @@ protected:
 
 //---
 
+struct StopOffset
+{
+    ADDRINT rva;
+    size_t times;
+
+    StopOffset(ADDRINT _rva = 0, size_t _times = 0)
+        : rva(_rva), times(_times)
+    {
+    }
+
+    StopOffset(const StopOffset& other)
+    {
+        this->rva = other.rva;
+        this->times = other.times;
+    }
+
+    StopOffset& operator=(const StopOffset& other)
+    {
+        this->rva = other.rva;
+        this->times = other.times;
+    }
+
+    bool load(const std::string& sline, char delimiter);
+
+    bool operator<(const StopOffset& other) const
+    {
+        return (this->rva < other.rva);
+    }
+};
+//---
+
 class Settings {
 
 public:
     static void stripComments(std::string& str);
-    static size_t loadOffsetsList(const char* filename, std::set<ADDRINT>& offsetsList);
+    static size_t loadOffsetsList(const char* filename, std::set<StopOffset>& offsetsList);
 
     Settings() 
         : followShellcode(SHELLC_FOLLOW_FIRST),
@@ -63,7 +93,8 @@ public:
         antidebug(WATCH_DISABLED),
         antivm(WATCH_DISABLED),
         useDebugSym(false),
-        isHyperVSet(false)
+        isHyperVSet(false),
+        stopOffsetTime(30)
     {
     }
 
@@ -81,7 +112,8 @@ public:
     bool logIndirect;
     size_t hexdumpSize;
     bool hookSleep;
-    size_t sleepTime;
+    size_t sleepTime; // Define the time that will be passed to the hooked sleep function (in miliseconds)
+    size_t stopOffsetTime; // Sleep time at the stop offset (in seconds)
     t_watch_level antidebug;
     t_watch_level antivm; // Trace Anti-VM techniques (WMI queries)
     bool useDebugSym;
@@ -90,5 +122,5 @@ public:
     SyscallsTable syscallsTable; //Syscalls table: mapping the syscall ID to the function name
     FuncWatchList funcWatch; //List of functions, arguments of which are going to be logged
     FuncList<WFuncInfo> excludedFuncs; //List of functions that will NOT be logged
-    std::set<ADDRINT> stopOffsets; //List of offsets at which the execution should pause
+    std::set<StopOffset> stopOffsets; //List of offsets at which the execution should pause
 };

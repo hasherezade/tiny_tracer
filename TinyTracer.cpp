@@ -23,7 +23,7 @@
 #include "PinLocker.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.7.7"
+#define VERSION "2.7.8"
 
 #include "Util.h"
 #include "Settings.h"
@@ -44,6 +44,7 @@
 #ifdef USE_ANTIVM
 #include "AntiVm.h"
 #endif
+
 
 /* ================================================================== */
 // Global variables 
@@ -345,47 +346,38 @@ VOID PauseAtOffset(const CONTEXT* ctxt)
     const WatchedType wType = isWatchedAddress(Address);
     if (wType != WatchedType::WATCHED_MY_MODULE) return;
 
-    const std::string prompt = "TT> ";
-    ADDRINT rva = addr_to_rva(Address); // convert to RVA
-    if (m_Settings.stopOffsets.find(rva) != m_Settings.stopOffsets.end()) {
-        std::cout << "Stop offset reached: " << std::hex << rva << ". Press 'C' to continue, '?' for more info...\n";
-        char cmd = '?';
-        while (true) {
-            std::cout << prompt;
-            std::cin >> cmd;
+    const ADDRINT rva = addr_to_rva(Address); // convert to RVA
 
-            if (cmd == 'C') break;
-            else if (cmd == '?') {
-                std::cout << "Available commands:\n"
-                    << "C - continue execution\n"
-                    << "D - delete the current stop offset (" << std::hex << rva << ")\n"
-                    << "F - print the path to the file where the stop offsets are defined\n"
-                    << "P - print active stop offsets\n"
-                    << "? - info: print all available commands\n"
-                    << std::endl;
-            }
-            else if (cmd == 'D') {
-                m_Settings.stopOffsets.erase(rva);
-                std::cout << "Stop offset deleted.\n";
-            }
-            else if (cmd == 'F') {
-                std::cout << "Stop offsets defined in: " << KnobStopOffsets.ValueString() << "\n";
-            }
-            else if (cmd == 'P') {
-                if (m_Settings.stopOffsets.size() == 0) {
-                    std::cout << "No active stop offsets\n";
-                    continue;
-                }
-                std::cout << "Active stop offsets:\n";
-                for (auto it = m_Settings.stopOffsets.begin(); it != m_Settings.stopOffsets.end(); ++it) {
-                    std::cout << std::hex << *it << "\n";
-                }
-            }
-            else if (isalnum(cmd)) {
-                std::cout << "Invalid command: " << cmd << "\n";
-            }
+    auto itr = m_Settings.stopOffsets.find(StopOffset(rva));
+    if (itr == m_Settings.stopOffsets.end()) {
+        return;
+    }
+    {//log info
+        std::stringstream ss;
+        ss << "# Stop offset reached: RVA = 0x" << std::hex << rva << ". Sleeping " << std::dec << m_Settings.stopOffsetTime << " s.";
+        if (itr->times) {
+            ss << " Times remaining: " << itr->times;
         }
-        std::cout << "Continuing the execution...\n";
+        traceLog.logLine(ss.str());
+        std::cerr << ss.str() << std::endl;
+    }
+
+    StopOffset &so = const_cast<StopOffset &>(*itr);
+    if (so.times != 0) { // if the StopOffset with times 0 is on the list, it means it should be executed infinite number of times
+        so.times--;
+        if (so.times == 0) {
+            m_Settings.stopOffsets.erase(itr); //erase
+        }
+    }
+    const int sleepMs = m_Settings.stopOffsetTime * 1000;
+    PIN_Sleep(sleepMs);
+
+    {//log info
+        std::stringstream ss;
+        ss.clear();
+        ss << "# Resuming the execution";
+        traceLog.logLine(ss.str());
+        std::cerr << ss.str() << std::endl;
     }
 }
 
@@ -799,7 +791,7 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
 
 VOID InstrumentInstruction(INS ins, VOID *v)
 {
-    if (m_Settings.stopOffsets.size() > 0) {
+    if (m_Settings.stopOffsets.size() > 0 && m_Settings.stopOffsetTime) {
         INS_InsertCall(
             ins,
             IPOINT_BEFORE, (AFUNPTR)PauseAtOffset,
