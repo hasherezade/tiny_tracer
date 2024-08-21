@@ -158,6 +158,36 @@ inline ADDRINT getReturnFromTheStack(const CONTEXT* ctx)
     return retAddr;
 }
 
+VOID SaveHeavensGateTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, ADDRINT seg, const CONTEXT* ctx = NULL)
+{
+    PinLocker locker;
+    const WatchedType wType = isWatchedAddress(addrFrom);
+    if (wType == WatchedType::NOT_WATCHED) {
+        return;
+    }
+    ADDRINT pageFrom = 0;
+    if (wType == WatchedType::WATCHED_SHELLCODE) {
+        pageFrom = query_region_base(addrFrom);
+    }
+    ADDRINT RvaFrom = addr_to_rva(addrFrom);
+    std::stringstream ss;
+    if (seg == 0x33) {
+        ss << "Heaven's Gate -> switch to 64 bit : ";
+    }
+    else if (seg == 0x23) {
+        ss << "Heaven's Gate -> switch to 32 bit : ";
+    }
+    else {
+        ss << "Unknown Far transition ";
+        if (seg) ss << "seg: " << std::hex << seg << " : ";
+    }
+    if (addrTo) ss << std::hex << addrTo;
+ 
+    traceLog.logInstruction(pageFrom, RvaFrom, ss.str());
+    PIN_WriteErrorMessage("ERROR: Cannot trace after the far transition", 1000, PIN_ERR_SEVERITY_TYPE::PIN_ERR_FATAL, 0);
+
+}
+
 VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndirect, const CONTEXT* ctx = NULL)
 {
     const WatchedType fromWType = isWatchedAddress(addrFrom); // is the call from the traced area?
@@ -900,8 +930,28 @@ VOID InstrumentInstruction(INS ins, VOID *v)
             REG_GAX,
             IARG_END);
     }
-    if (INS_IsControlFlow(ins)) {
-        BOOL isIndirect = INS_IsIndirectControlFlow(ins) && !INS_IsRet(ins);
+    //---
+
+    const BOOL isFar = INS_IsFarCall(ins) || INS_IsFarJump(ins) || INS_IsFarRet(ins);
+    if (isFar) {
+        UINT16 segs = 0;
+        UINT32 disp = 0;
+        if (INS_IsDirectFarJump(ins)) {
+            INS_GetFarPointer(ins, segs, disp);
+        }
+        INS_InsertCall(
+            ins,
+            IPOINT_BEFORE, (AFUNPTR)SaveHeavensGateTransitions,
+            IARG_INST_PTR,
+            IARG_ADDRINT, disp,
+            IARG_ADDRINT, segs,
+            IARG_CONTEXT,
+            IARG_END
+        );
+    }
+
+    if (INS_IsControlFlow(ins) && !isFar){
+        const BOOL isIndirect = INS_IsIndirectControlFlow(ins) && !INS_IsRet(ins);
         INS_InsertCall(
             ins,
             IPOINT_BEFORE, (AFUNPTR)SaveTransitions,
@@ -911,8 +961,9 @@ VOID InstrumentInstruction(INS ins, VOID *v)
             IARG_CONTEXT,
             IARG_END
         );
-
     }
+
+
 #ifdef USE_ANTIDEBUG
     // ANTIDEBUG: memory read instrumentation
     
