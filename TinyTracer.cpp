@@ -386,7 +386,7 @@ VOID PauseAtOffset(const CONTEXT* ctxt)
         std::stringstream ss;
         ss << "# Stop offset reached: RVA = 0x" << std::hex << rva << ". Sleeping " << std::dec << m_Settings.stopOffsetTime << " s.";
         if (itr->times) {
-            ss << " Times remaining: " << itr->times;
+            ss << " Hits remaining: " << (itr->times - 1);
         }
         traceLog.logLine(ss.str());
         std::cerr << ss.str() << std::endl;
@@ -405,7 +405,7 @@ VOID PauseAtOffset(const CONTEXT* ctxt)
     {//log info
         std::stringstream ss;
         ss.clear();
-        ss << "# Resuming the execution";
+        ss << "# Resuming execution";
         traceLog.logLine(ss.str());
         std::cerr << ss.str() << std::endl;
     }
