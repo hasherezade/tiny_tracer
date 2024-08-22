@@ -78,8 +78,8 @@ typedef VOID EvasionWatchAfterCallBack(const ADDRINT Address, const THREADID tid
 struct EvasionFuncInfo : public WFuncInfo
 {
     EvasionFuncInfo(const std::string& _dllName, const std::string& _funcName, const size_t _paramCount, EvasionWatchBeforeCallBack* _callbackB = nullptr, EvasionWatchAfterCallBack* _callbackA = nullptr, t_watch_level _type = WATCH_STANDARD)
-        : callbackBefore(_callbackB), callbackAfter(_callbackA), type(_type),
-        WFuncInfo(_dllName, _funcName, _paramCount) 
+        : WFuncInfo(_dllName, _funcName, _paramCount), 
+        callbackBefore(_callbackB), callbackAfter(_callbackA), type(_type)
     {
     }
 

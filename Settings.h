@@ -63,6 +63,7 @@ struct StopOffset
     {
         this->rva = other.rva;
         this->times = other.times;
+        return *this;
     }
 
     bool load(const std::string& sline, char delimiter);
@@ -90,11 +91,13 @@ public:
         shortLogging(true),
         logIndirect(false),
         hexdumpSize(8),
+        hookSleep(false),
+        sleepTime(0),
+        stopOffsetTime(30),
         antidebug(WATCH_DISABLED),
         antivm(WATCH_DISABLED),
         useDebugSym(false),
-        isHyperVSet(false),
-        stopOffsetTime(30)
+        isHyperVSet(false)
     {
     }
 
