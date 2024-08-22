@@ -544,12 +544,37 @@ BOOL _fetchSyscallData(CONTEXT* ctxt, SYSCALL_STANDARD &std, ADDRINT &address)
     return TRUE;
 }
 
-std::map<THREADID, ADDRINT> syscallFromThread;
-std::map<THREADID, ADDRINT> syscallAddr;
+//---
+struct SyscallInfo
+{
+    ADDRINT ssid;
+    ADDRINT addrFrom;
+
+    SyscallInfo(ADDRINT _ssid = UNKNOWN_ADDR, ADDRINT _addrFrom = UNKNOWN_ADDR)
+        : ssid(_ssid), addrFrom(_addrFrom) {}
+
+    SyscallInfo(const SyscallInfo& other)
+        : ssid(other.ssid), addrFrom(other.addrFrom) { }
+
+    void fill(ADDRINT _ssid, ADDRINT _addrFrom )
+    {
+        this->ssid = _ssid;
+        this->addrFrom = _addrFrom;
+    }
+
+    void reset()
+    {
+        this->fill(UNKNOWN_ADDR, UNKNOWN_ADDR);
+    }
+};
+
+std::map<THREADID, SyscallInfo> syscallFromThread;
+
 VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
 {
     PinLocker locker;
-    syscallFromThread[tid] = UNKNOWN_ADDR; // reset just in case
+
+    syscallFromThread[tid] = SyscallInfo(); // reset just in case
     ADDRINT address = UNKNOWN_ADDR;
     if (!_fetchSyscallData(ctxt, std, address)) {
         return;
@@ -560,8 +585,8 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
     const ADDRINT syscallNum = PIN_GetSyscallNumber(ctxt, std);
     if (syscallNum == UNKNOWN_ADDR) return; //invalid
 
-    syscallFromThread[tid] = syscallNum;
-    syscallAddr[tid] = address;
+    syscallFromThread[tid].fill(syscallNum, address);
+
     std::string funcName = m_Settings.syscallsTable.getName(syscallNum);
 
     if (wType == WatchedType::WATCHED_MY_MODULE) {
@@ -618,15 +643,14 @@ VOID SyscallCalledAfter(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID*
     PinLocker locker;
 
     auto itr = syscallFromThread.find(tid);
-    if (itr == syscallFromThread.end() || itr->second == UNKNOWN_ADDR) {
+    if (itr == syscallFromThread.end() || itr->second.ssid == UNKNOWN_ADDR) {
         return;
     }
-    const ADDRINT syscallNum = itr->second;
-    if (syscallNum == UNKNOWN_ADDR) return; //invalid
-	
-    ADDRINT address = syscallAddr[tid];
 
-    syscallFromThread.erase(itr); // sycall completed, erase the stored info
+    const ADDRINT syscallNum = itr->second.ssid;
+    const ADDRINT address = itr->second.addrFrom;
+
+    itr->second.reset(); // sycall completed, erase the stored info
 
     if (address == UNKNOWN_ADDR) {
         return;
