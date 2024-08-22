@@ -545,6 +545,7 @@ BOOL _fetchSyscallData(CONTEXT* ctxt, SYSCALL_STANDARD &std, ADDRINT &address)
 }
 
 std::map<THREADID, ADDRINT> syscallFromThread;
+std::map<THREADID, ADDRINT> syscallAddr;
 VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
 {
     PinLocker locker;
@@ -558,8 +559,9 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
     
     const ADDRINT syscallNum = PIN_GetSyscallNumber(ctxt, std);
     if (syscallNum == UNKNOWN_ADDR) return; //invalid
-    syscallFromThread[tid] = syscallNum;
 
+    syscallFromThread[tid] = syscallNum;
+    syscallAddr[tid] = address;
     std::string funcName = m_Settings.syscallsTable.getName(syscallNum);
 
     if (wType == WatchedType::WATCHED_MY_MODULE) {
@@ -614,12 +616,6 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
 VOID SyscallCalledAfter(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
 {
     PinLocker locker;
-    ADDRINT address = UNKNOWN_ADDR;
-    if (!_fetchSyscallData(ctxt, std, address)) {
-        return;
-    }
-    const WatchedType wType = isWatchedAddress(address);
-    if (wType == WatchedType::NOT_WATCHED) return;
 
     auto itr = syscallFromThread.find(tid);
     if (itr == syscallFromThread.end() || itr->second == UNKNOWN_ADDR) {
@@ -627,9 +623,15 @@ VOID SyscallCalledAfter(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID*
     }
     const ADDRINT syscallNum = itr->second;
     if (syscallNum == UNKNOWN_ADDR) return; //invalid
+	
+    ADDRINT address = syscallAddr[tid];
 
+    syscallFromThread.erase(itr); // sycall completed, erase the stored info
+
+    if (address == UNKNOWN_ADDR) {
+        return;
+    }
     const std::string syscallFuncName = SyscallsTable::convertNameToNt(m_Settings.syscallsTable.getName(syscallNum));
-
 #ifdef USE_ANTIVM
     if (m_Settings.antivm != WATCH_DISABLED) {
         AntiVm::MonitorSyscallExit(tid, syscallFuncName.c_str(), ctxt, std, address);
