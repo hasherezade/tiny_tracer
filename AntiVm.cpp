@@ -225,43 +225,43 @@ namespace AntiVm {
     std::map<THREADID, ADDRINT> cpuidThreads;
 }; //namespace AntiVm
 
-VOID AntiVm::CpuidCheck(CONTEXT* ctxt, THREADID tid)
-{
-    PinLocker locker;
-
-    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
-
-    const WatchedType wType = isWatchedAddress(Address);
-    if (wType == WatchedType::NOT_WATCHED) return;
-
-    ADDRINT opId = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
-    cpuidThreads[tid] = opId;
-    if (opId == 0x0) {
-        return LogAntiVm(wType, Address, "CPUID - vendor check",
-            "https://unprotect.it/technique/cpuid/");
-    }
-    if (opId == 0x1) {
-        return LogAntiVm(wType, Address, "CPUID - HyperVisor bit check",
-            "https://unprotect.it/technique/cpuid/");
-    }
-    if (opId == 0x80000002 || opId == 0x80000003 || opId == 0x80000004) {
-        return LogAntiVm(wType, Address, "CPUID - brand check",
-            "https://unprotect.it/technique/cpuid/");
-    }
-    if (opId == 0x40000000) {
-        return LogAntiVm(wType, Address, "CPUID - HyperVisor vendor check",
-            "https://unprotect.it/technique/cpuid/");
-    }
-    if (opId == 0x40000002) {
-        return LogAntiVm(wType, Address, "CPUID - HyperVisor system identity");
-    }
-    if (opId == 0x40000003) {
-        return LogAntiVm(wType, Address, "CPUID - HyperVisor feature identification");
-    }
-}
 
 namespace AntiVm
 {
+    VOID CpuidCheck(CONTEXT* ctxt, THREADID tid)
+    {
+        PinLocker locker;
+
+        const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+
+        const WatchedType wType = isWatchedAddress(Address);
+        if (wType == WatchedType::NOT_WATCHED) return;
+
+        ADDRINT opId = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
+        cpuidThreads[tid] = opId;
+        if (opId == 0x0) {
+            return LogAntiVm(wType, Address, "CPUID - vendor check",
+                "https://unprotect.it/technique/cpuid/");
+        }
+        if (opId == 0x1) {
+            return LogAntiVm(wType, Address, "CPUID - HyperVisor bit check",
+                "https://unprotect.it/technique/cpuid/");
+        }
+        if (opId == 0x80000002 || opId == 0x80000003 || opId == 0x80000004) {
+            return LogAntiVm(wType, Address, "CPUID - brand check",
+                "https://unprotect.it/technique/cpuid/");
+        }
+        if (opId == 0x40000000) {
+            return LogAntiVm(wType, Address, "CPUID - HyperVisor vendor check",
+                "https://unprotect.it/technique/cpuid/");
+        }
+        if (opId == 0x40000002) {
+            return LogAntiVm(wType, Address, "CPUID - HyperVisor system identity");
+        }
+        if (opId == 0x40000003) {
+            return LogAntiVm(wType, Address, "CPUID - HyperVisor feature identification");
+        }
+    }
 
     BOOL _AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg, ADDRINT& regVal)
     {
@@ -365,15 +365,70 @@ namespace AntiVm
         return isSet;
     }
 
+    ADDRINT AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg)
+    {
+        PinLocker locker;
+        ADDRINT regVal = PIN_GetContextReg(ctxt, reg);
+        _AlterCpuidValue(ctxt, tid, reg, regVal);
+        return regVal;
+    }
+
 }; //namespace AntiVm
 
 
-ADDRINT AntiVm::AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg)
+VOID AntiVm::InstrumentCPUIDCheck(INS ins)
 {
-    PinLocker locker;
-    ADDRINT regVal = PIN_GetContextReg(ctxt, reg);
-    _AlterCpuidValue(ctxt, tid, reg, regVal);
-    return regVal;
+    INS_InsertCall(
+        ins,
+        IPOINT_BEFORE, (AFUNPTR)AntiVm::CpuidCheck,
+        IARG_CONTEXT,
+        IARG_THREAD_ID,
+        IARG_END
+    );
+
+    INS_InsertCall(
+        ins,
+        IPOINT_AFTER, (AFUNPTR)AntiVm::AlterCpuidValue,
+        IARG_CONTEXT,
+        IARG_THREAD_ID,
+        IARG_UINT32, REG_GAX,
+        IARG_RETURN_REGS,
+        REG_GAX,
+        IARG_END
+    );
+
+    INS_InsertCall(
+        ins,
+        IPOINT_AFTER, (AFUNPTR)AntiVm::AlterCpuidValue,
+        IARG_CONTEXT,
+        IARG_THREAD_ID,
+        IARG_UINT32, REG_GBX,
+        IARG_RETURN_REGS,
+        REG_GBX,
+        IARG_END
+    );
+
+    INS_InsertCall(
+        ins,
+        IPOINT_AFTER, (AFUNPTR)AntiVm::AlterCpuidValue,
+        IARG_CONTEXT,
+        IARG_THREAD_ID,
+        IARG_UINT32, REG_GCX,
+        IARG_RETURN_REGS,
+        REG_GCX,
+        IARG_END
+    );
+
+    INS_InsertCall(
+        ins,
+        IPOINT_AFTER, (AFUNPTR)AntiVm::AlterCpuidValue,
+        IARG_CONTEXT,
+        IARG_THREAD_ID,
+        IARG_UINT32, REG_GDX,
+        IARG_RETURN_REGS,
+        REG_GDX,
+        IARG_END
+    );
 }
 
 //---

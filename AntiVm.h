@@ -20,6 +20,5 @@ namespace AntiVm {
 	VOID MonitorAntiVmFunctions(IMG Image);
 	VOID MonitorSyscallEntry(THREADID tid, const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address);
 	VOID MonitorSyscallExit(THREADID tid, const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address);
-	VOID CpuidCheck(CONTEXT* ctxt, THREADID tid);
-	ADDRINT AlterCpuidValue(CONTEXT* ctxt, THREADID tid, const REG reg);
+	VOID InstrumentCPUIDCheck(INS ins);
 };
