@@ -478,7 +478,7 @@ BOOL getPEB(CONTEXT* ctxt, ADDRINT& pebAddr)
     PIN_GetContextRegval(ctxt, REG_SEG_GS_BASE, reinterpret_cast<UINT8*>(&gsValue));
     gsValue += 0x60;
     // Save PEB Address
-    if (PIN_SafeCopy(&pebAddr, reinterpret_cast<VOID*>(gsValue), sizeof(pebAddr)))is_ok = TRUE;
+    if (PIN_SafeCopy(&pebAddr, reinterpret_cast<VOID*>(gsValue), sizeof(pebAddr)) == sizeof(pebAddr)) is_ok = TRUE;
 #else
     // Read the value from the memory address pointed by FS:[30h] and save it in the global variable
     ADDRINT fsValue;
@@ -486,7 +486,7 @@ BOOL getPEB(CONTEXT* ctxt, ADDRINT& pebAddr)
     fsValue += 0x30;
 
     // Save PEB Address
-    if (PIN_SafeCopy(&pebAddr, reinterpret_cast<VOID*>(fsValue), sizeof(pebAddr))) is_ok = TRUE;
+    if (PIN_SafeCopy(&pebAddr, reinterpret_cast<VOID*>(fsValue), sizeof(pebAddr)) == sizeof(pebAddr)) is_ok = TRUE;
 #endif
     return is_ok;
 }
