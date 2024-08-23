@@ -30,9 +30,9 @@ using namespace LEVEL_PINCLIENT;
 
 namespace AntiDbg
 {
-    ADDRINT pebAddr = 0;
-    ADDRINT heapFlags = 0;
-    ADDRINT heapForceFlags = 0;
+    ADDRINT m_pebAddr = 0;
+    ADDRINT m_heapFlags = 0;
+    ADDRINT m_heapForceFlags = 0;
     std::vector<std::string> loadedLib;
 }; // namespace AntiDebug
 
@@ -132,9 +132,9 @@ VOID AntiDbg::WatchMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr
     const WatchedType wType = isWatchedAddress(insAddr);
     if (wType == WatchedType::NOT_WATCHED) return;
 
-    if (!pebAddr) return;
+    if (!m_pebAddr) return;
     // Check the accessed memory address for antidebug tricks
-    if (addr == pebAddr + 2) {
+    if (addr == m_pebAddr + 2) {
         return LogAntiDbg(wType, insAddr, "PEB!BeingDebugged accessed");
     }
     if (addr == 0x7ffe02d4) {
@@ -142,22 +142,17 @@ VOID AntiDbg::WatchMemoryAccess(ADDRINT addr, UINT32 size, const ADDRINT insAddr
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#kuser_shared_data");
     }
 #ifdef _WIN64
-    if (addr == pebAddr + 0xBC) {
-        return LogAntiDbg(wType, insAddr, "PEB!NtGlobalFlag accessed");
-    }
-    if (addr == heapFlags || addr == heapForceFlags) {
-        return LogAntiDbg(wType, insAddr, "Heap Flags accessed",
-            "https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags");
-    }
+    ADDRINT globalFlagOffset = 0xBC;
 #else
-    if (addr == pebAddr + 0x68) {
+    ADDRINT globalFlagOffset = 0x68;
+#endif
+    if (addr == m_pebAddr + globalFlagOffset) {
         return LogAntiDbg(wType, insAddr, "PEB!NtGlobalFlag accessed");
     }
-    if (addr == heapFlags || addr == heapForceFlags) {
+    if (addr == m_heapFlags || addr == m_heapForceFlags) {
         return LogAntiDbg(wType, insAddr, "Heap Flags accessed",
             "https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags");
     }
-#endif
 }
 
 /* ==================================================================== */
@@ -472,22 +467,20 @@ VOID AntiDbg_CloseHandle_after(ADDRINT Address, THREADID threadid, const CHAR* n
 BOOL getPEB(CONTEXT* ctxt, ADDRINT& pebAddr)
 {
     BOOL is_ok = FALSE;
+    ADDRINT sValue = 0;
 #ifdef _WIN64
-    // Read the value from the memory address pointed by GS:[60h] and save it in the global variable
-    ADDRINT gsValue;
-    PIN_GetContextRegval(ctxt, REG_SEG_GS_BASE, reinterpret_cast<UINT8*>(&gsValue));
-    gsValue += 0x60;
-    // Save PEB Address
-    if (PIN_SafeCopy(&pebAddr, reinterpret_cast<VOID*>(gsValue), sizeof(pebAddr)) == sizeof(pebAddr)) is_ok = TRUE;
+    // Read the value from the memory address pointed by GS:[60h]
+    PIN_GetContextRegval(ctxt, REG_SEG_GS_BASE, reinterpret_cast<UINT8*>(&sValue));
+    sValue += 0x60;
 #else
-    // Read the value from the memory address pointed by FS:[30h] and save it in the global variable
-    ADDRINT fsValue;
-    PIN_GetContextRegval(ctxt, REG_SEG_FS_BASE, reinterpret_cast<UINT8*>(&fsValue));
-    fsValue += 0x30;
-
-    // Save PEB Address
-    if (PIN_SafeCopy(&pebAddr, reinterpret_cast<VOID*>(fsValue), sizeof(pebAddr)) == sizeof(pebAddr)) is_ok = TRUE;
+    // Read the value from the memory address pointed by FS:[30h]
+    PIN_GetContextRegval(ctxt, REG_SEG_FS_BASE, reinterpret_cast<UINT8*>(&sValue));
+    sValue += 0x30;
 #endif
+    // Save PEB Address
+    if (PIN_SafeCopy(&pebAddr, reinterpret_cast<VOID*>(sValue), sizeof(pebAddr)) == sizeof(pebAddr)) {
+        is_ok = TRUE;
+    }
     return is_ok;
 }
 
@@ -499,40 +492,37 @@ VOID AntiDbg::WatchThreadStart(THREADID threadid, CONTEXT* ctxt, INT32 flags, VO
     if (threadid != 0) {
         return;
     }
-#ifdef _WIN64
-    // Read the value from the memory address pointed by GS:[60h] and save it in the global variable
-    if (!getPEB(ctxt, pebAddr)) return;
 
-    // Get Heap flags addresses (https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags)
-    ADDRINT heapBase;
-    PIN_SafeCopy(&heapBase, reinterpret_cast<VOID*>(pebAddr + 0x30), sizeof(heapBase));
+    // Read the PEB address and save it in the global variable
+    if (!getPEB(ctxt, m_pebAddr)) return;
+
+    ADDRINT heapBase = 0;
+#ifdef _WIN64
+    ADDRINT heapBaseOffset = 0x30;
     ADDRINT heapFlagsOffset = WinIsWindowsVistaOrGreater()
         ? 0x70
         : 0x14;
     ADDRINT heapForceFlagsOffset = WinIsWindowsVistaOrGreater()
         ? 0x74
         : 0x18;
-    heapFlags = heapBase + heapFlagsOffset;
-    heapForceFlags = heapBase + heapForceFlagsOffset;
 #else
-    // Read the value from the memory address pointed by FS:[30h] and save it in the global variable
-    if (!getPEB(ctxt, pebAddr)) return;
-
-    // Get Heap flags addresses (https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags)
-    ADDRINT heapBase;
     ADDRINT heapBaseOffset = WinIsNativeOs32()
         ? 0x18
         : 0x1030;
-    PIN_SafeCopy(&heapBase, reinterpret_cast<VOID*>(pebAddr + heapBaseOffset), sizeof(heapBase));
     ADDRINT heapFlagsOffset = WinIsWindowsVistaOrGreater()
         ? 0x40
         : 0x0C;
     ADDRINT heapForceFlagsOffset = WinIsWindowsVistaOrGreater()
         ? 0x44
         : 0x10;
-    heapFlags = heapBase + heapFlagsOffset;
-    heapForceFlags = heapBase + heapForceFlagsOffset;
-#endif 
+#endif
+
+    // Get Heap flags addresses (https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags)
+    if (!PIN_SafeCopy(&heapBase, reinterpret_cast<VOID*>(m_pebAddr + heapBaseOffset), sizeof(heapBase)) == sizeof(heapBase)) {
+        return;
+    }
+    m_heapFlags = heapBase + heapFlagsOffset;
+    m_heapForceFlags = heapBase + heapForceFlagsOffset;
 }
 
 /* ==================================================================== */
