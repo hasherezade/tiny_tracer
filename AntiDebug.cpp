@@ -184,49 +184,69 @@ VOID AntiDbg::WatchCompareSoftBrk(ADDRINT Address, UINT64 immVal)
 
 namespace AntiDbg {
     std::set<THREADID> popfThreads;
-}; // namespace AntiDbg
 
 #define CLEAR_TRAP
-VOID AntiDbg::FlagsCheck(const CONTEXT* ctxt, THREADID tid)
-{
-    PinLocker locker;
-
-    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
-    const WatchedType wType = isWatchedAddress(Address);
-    if (wType == WatchedType::NOT_WATCHED) return;
-
-    ADDRINT pushedVal = UNKNOWN_ADDR;
-    const ADDRINT* stackPtr = reinterpret_cast<ADDRINT*>(PIN_GetContextReg(ctxt, REG_STACK_PTR));
-    size_t copiedSize = PIN_SafeCopy(&pushedVal, stackPtr, sizeof(pushedVal));
-    if (copiedSize != sizeof(pushedVal)) {
-        return;
-    }
-    const bool isTrap = (pushedVal & 0x100) ? true : false;
-    if (!isTrap) return;
-
-    LogAntiDbg(wType, Address, "Trap Flag set",
-        "https://anti-debug.checkpoint.com/techniques/assembly.html#popf_and_trap_flag");
-
-#ifdef CLEAR_TRAP
-    pushedVal ^= 0x100;
-    ::memcpy((void*)stackPtr, &pushedVal, sizeof(pushedVal));
-    popfThreads.insert(tid);
-#endif
-}
-
-VOID AntiDbg::FlagsCheck_after(const CONTEXT* ctxt, THREADID tid, ADDRINT eip)
-{
+    VOID FlagsCheck(const CONTEXT* ctxt, THREADID tid)
     {
         PinLocker locker;
 
-        if (popfThreads.find(tid) == popfThreads.end()) {
-            return; // trap flag wasn't set in this thread
+        const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+        const WatchedType wType = isWatchedAddress(Address);
+        if (wType == WatchedType::NOT_WATCHED) return;
+
+        ADDRINT pushedVal = UNKNOWN_ADDR;
+        const ADDRINT* stackPtr = reinterpret_cast<ADDRINT*>(PIN_GetContextReg(ctxt, REG_STACK_PTR));
+        size_t copiedSize = PIN_SafeCopy(&pushedVal, stackPtr, sizeof(pushedVal));
+        if (copiedSize != sizeof(pushedVal)) {
+            return;
         }
-        popfThreads.erase(tid); // erase the stored TID
+        const bool isTrap = (pushedVal & 0x100) ? true : false;
+        if (!isTrap) return;
+
+        LogAntiDbg(wType, Address, "Trap Flag set",
+            "https://anti-debug.checkpoint.com/techniques/assembly.html#popf_and_trap_flag");
+
+    #ifdef CLEAR_TRAP
+        pushedVal ^= 0x100;
+        ::memcpy((void*)stackPtr, &pushedVal, sizeof(pushedVal));
+        popfThreads.insert(tid);
+    #endif
     }
-    EXCEPTION_INFO exc;
-    exc.Init(EXCEPTCODE_DBG_SINGLE_STEP_TRAP, eip);
-    PIN_RaiseException(ctxt, tid, &exc);
+
+    VOID FlagsCheck_after(const CONTEXT* ctxt, THREADID tid, ADDRINT eip)
+    {
+        {
+            PinLocker locker;
+
+            if (popfThreads.find(tid) == popfThreads.end()) {
+                return; // trap flag wasn't set in this thread
+            }
+            popfThreads.erase(tid); // erase the stored TID
+        }
+        EXCEPTION_INFO exc;
+        exc.Init(EXCEPTCODE_DBG_SINGLE_STEP_TRAP, eip);
+        PIN_RaiseException(ctxt, tid, &exc);
+    }
+}; // namespace AntiDbg
+
+VOID AntiDbg::InstrumentFlagsCheck(INS ins)
+{
+    INS_InsertCall(
+        ins,
+        IPOINT_BEFORE, (AFUNPTR)FlagsCheck,
+        IARG_CONTEXT,
+        IARG_THREAD_ID,
+        IARG_END
+    );
+
+    INS_InsertCall(
+        ins,
+        IPOINT_AFTER, (AFUNPTR)FlagsCheck_after,
+        IARG_CONTEXT,
+        IARG_THREAD_ID,
+        IARG_INST_PTR,
+        IARG_END
+    );
 }
 
 VOID AntiDbg::InterruptCheck(const CONTEXT* ctxt)

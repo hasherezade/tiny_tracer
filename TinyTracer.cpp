@@ -941,7 +941,6 @@ VOID InstrumentInstruction(INS ins, VOID *v)
         );
     }
 
-
 #ifdef USE_ANTIDEBUG
     // ANTIDEBUG: memory read instrumentation
     
@@ -965,22 +964,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
 #endif
         if (util::isStrEqualI(INS_Mnemonic(ins), POPF_MNEM))
         {
-            INS_InsertCall(
-                ins,
-                IPOINT_BEFORE, (AFUNPTR)AntiDbg::FlagsCheck,
-                IARG_CONTEXT,
-                IARG_THREAD_ID,
-                IARG_END
-            );
-
-            INS_InsertCall(
-                ins,
-                IPOINT_AFTER, (AFUNPTR)AntiDbg::FlagsCheck_after,
-                IARG_CONTEXT,
-                IARG_THREAD_ID,
-                IARG_INST_PTR,
-                IARG_END
-            );
+            AntiDbg::InstrumentFlagsCheck(ins);
         }
 
         if (INS_IsInterrupt(ins)) {
