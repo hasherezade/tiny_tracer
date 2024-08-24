@@ -877,7 +877,8 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, VOID *str)
     }
     if (base != UNKNOWN_ADDR && rva != UNKNOWN_ADDR) {
         std::stringstream ss;
-        ss << strPtr->c_str();
+        ss << "[" << tid << "] ";
+        ss << (*strPtr);
         if (!base && rva == m_Settings.disasmStart) {
             ss << " # disasm start";
         }
