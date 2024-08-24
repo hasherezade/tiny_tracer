@@ -864,7 +864,7 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, VOID *str)
     if (wType == WatchedType::WATCHED_MY_MODULE) {
         rva = addr_to_rva(Address); // convert to RVA
         base = 0;
-        if (rva == m_Settings.disasmStart) {
+        if (rva == (ADDRINT)m_Settings.disasmStart) {
             traceStarted = TRUE;
         }
     }
@@ -879,16 +879,16 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, VOID *str)
         std::stringstream ss;
         ss << "[" << tid << "] ";
         ss << (*strPtr);
-        if (!base && rva == m_Settings.disasmStart) {
+        if (!base && rva == (ADDRINT)m_Settings.disasmStart) {
             ss << " # disasm start";
         }
-        if (!base && rva == m_Settings.disasmStop) {
+        if (!base && rva == (ADDRINT)m_Settings.disasmStop) {
             ss << " # disasm end";
         }
         traceLog.logInstruction(base, rva, ss.str());
     }
 
-    if (wType == WatchedType::WATCHED_MY_MODULE && rva == m_Settings.disasmStop) {
+    if (wType == WatchedType::WATCHED_MY_MODULE && rva == (ADDRINT)m_Settings.disasmStop) {
         traceStarted = FALSE;
     }
 }
