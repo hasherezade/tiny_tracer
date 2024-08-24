@@ -23,7 +23,7 @@
 #include "PinLocker.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.7.8"
+#define VERSION "2.8"
 
 #include "Util.h"
 #include "Settings.h"
