@@ -2,12 +2,7 @@
 * TinyTracer, CC by: hasherezade@gmail.com
 * Runs with: Intel PIN (https://software.intel.com/en-us/articles/pin-a-dynamic-binary-instrumentation-tool)
 *
-* Prints to <output_file> addresses of transitions from one sections to another
-* (helpful in finding OEP of packed file)
-* args:
-* -m    <module_name> ; Analysed module name (by default same as app name)
-* -o    <output_path> Output file
-*
+* Documentation: https://github.com/hasherezade/tiny_tracer/wiki
 */
 #include "pin.H"
 
@@ -900,15 +895,16 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, VOID *str)
 
 VOID InstrumentInstruction(INS ins, VOID *v)
 {
-    if (m_Settings.disasmStart || m_Settings.disasmStop)
-    INS_InsertCall(
-        ins,
-        IPOINT_BEFORE, (AFUNPTR)LogInstruction,
-        IARG_CONTEXT,
-        IARG_THREAD_ID,
-        IARG_PTR, new std::string(INS_Disassemble(ins)),
-        IARG_END
-    );
+    if (m_Settings.disasmStart) {
+        INS_InsertCall(
+            ins,
+            IPOINT_BEFORE, (AFUNPTR)LogInstruction,
+            IARG_CONTEXT,
+            IARG_THREAD_ID,
+            IARG_PTR, new std::string(INS_Disassemble(ins)),
+            IARG_END
+        );
+    }
     if (m_Settings.stopOffsets.size() > 0 && m_Settings.stopOffsetTime) {
         INS_InsertCall(
             ins,
