@@ -98,7 +98,8 @@ public:
         antivm(WATCH_DISABLED),
         useDebugSym(false),
         isHyperVSet(false),
-        emulateSingleStep(true)
+        emulateSingleStep(true),
+        disasmStart(0), disasmStop(0)
     {
     }
 
@@ -123,6 +124,8 @@ public:
     bool useDebugSym;
     bool isHyperVSet; // emulate HyperV via CPUID (it changes execution path of some protectors, i.e. VMProtect). Works when antivm is enabled. 
     bool emulateSingleStep; // If the Trap Flag is set, throw a SINGLE_STEP exception emulating the typical behavior. Works when antidebug is enabled. 
+    int disasmStart;
+    int disasmStop;
 
     SyscallsTable syscallsTable; //Syscalls table: mapping the syscall ID to the function name
     FuncWatchList funcWatch; //List of functions, arguments of which are going to be logged

@@ -24,6 +24,8 @@
 #define KEY_HYPREV_SET                  "EMULATE_HYPERV"
 #define KEY_STOP_OFFSET_TIME            "STOP_OFFSET_TIME"
 #define KEY_EMULATE_SINGLE_STEP         "EMULATE_SINGLE_STEP"
+#define KEY_DISASM_START                "DISASM_START"
+#define KEY_DISASM_STOP                 "DISASM_STOP"
 
 t_shellc_options ConvertShcOption(int value)
 {
@@ -189,6 +191,14 @@ bool fillSettings(Settings &s, std::string line)
         s.emulateSingleStep = loadBoolean(valStr, s.emulateSingleStep);
         isFilled = true;
     }
+    if (util::iequals(valName, KEY_DISASM_START)) {
+        s.disasmStart = util::loadInt(valStr, true);
+        isFilled = true;
+    }
+    if (util::iequals(valName, KEY_DISASM_STOP)) {
+        s.disasmStop = util::loadInt(valStr, true);
+        isFilled = true;
+    }
     return isFilled;
 }
 
@@ -246,6 +256,8 @@ bool Settings::saveINI(const std::string &filename)
     myfile << KEY_HYPREV_SET << DELIM << this->isHyperVSet << "\r\n";
     myfile << KEY_STOP_OFFSET_TIME << DELIM << std::dec << this->stopOffsetTime << "\r\n";
     myfile << KEY_EMULATE_SINGLE_STEP << DELIM << std::dec << this->emulateSingleStep << "\r\n";
+    myfile << KEY_DISASM_START << DELIM << std::hex << this->disasmStart << "\r\n";
+    myfile << KEY_DISASM_STOP << DELIM << std::hex << this->disasmStop << "\r\n";
     myfile.close();
     return true;
 }

@@ -138,7 +138,7 @@ WatchedType isWatchedAddress(const ADDRINT Address)
             return WatchedType::WATCHED_SHELLCODE;
         }
     }
-    return WatchedType::NOT_WATCHED;;
+    return WatchedType::NOT_WATCHED;
 }
 
 /* ===================================================================== */
@@ -843,12 +843,72 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
     RTN_Close(funcRtn);
 }
 
+
+VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, VOID *str)
+{
+    std::string* strPtr = (std::string*)str;
+    if (!strPtr) return;
+
+    PinLocker locker;
+    static BOOL traceStarted = FALSE;
+
+    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+    const WatchedType wType = isWatchedAddress(Address);
+
+    if (wType == WatchedType::NOT_WATCHED) {
+        return;
+    }
+
+    ADDRINT rva = UNKNOWN_ADDR;
+    ADDRINT base = UNKNOWN_ADDR;
+    if (wType == WatchedType::WATCHED_MY_MODULE) {
+        rva = addr_to_rva(Address); // convert to RVA
+        base = 0;
+        if (rva == (ADDRINT)m_Settings.disasmStart) {
+            traceStarted = TRUE;
+        }
+    }
+    if (!traceStarted) {
+        return;
+    }
+    if (wType == WatchedType::WATCHED_SHELLCODE) {
+        base = query_region_base(Address);
+        rva = Address - base;
+    }
+    if (base != UNKNOWN_ADDR && rva != UNKNOWN_ADDR) {
+        std::stringstream ss;
+        ss << "[" << tid << "] ";
+        ss << (*strPtr);
+        if (!base && rva == (ADDRINT)m_Settings.disasmStart) {
+            ss << " # disasm start";
+        }
+        if (!base && rva == (ADDRINT)m_Settings.disasmStop) {
+            ss << " # disasm end";
+        }
+        traceLog.logInstruction(base, rva, ss.str());
+    }
+
+    if (wType == WatchedType::WATCHED_MY_MODULE && rva == (ADDRINT)m_Settings.disasmStop) {
+        traceStarted = FALSE;
+    }
+}
+
+
 /* ===================================================================== */
 // Instrumentation callbacks
 /* ===================================================================== */
 
 VOID InstrumentInstruction(INS ins, VOID *v)
 {
+    if (m_Settings.disasmStart || m_Settings.disasmStop)
+    INS_InsertCall(
+        ins,
+        IPOINT_BEFORE, (AFUNPTR)LogInstruction,
+        IARG_CONTEXT,
+        IARG_THREAD_ID,
+        IARG_PTR, new std::string(INS_Disassemble(ins)),
+        IARG_END
+    );
     if (m_Settings.stopOffsets.size() > 0 && m_Settings.stopOffsetTime) {
         INS_InsertCall(
             ins,
