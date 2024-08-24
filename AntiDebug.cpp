@@ -185,7 +185,6 @@ VOID AntiDbg::WatchCompareSoftBrk(ADDRINT Address, UINT64 immVal)
 namespace AntiDbg {
     std::set<THREADID> popfThreads;
 
-#define CLEAR_TRAP
     VOID FlagsCheck(const CONTEXT* ctxt, THREADID tid)
     {
         PinLocker locker;
@@ -206,11 +205,12 @@ namespace AntiDbg {
         LogAntiDbg(wType, Address, "Trap Flag set",
             "https://anti-debug.checkpoint.com/techniques/assembly.html#popf_and_trap_flag");
 
-    #ifdef CLEAR_TRAP
         pushedVal ^= 0x100;
-        ::memcpy((void*)stackPtr, &pushedVal, sizeof(pushedVal));
-        popfThreads.insert(tid);
-    #endif
+        PIN_SafeCopy((VOID*)stackPtr, (const VOID*)&pushedVal, sizeof(pushedVal));
+
+        if (m_Settings.emulateSingleStep) {
+            popfThreads.insert(tid);
+        }
     }
 
     VOID FlagsCheck_after(const CONTEXT* ctxt, THREADID tid, ADDRINT eip)
@@ -238,15 +238,16 @@ VOID AntiDbg::InstrumentFlagsCheck(INS ins)
         IARG_THREAD_ID,
         IARG_END
     );
-
-    INS_InsertCall(
-        ins,
-        IPOINT_AFTER, (AFUNPTR)FlagsCheck_after,
-        IARG_CONTEXT,
-        IARG_THREAD_ID,
-        IARG_INST_PTR,
-        IARG_END
-    );
+    if (m_Settings.emulateSingleStep) {
+        INS_InsertCall(
+            ins,
+            IPOINT_AFTER, (AFUNPTR)FlagsCheck_after,
+            IARG_CONTEXT,
+            IARG_THREAD_ID,
+            IARG_INST_PTR,
+            IARG_END
+        );
+    }
 }
 
 VOID AntiDbg::InterruptCheck(const CONTEXT* ctxt)

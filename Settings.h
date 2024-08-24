@@ -97,7 +97,8 @@ public:
         antidebug(WATCH_DISABLED),
         antivm(WATCH_DISABLED),
         useDebugSym(false),
-        isHyperVSet(false)
+        isHyperVSet(false),
+        emulateSingleStep(true)
     {
     }
 
@@ -117,10 +118,11 @@ public:
     bool hookSleep;
     size_t sleepTime; // Define the time that will be passed to the hooked sleep function (in miliseconds)
     size_t stopOffsetTime; // Sleep time at the stop offset (in seconds)
-    t_watch_level antidebug;
-    t_watch_level antivm; // Trace Anti-VM techniques (WMI queries)
+    t_watch_level antidebug; // Trace Anti-VM techniques, and bypasses some of them
+    t_watch_level antivm; // Trace Anti-VM techniques, and bypasses some of them
     bool useDebugSym;
-    bool isHyperVSet;
+    bool isHyperVSet; // emulate HyperV via CPUID (it changes execution path of some protectors, i.e. VMProtect). Works when antivm is enabled. 
+    bool emulateSingleStep; // If the Trap Flag is set, throw a SINGLE_STEP exception emulating the typical behavior. Works when antidebug is enabled. 
 
     SyscallsTable syscallsTable; //Syscalls table: mapping the syscall ID to the function name
     FuncWatchList funcWatch; //List of functions, arguments of which are going to be logged

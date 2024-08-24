@@ -23,6 +23,7 @@
 #define KEY_USE_DEBUG_SYMBOLS           "USE_DEBUG_SYMBOLS"
 #define KEY_HYPREV_SET                  "EMULATE_HYPERV"
 #define KEY_STOP_OFFSET_TIME            "STOP_OFFSET_TIME"
+#define KEY_EMULATE_SINGLE_STEP         "EMULATE_SINGLE_STEP"
 
 t_shellc_options ConvertShcOption(int value)
 {
@@ -184,6 +185,10 @@ bool fillSettings(Settings &s, std::string line)
         s.isHyperVSet = loadBoolean(valStr, s.isHyperVSet);
         isFilled = true;
     }
+    if (util::iequals(valName, KEY_EMULATE_SINGLE_STEP)) {
+        s.emulateSingleStep = loadBoolean(valStr, s.emulateSingleStep);
+        isFilled = true;
+    }
     return isFilled;
 }
 
@@ -233,13 +238,14 @@ bool Settings::saveINI(const std::string &filename)
     myfile << KEY_SHORT_LOGGING << DELIM << this->shortLogging << "\r\n";
     myfile << KEY_USE_DEBUG_SYMBOLS << DELIM << this->useDebugSym << "\r\n";
     myfile << HEXDUMP_SIZE << DELIM << std::dec << this->hexdumpSize << "\r\n";
-    myfile << HOOK_SLEEP << DELIM << this->hookSleep << "\r\n";
+    myfile << HOOK_SLEEP << DELIM << std::dec << this->hookSleep << "\r\n";
     myfile << SLEEP_TIME << DELIM << std::dec << this->sleepTime << "\r\n";
     myfile << LOG_INDIRECT << DELIM << this->logIndirect << "\r\n";
     myfile << KEY_ANTIDEBUG << DELIM << this->antidebug << "\r\n";
     myfile << KEY_ANTIVM << DELIM << this->antivm << "\r\n";
     myfile << KEY_HYPREV_SET << DELIM << this->isHyperVSet << "\r\n";
-    myfile << KEY_STOP_OFFSET_TIME << std::dec << this->stopOffsetTime << "\r\n";
+    myfile << KEY_STOP_OFFSET_TIME << DELIM << std::dec << this->stopOffsetTime << "\r\n";
+    myfile << KEY_EMULATE_SINGLE_STEP << DELIM << std::dec << this->emulateSingleStep << "\r\n";
     myfile.close();
     return true;
 }
