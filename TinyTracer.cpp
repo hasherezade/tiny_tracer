@@ -16,6 +16,7 @@
 #include "ProcessInfo.h"
 #include "TraceLog.h"
 #include "PinLocker.h"
+#include "DisasmCache.h"
 
 #define TOOL_NAME "TinyTracer"
 #define VERSION "2.8"
@@ -771,13 +772,13 @@ std::wstring paramToStr(VOID *arg1)
     }
     if (!isString) {
         ss << " -> {";
-        ss << util::hexdump(reinterpret_cast<const uint8_t*>(val), m_Settings.hexdumpSize);
-        ss << "}";
+ss << util::hexdump(reinterpret_cast<const uint8_t*>(val), m_Settings.hexdumpSize);
+ss << "}";
     }
     return ss.str();
 }
 
-VOID _LogFunctionArgs(const ADDRINT Address, const CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10, VOID* arg11)
+VOID _LogFunctionArgs(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10, VOID* arg11)
 {
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
 
@@ -796,7 +797,7 @@ VOID _LogFunctionArgs(const ADDRINT Address, const CHAR *name, uint32_t argCount
     traceLog.logLine(s);
 }
 
-VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10, VOID* arg11)
+VOID LogFunctionArgs(const ADDRINT Address, CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10, VOID* arg11)
 {
     if (argCount == 0) return;
 
@@ -804,7 +805,7 @@ VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID 
     _LogFunctionArgs(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
 }
 
-VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
+VOID MonitorFunctionArgs(IMG Image, const WFuncInfo& funcInfo)
 {
     const size_t argsMax = LOGGED_ARGS_MAX;
     const CHAR* fName = funcInfo.funcName.c_str();
@@ -838,19 +839,14 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
     RTN_Close(funcRtn);
 }
 
-struct InstrInfo
-{
-    std::string disasm;
-    InstrInfo(const InstrInfo& other) {
-        this->disasm = other.disasm;
-    }
-    InstrInfo(const std::string& _disasm) : disasm(_disasm) {}
-    ~InstrInfo() {}
-};
+DisasmCache m_disasmCache;
 
-VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, std::string& insDis)
+VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, InstrInfo* disasmInfo)//, std::string* str)
 {
+    if (!disasmInfo) return;
+
     PinLocker locker;
+
     static BOOL traceStarted = FALSE;
 
     const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
@@ -876,10 +872,18 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, std::string& insDis)
         base = query_region_base(Address);
         rva = Address - base;
     }
+/*
+    if (str->compare(*disasmInfo->disasm) != 0) {
+        std::cout << "Different strings!!! "
+            << disasmInfo->disasm->c_str() << " (" <<std::hex << InstrInfo::calcChecks(*disasmInfo->disasm) << ") != "
+            << *str << " (" << std::hex << InstrInfo::calcChecks(*str) << ")" << std::endl;
+    }
+*/
     if (base != UNKNOWN_ADDR && rva != UNKNOWN_ADDR) {
         std::stringstream ss;
-        ss << "[" << tid << "] ";
-        ss << insDis;
+        ss << "[" << std::dec << tid << "] ";
+        ss << std::hex << disasmInfo->checks << " : ";
+        ss << disasmInfo->disasm->c_str();
         if (!base && rva == (ADDRINT)m_Settings.disasmStart) {
             ss << " # disasm start";
         }
@@ -899,17 +903,22 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, std::string& insDis)
 // Instrumentation callbacks
 /* ===================================================================== */
 
+
 VOID InstrumentInstruction(INS ins, VOID *v)
 {
     if (m_Settings.disasmStart) {
-        INS_InsertCall(
-            ins,
-            IPOINT_BEFORE, (AFUNPTR)LogInstruction,
-            IARG_CONTEXT,
-            IARG_THREAD_ID,
-            IARG_PTR, new std::string(INS_Disassemble(ins)),
-            IARG_END
-        );
+        InstrInfo *info = m_disasmCache.put(INS_Disassemble(ins));
+        if (info) {
+            INS_InsertCall(
+                ins,
+                IPOINT_BEFORE, (AFUNPTR)LogInstruction,
+                IARG_CONTEXT,
+                IARG_THREAD_ID,
+                IARG_PTR, info,
+                //IARG_PTR, new std::string(INS_Disassemble(ins)),
+                IARG_END
+            );
+        }
     }
     if (m_Settings.stopOffsets.size() > 0 && m_Settings.stopOffsetTime) {
         INS_InsertCall(
