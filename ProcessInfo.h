@@ -8,6 +8,8 @@
 class ProcessInfo
 {
 public:
+
+
     ProcessInfo()
         : m_myPid(0), isInit(false)
     {
@@ -54,7 +56,9 @@ public:
         \return : true if the section changed, false otherwise
     */
     const bool updateTracedModuleSection(ADDRINT Rva);
-    
+
+    bool isMyImg(IMG Image) const;
+
 protected:
     
     void addModuleSections(IMG Image, ADDRINT ImageBase);

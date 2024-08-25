@@ -16,9 +16,10 @@
 #include "ProcessInfo.h"
 #include "TraceLog.h"
 #include "PinLocker.h"
+#include "DisasmCache.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.8"
+#define VERSION "2.8.1"
 
 #include "Util.h"
 #include "Settings.h"
@@ -771,13 +772,13 @@ std::wstring paramToStr(VOID *arg1)
     }
     if (!isString) {
         ss << " -> {";
-        ss << util::hexdump(reinterpret_cast<const uint8_t*>(val), m_Settings.hexdumpSize);
-        ss << "}";
+ss << util::hexdump(reinterpret_cast<const uint8_t*>(val), m_Settings.hexdumpSize);
+ss << "}";
     }
     return ss.str();
 }
 
-VOID _LogFunctionArgs(const ADDRINT Address, const CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10, VOID* arg11)
+VOID _LogFunctionArgs(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10, VOID* arg11)
 {
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
 
@@ -796,7 +797,7 @@ VOID _LogFunctionArgs(const ADDRINT Address, const CHAR *name, uint32_t argCount
     traceLog.logLine(s);
 }
 
-VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID *arg1, VOID *arg2, VOID *arg3, VOID *arg4, VOID *arg5, VOID *arg6, VOID *arg7, VOID *arg8, VOID *arg9, VOID *arg10, VOID* arg11)
+VOID LogFunctionArgs(const ADDRINT Address, CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10, VOID* arg11)
 {
     if (argCount == 0) return;
 
@@ -804,7 +805,7 @@ VOID LogFunctionArgs(const ADDRINT Address, CHAR *name, uint32_t argCount, VOID 
     _LogFunctionArgs(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
 }
 
-VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
+VOID MonitorFunctionArgs(IMG Image, const WFuncInfo& funcInfo)
 {
     const size_t argsMax = LOGGED_ARGS_MAX;
     const CHAR* fName = funcInfo.funcName.c_str();
@@ -838,13 +839,14 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
     RTN_Close(funcRtn);
 }
 
+DisasmCache m_disasmCache;
 
-VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, VOID *str)
+VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, std::string* disasm)
 {
-    std::string* strPtr = (std::string*)str;
-    if (!strPtr) return;
+    if (!disasm) return;
 
     PinLocker locker;
+
     static BOOL traceStarted = FALSE;
 
     const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
@@ -872,8 +874,8 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, VOID *str)
     }
     if (base != UNKNOWN_ADDR && rva != UNKNOWN_ADDR) {
         std::stringstream ss;
-        ss << "[" << tid << "] ";
-        ss << (*strPtr);
+        ss << "[" << std::dec << tid << "] ";
+        ss << disasm->c_str();
         if (!base && rva == (ADDRINT)m_Settings.disasmStart) {
             ss << " # disasm start";
         }
@@ -893,19 +895,33 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, VOID *str)
 // Instrumentation callbacks
 /* ===================================================================== */
 
+
 VOID InstrumentInstruction(INS ins, VOID *v)
 {
-    if (m_Settings.disasmStart) {
-        INS_InsertCall(
-            ins,
-            IPOINT_BEFORE, (AFUNPTR)LogInstruction,
-            IARG_CONTEXT,
-            IARG_THREAD_ID,
-            IARG_PTR, new std::string(INS_Disassemble(ins)),
-            IARG_END
-        );
+    IMG pImg = IMG_FindByAddress(INS_Address(ins));
+    const BOOL isMyImg = pInfo.isMyImg(pImg);
+    BOOL shouldTrace = isMyImg;
+    if (m_Settings.followShellcode != t_shellc_options::SHELLC_DO_NOT_FOLLOW
+        && !IMG_Valid(pImg))
+    {
+        shouldTrace = TRUE;
     }
-    if (m_Settings.stopOffsets.size() > 0 && m_Settings.stopOffsetTime) {
+    if (!shouldTrace) return;
+
+    if (m_Settings.disasmStart) {
+        std::string* disasm = m_disasmCache.put(INS_Disassemble(ins));
+        if (disasm) {
+            INS_InsertCall(
+                ins,
+                IPOINT_BEFORE, (AFUNPTR)LogInstruction,
+                IARG_CONTEXT,
+                IARG_THREAD_ID,
+                IARG_PTR, disasm,
+                IARG_END
+            );
+        }
+    }
+    if (m_Settings.stopOffsets.size() > 0 && m_Settings.stopOffsetTime && isMyImg) {
         INS_InsertCall(
             ins,
             IPOINT_BEFORE, (AFUNPTR)PauseAtOffset,

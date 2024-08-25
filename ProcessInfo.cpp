@@ -44,6 +44,13 @@ void ProcessInfo::addModuleSections(IMG Image, ADDRINT ImageBase)
     }
 }
 
+bool ProcessInfo::isMyImg(IMG Image) const
+{
+    if (!IMG_Valid(Image)) return false;
+
+    return is_my_name(IMG_Name(Image), m_AnalysedApp);
+}
+
 bool ProcessInfo::addModule(IMG Image)
 {
     // if this module is an object of observation, add its sections also
