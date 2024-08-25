@@ -906,21 +906,31 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, InstrInfo* disasmInfo)//,
 
 VOID InstrumentInstruction(INS ins, VOID *v)
 {
+    IMG pImg = IMG_FindByAddress(INS_Address(ins));
+    const BOOL isMyImg = pInfo.isMyImg(pImg);
+
     if (m_Settings.disasmStart) {
-        InstrInfo *info = m_disasmCache.put(INS_Disassemble(ins));
-        if (info) {
-            INS_InsertCall(
-                ins,
-                IPOINT_BEFORE, (AFUNPTR)LogInstruction,
-                IARG_CONTEXT,
-                IARG_THREAD_ID,
-                IARG_PTR, info,
-                //IARG_PTR, new std::string(INS_Disassemble(ins)),
-                IARG_END
-            );
+        BOOL shouldTrace = isMyImg;
+        if (m_Settings.followShellcode != t_shellc_options::SHELLC_DO_NOT_FOLLOW && !IMG_Valid(pImg)) {
+            shouldTrace = TRUE;
         }
+        if (shouldTrace) {
+            InstrInfo* info = m_disasmCache.put(INS_Disassemble(ins));
+            if (info) {
+                INS_InsertCall(
+                    ins,
+                    IPOINT_BEFORE, (AFUNPTR)LogInstruction,
+                    IARG_CONTEXT,
+                    IARG_THREAD_ID,
+                    IARG_PTR, info,
+                    //IARG_PTR, new std::string(INS_Disassemble(ins)),
+                    IARG_END
+                );
+            }
+        }
+
     }
-    if (m_Settings.stopOffsets.size() > 0 && m_Settings.stopOffsetTime) {
+    if (m_Settings.stopOffsets.size() > 0 && m_Settings.stopOffsetTime && isMyImg) {
         INS_InsertCall(
             ins,
             IPOINT_BEFORE, (AFUNPTR)PauseAtOffset,
