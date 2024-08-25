@@ -841,9 +841,9 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo& funcInfo)
 
 DisasmCache m_disasmCache;
 
-VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, InstrInfo* disasmInfo)//, std::string* str)
+VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, std::string* disasm)
 {
-    if (!disasmInfo) return;
+    if (!disasm) return;
 
     PinLocker locker;
 
@@ -872,18 +872,10 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, InstrInfo* disasmInfo)//,
         base = query_region_base(Address);
         rva = Address - base;
     }
-/*
-    if (str->compare(*disasmInfo->disasm) != 0) {
-        std::cout << "Different strings!!! "
-            << disasmInfo->disasm->c_str() << " (" <<std::hex << InstrInfo::calcChecks(*disasmInfo->disasm) << ") != "
-            << *str << " (" << std::hex << InstrInfo::calcChecks(*str) << ")" << std::endl;
-    }
-*/
     if (base != UNKNOWN_ADDR && rva != UNKNOWN_ADDR) {
         std::stringstream ss;
         ss << "[" << std::dec << tid << "] ";
-        ss << std::hex << disasmInfo->checks << " : ";
-        ss << disasmInfo->disasm->c_str();
+        ss << disasm->c_str();
         if (!base && rva == (ADDRINT)m_Settings.disasmStart) {
             ss << " # disasm start";
         }
@@ -909,21 +901,22 @@ VOID InstrumentInstruction(INS ins, VOID *v)
     IMG pImg = IMG_FindByAddress(INS_Address(ins));
     const BOOL isMyImg = pInfo.isMyImg(pImg);
     BOOL shouldTrace = isMyImg;
-    if (m_Settings.followShellcode != t_shellc_options::SHELLC_DO_NOT_FOLLOW && !IMG_Valid(pImg)) {
+    if (m_Settings.followShellcode != t_shellc_options::SHELLC_DO_NOT_FOLLOW
+        && !IMG_Valid(pImg))
+    {
         shouldTrace = TRUE;
     }
     if (!shouldTrace) return;
 
     if (m_Settings.disasmStart) {
-        InstrInfo* info = m_disasmCache.put(INS_Disassemble(ins));
-        if (info) {
+        std::string* disasm = m_disasmCache.put(INS_Disassemble(ins));
+        if (disasm) {
             INS_InsertCall(
                 ins,
                 IPOINT_BEFORE, (AFUNPTR)LogInstruction,
                 IARG_CONTEXT,
                 IARG_THREAD_ID,
-                IARG_PTR, info,
-                //IARG_PTR, new std::string(INS_Disassemble(ins)),
+                IARG_PTR, disasm,
                 IARG_END
             );
         }

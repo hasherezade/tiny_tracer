@@ -4,11 +4,11 @@
 #include <string>
 #include <map>
 
-#include "crc.h"
+#include "Crc.h"
 
 //----
 
-struct InstrInfo
+struct DisasmCache
 {
     static uint64_t calcChecks(const std::string& _disasm)
     {
@@ -16,31 +16,6 @@ struct InstrInfo
         return crc64(init, (unsigned char*)_disasm.c_str(), _disasm.length());
     }
 
-    //---
-
-    InstrInfo() : disasm(nullptr), checks(0) { }
-
-    InstrInfo(const InstrInfo& other) {
-        this->disasm = new std::string(other.disasm->c_str());
-        this->checks = other.checks;
-    }
-
-    InstrInfo(const std::string& _disasm)
-        : disasm(nullptr), checks(0)
-    {
-        this->disasm = new std::string(_disasm.c_str());
-        this->checks = calcChecks(_disasm);
-    }
-
-	~InstrInfo() { delete disasm; }
-
-	//---
-	std::string* disasm;
-	uint64_t checks;
-};
-
-struct DisasmCache
-{
 	DisasmCache() {}
 
 	~DisasmCache() {
@@ -50,7 +25,7 @@ struct DisasmCache
 		}
 	}
 
-    InstrInfo* get(uint32_t crc32)
+    std::string* get(uint32_t crc32)
     {
         auto itr = disasmLines.find(crc32);
         if (itr == disasmLines.end()) {
@@ -59,18 +34,17 @@ struct DisasmCache
         return disasmLines[crc32];
     }
 
-    InstrInfo* put(const std::string& _disasm)
+    std::string* put(const std::string& _disasm)
     {
-        auto checks = InstrInfo::calcChecks(_disasm);
-        auto itr = disasmLines.find(checks);
-        if (itr != disasmLines.end()) {
-            return itr->second;
+        auto checks = calcChecks(_disasm);
+        auto infoPtr = get(checks);
+        if (infoPtr) {
+            return infoPtr;
         }
-        InstrInfo* info = new InstrInfo(_disasm);
-        disasmLines[checks] = info;
-        return info;
+        disasmLines[checks] = new std::string(_disasm);
+        return disasmLines[checks];
     }
 
 	//---
-	std::map<uint64_t, InstrInfo*> disasmLines;
+	std::map<uint64_t, std::string*> disasmLines;
 };
