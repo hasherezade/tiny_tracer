@@ -838,12 +838,18 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo &funcInfo)
     RTN_Close(funcRtn);
 }
 
-
-VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, VOID *str)
+struct InstrInfo
 {
-    std::string* strPtr = (std::string*)str;
-    if (!strPtr) return;
+    std::string disasm;
+    InstrInfo(const InstrInfo& other) {
+        this->disasm = other.disasm;
+    }
+    InstrInfo(const std::string& _disasm) : disasm(_disasm) {}
+    ~InstrInfo() {}
+};
 
+VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, std::string& insDis)
+{
     PinLocker locker;
     static BOOL traceStarted = FALSE;
 
@@ -873,7 +879,7 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, VOID *str)
     if (base != UNKNOWN_ADDR && rva != UNKNOWN_ADDR) {
         std::stringstream ss;
         ss << "[" << tid << "] ";
-        ss << (*strPtr);
+        ss << insDis;
         if (!base && rva == (ADDRINT)m_Settings.disasmStart) {
             ss << " # disasm start";
         }
