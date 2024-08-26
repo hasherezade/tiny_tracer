@@ -906,84 +906,23 @@ VOID InstrumentInstruction(INS ins, VOID *v)
     {
         inWatchedModule = TRUE;
     }
-
-    if (inWatchedModule) {
-        if (m_Settings.disasmStart) {
-            const char* disasm = m_disasmCache.put(INS_Disassemble(ins));
-            if (disasm) {
-                INS_InsertCall(
-                    ins,
-                    IPOINT_BEFORE, (AFUNPTR)LogInstruction,
-                    IARG_CONTEXT,
-                    IARG_THREAD_ID,
-                    IARG_PTR, disasm,
-                    IARG_END
-                );
-            }
-        }
-
-        if (m_Settings.stopOffsets.size() > 0 && m_Settings.stopOffsetTime && isMyImg) {
+    // only the main module or shellcodes:
+    if (inWatchedModule && m_Settings.disasmStart) {
+        const char* disasm = m_disasmCache.put(INS_Disassemble(ins));
+        if (disasm) {
             INS_InsertCall(
                 ins,
-                IPOINT_BEFORE, (AFUNPTR)PauseAtOffset,
+                IPOINT_BEFORE, (AFUNPTR)LogInstruction,
                 IARG_CONTEXT,
+                IARG_THREAD_ID,
+                IARG_PTR, disasm,
                 IARG_END
             );
-        }
-        if (util::isStrEqualI(INS_Mnemonic(ins), "cpuid")) {
-            INS_InsertCall(
-                ins,
-                IPOINT_BEFORE, (AFUNPTR)CpuidCalled,
-                IARG_CONTEXT,
-                IARG_END
-            );
-    #ifdef USE_ANTIVM
-            // ANTIVM: Register Function instrumentation needed for AntiVm
-            if (m_Settings.antivm != WATCH_DISABLED) {
-                AntiVm::InstrumentCPUIDCheck(ins);
-            }
-    #endif
-        }
-
-        if (m_Settings.traceINT) {
-            if (INS_IsInterrupt(ins)) {
-                INS_InsertCall(
-                    ins,
-                    IPOINT_BEFORE, (AFUNPTR)InterruptCalled,
-                    IARG_CONTEXT,
-                    IARG_END
-                );
-            }
-        }
-
-        if (INS_IsRDTSC(ins)) {
-            if (m_Settings.traceRDTSC) {
-                INS_InsertCall(
-                    ins,
-                    IPOINT_BEFORE, (AFUNPTR)RdtscCalled,
-                    IARG_CONTEXT,
-                    IARG_END
-                );
-            }
-
-            INS_InsertCall(
-                ins, 
-                IPOINT_AFTER, (AFUNPTR)AlterRdtscValueEdx,
-                IARG_CONTEXT,
-                IARG_RETURN_REGS, 
-                REG_GDX,
-                IARG_END);
-
-            INS_InsertCall(ins, 
-                IPOINT_AFTER, (AFUNPTR)AlterRdtscValueEax,
-                IARG_CONTEXT,
-                IARG_RETURN_REGS,
-                REG_GAX,
-                IARG_END);
         }
     }
-    //---
 
+    //---
+    // trace the control flow regardless of the module:
     const BOOL isFar = INS_IsFarCall(ins) || INS_IsFarJump(ins) || INS_IsFarRet(ins);
     if (isFar) {
         UINT16 segs = 0;
@@ -1015,8 +954,71 @@ VOID InstrumentInstruction(INS ins, VOID *v)
         );
     }
 
+    // after this point, we trace only the module of interest:
     if (!inWatchedModule) return;
 
+    // only in the main traced module:
+    if (isMyImg && m_Settings.stopOffsets.size() > 0 && m_Settings.stopOffsetTime) {
+        INS_InsertCall(
+            ins,
+            IPOINT_BEFORE, (AFUNPTR)PauseAtOffset,
+            IARG_CONTEXT,
+            IARG_END
+        );
+    }
+
+    // the main module or shellcodes:
+    if (util::isStrEqualI(INS_Mnemonic(ins), "cpuid")) {
+        INS_InsertCall(
+            ins,
+            IPOINT_BEFORE, (AFUNPTR)CpuidCalled,
+            IARG_CONTEXT,
+            IARG_END
+        );
+#ifdef USE_ANTIVM
+        // ANTIVM: Register Function instrumentation needed for AntiVm
+        if (m_Settings.antivm != WATCH_DISABLED) {
+            AntiVm::InstrumentCPUIDCheck(ins);
+        }
+#endif
+    }
+
+    if (m_Settings.traceINT) {
+        if (INS_IsInterrupt(ins)) {
+            INS_InsertCall(
+                ins,
+                IPOINT_BEFORE, (AFUNPTR)InterruptCalled,
+                IARG_CONTEXT,
+                IARG_END
+            );
+        }
+    }
+
+    if (INS_IsRDTSC(ins)) {
+        if (m_Settings.traceRDTSC) {
+            INS_InsertCall(
+                ins,
+                IPOINT_BEFORE, (AFUNPTR)RdtscCalled,
+                IARG_CONTEXT,
+                IARG_END
+            );
+        }
+
+        INS_InsertCall(
+            ins,
+            IPOINT_AFTER, (AFUNPTR)AlterRdtscValueEdx,
+            IARG_CONTEXT,
+            IARG_RETURN_REGS,
+            REG_GDX,
+            IARG_END);
+
+        INS_InsertCall(ins,
+            IPOINT_AFTER, (AFUNPTR)AlterRdtscValueEax,
+            IARG_CONTEXT,
+            IARG_RETURN_REGS,
+            REG_GAX,
+            IARG_END);
+    }
 #ifdef USE_ANTIDEBUG
     // ANTIDEBUG: memory read instrumentation
     
