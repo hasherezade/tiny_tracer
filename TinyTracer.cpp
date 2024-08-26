@@ -841,7 +841,7 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo& funcInfo)
 
 DisasmCache m_disasmCache;
 
-VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, std::string* disasm)
+VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
 {
     if (!disasm) return;
 
@@ -875,7 +875,7 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, std::string* disasm)
     if (base != UNKNOWN_ADDR && rva != UNKNOWN_ADDR) {
         std::stringstream ss;
         ss << "[" << std::dec << tid << "] ";
-        ss << disasm->c_str();
+        ss << disasm;
         if (!base && rva == (ADDRINT)m_Settings.disasmStart) {
             ss << " # disasm start";
         }
@@ -909,7 +909,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
 
     if (inWatchedModule) {
         if (m_Settings.disasmStart) {
-            std::string* disasm = m_disasmCache.put(INS_Disassemble(ins));
+            const char* disasm = m_disasmCache.put(INS_Disassemble(ins));
             if (disasm) {
                 INS_InsertCall(
                     ins,
