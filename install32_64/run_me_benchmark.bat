@@ -40,7 +40,18 @@ set SETTINGS_FILE=%PIN_TOOLS_DIR%\TinyTracer.ini
 
 rem WATCH_BEFORE - a file with a list of functions which's parameters will be logged before execution
 rem The file must be a list of records in a format: [dll_name];[func_name];[parameters_count]
+rem or, in case of tracing syscalls: <SYSCALL>;[syscallID:hex];[parameters_count] (where "<SYSCALL>" is a constant keyword)
 set WATCH_BEFORE=%PIN_TOOLS_DIR%\params.txt
+
+rem List of functions that will be excluded from logging
+rem The file must be a list of records in a format: [dll_name];[func_name]
+set EXCLUDED_FUNC=%PIN_TOOLS_DIR%\excluded.txt
+
+rem List of stop offsets: RVAs of the traced module where the execution should pause
+set STOP_OFFSETS=%PIN_TOOLS_DIR%\stop_offsets.txt
+
+rem SYSCALLS_TABLE - a CSV file, mapping syscall ID to a function name. Format: [syscallID:hex],[functionName]
+set SYSCALLS_TABLE=%PIN_TOOLS_DIR%\syscalls.txt
 
 set DLL_LOAD32=%PIN_TOOLS_DIR%\dll_load32.exe
 set DLL_LOAD64=%PIN_TOOLS_DIR%\dll_load64.exe
@@ -51,6 +62,12 @@ if exist %PIN_TOOLS_DIR%\kdb_check.exe (
 		echo Disable Kernel Mode Debugger before running the PIN tool!
 		pause
 		exit
+	)
+)
+
+if NOT exist %SYSCALLS_TABLE% (
+	if exist %PIN_TOOLS_DIR%\syscall_extract.exe (
+		%PIN_TOOLS_DIR%\syscall_extract.exe %SYSCALLS_TABLE%
 	)
 )
 
@@ -80,9 +97,8 @@ if [%IS_ADMIN%] == [A] (
 
 set ADMIN_CMD=%PIN_TOOLS_DIR%\sudo.vbs
 
-set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -- "%DLL_LOAD%" "%TARGET_APP%" %DLL_EXPORTS%
-set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -- "%TARGET_APP%" "%EXE_ARGS%"
-
+set DLL_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -x "%EXCLUDED_FUNC%" -p "%STOP_OFFSETS%" -l "%SYSCALLS_TABLE%" -- "%DLL_LOAD%" "%TARGET_APP%" %DLL_EXPORTS%
+set EXE_CMD=%PIN_DIR%\pin.exe -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -x "%EXCLUDED_FUNC%" -p "%STOP_OFFSETS%" -l "%SYSCALLS_TABLE%" -- "%TARGET_APP%" %EXE_ARGS%
 
 set start=%time%
 
@@ -122,7 +138,6 @@ if 1%ms% lss 100 set ms=0%ms%
 :: Mission accomplished
 set /a totalsecs = %hours%*3600 + %mins%*60 + %secs%
 echo command took %hours%:%mins%:%secs%.%ms% (%totalsecs%.%ms%s total)
-
 
 if [%IS_ADMIN%] == [A] (
 	rem In Admin mode, a new console should be created. Pause only if it failed, in order to display the error:
