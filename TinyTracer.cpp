@@ -898,87 +898,89 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, std::string* disasm)
 
 VOID InstrumentInstruction(INS ins, VOID *v)
 {
-    IMG pImg = IMG_FindByAddress(INS_Address(ins));
+    const IMG pImg = IMG_FindByAddress(INS_Address(ins));
     const BOOL isMyImg = pInfo.isMyImg(pImg);
-    BOOL shouldTrace = isMyImg;
+    BOOL inWatchedModule = isMyImg;
     if (m_Settings.followShellcode != t_shellc_options::SHELLC_DO_NOT_FOLLOW
         && !IMG_Valid(pImg))
     {
-        shouldTrace = TRUE;
-    }
-    if (!shouldTrace) return;
-
-    if (m_Settings.disasmStart) {
-        std::string* disasm = m_disasmCache.put(INS_Disassemble(ins));
-        if (disasm) {
-            INS_InsertCall(
-                ins,
-                IPOINT_BEFORE, (AFUNPTR)LogInstruction,
-                IARG_CONTEXT,
-                IARG_THREAD_ID,
-                IARG_PTR, disasm,
-                IARG_END
-            );
-        }
-    }
-    if (m_Settings.stopOffsets.size() > 0 && m_Settings.stopOffsetTime && isMyImg) {
-        INS_InsertCall(
-            ins,
-            IPOINT_BEFORE, (AFUNPTR)PauseAtOffset,
-            IARG_CONTEXT,
-            IARG_END
-        );
-    }
-    if (util::isStrEqualI(INS_Mnemonic(ins), "cpuid")) {
-        INS_InsertCall(
-            ins,
-            IPOINT_BEFORE, (AFUNPTR)CpuidCalled,
-            IARG_CONTEXT,
-            IARG_END
-        );
-#ifdef USE_ANTIVM
-        // ANTIVM: Register Function instrumentation needed for AntiVm
-        if (m_Settings.antivm != WATCH_DISABLED) {
-            AntiVm::InstrumentCPUIDCheck(ins);
-        }
-#endif
+        inWatchedModule = TRUE;
     }
 
-    if (m_Settings.traceINT) {
-        if (INS_IsInterrupt(ins)) {
+    if (inWatchedModule) {
+        if (m_Settings.disasmStart) {
+            std::string* disasm = m_disasmCache.put(INS_Disassemble(ins));
+            if (disasm) {
+                INS_InsertCall(
+                    ins,
+                    IPOINT_BEFORE, (AFUNPTR)LogInstruction,
+                    IARG_CONTEXT,
+                    IARG_THREAD_ID,
+                    IARG_PTR, disasm,
+                    IARG_END
+                );
+            }
+        }
+
+        if (m_Settings.stopOffsets.size() > 0 && m_Settings.stopOffsetTime && isMyImg) {
             INS_InsertCall(
                 ins,
-                IPOINT_BEFORE, (AFUNPTR)InterruptCalled,
+                IPOINT_BEFORE, (AFUNPTR)PauseAtOffset,
                 IARG_CONTEXT,
                 IARG_END
             );
         }
-    }
-
-    if (INS_IsRDTSC(ins)) {
-        if (m_Settings.traceRDTSC) {
+        if (util::isStrEqualI(INS_Mnemonic(ins), "cpuid")) {
             INS_InsertCall(
                 ins,
-                IPOINT_BEFORE, (AFUNPTR)RdtscCalled,
+                IPOINT_BEFORE, (AFUNPTR)CpuidCalled,
                 IARG_CONTEXT,
                 IARG_END
             );
+    #ifdef USE_ANTIVM
+            // ANTIVM: Register Function instrumentation needed for AntiVm
+            if (m_Settings.antivm != WATCH_DISABLED) {
+                AntiVm::InstrumentCPUIDCheck(ins);
+            }
+    #endif
         }
 
-        INS_InsertCall(
-            ins, 
-            IPOINT_AFTER, (AFUNPTR)AlterRdtscValueEdx,
-            IARG_CONTEXT,
-            IARG_RETURN_REGS, 
-            REG_GDX,
-            IARG_END);
+        if (m_Settings.traceINT) {
+            if (INS_IsInterrupt(ins)) {
+                INS_InsertCall(
+                    ins,
+                    IPOINT_BEFORE, (AFUNPTR)InterruptCalled,
+                    IARG_CONTEXT,
+                    IARG_END
+                );
+            }
+        }
 
-        INS_InsertCall(ins, 
-            IPOINT_AFTER, (AFUNPTR)AlterRdtscValueEax,
-            IARG_CONTEXT,
-            IARG_RETURN_REGS,
-            REG_GAX,
-            IARG_END);
+        if (INS_IsRDTSC(ins)) {
+            if (m_Settings.traceRDTSC) {
+                INS_InsertCall(
+                    ins,
+                    IPOINT_BEFORE, (AFUNPTR)RdtscCalled,
+                    IARG_CONTEXT,
+                    IARG_END
+                );
+            }
+
+            INS_InsertCall(
+                ins, 
+                IPOINT_AFTER, (AFUNPTR)AlterRdtscValueEdx,
+                IARG_CONTEXT,
+                IARG_RETURN_REGS, 
+                REG_GDX,
+                IARG_END);
+
+            INS_InsertCall(ins, 
+                IPOINT_AFTER, (AFUNPTR)AlterRdtscValueEax,
+                IARG_CONTEXT,
+                IARG_RETURN_REGS,
+                REG_GAX,
+                IARG_END);
+        }
     }
     //---
 
@@ -1012,6 +1014,8 @@ VOID InstrumentInstruction(INS ins, VOID *v)
             IARG_END
         );
     }
+
+    if (!inWatchedModule) return;
 
 #ifdef USE_ANTIDEBUG
     // ANTIDEBUG: memory read instrumentation
