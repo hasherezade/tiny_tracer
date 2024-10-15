@@ -841,6 +841,63 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo& funcInfo)
 
 DisasmCache m_disasmCache;
 
+std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
+{
+    std::stringstream ss;
+    const char *reg_names[] = {
+        "rdi",
+        "rsi",
+        "rbp",
+        "rsp",
+        "rbx",
+        "rdx",
+        "rcx",
+        "rax",
+        "r8",
+        "r9",
+        "r10",
+        "r11",
+        "r12",
+        "r13",
+        "r14",
+        "r15",
+    };
+    const REG regs[] =
+    {
+        REG_GDI,
+        REG_GSI,
+        REG_GBP,
+        REG_STACK_PTR,
+        REG_GBX,
+        REG_GDX,
+        REG_GCX,
+        REG_GAX,
+        REG_R8,
+        REG_R9,
+        REG_R10,
+        REG_R11,
+        REG_R12,
+        REG_R13,
+        REG_R14,
+        REG_R15
+    };
+    const size_t count = sizeof(regs) / sizeof(regs[0]);
+    static ADDRINT values[count] = { 0 };
+
+    for (size_t i = 0; i < count; i++) {
+        REG reg = regs[i];
+        const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctx, reg);
+        if (values[i] == Address) continue;
+        values[i] = Address;
+        ss << reg_names[i] << " = " << std::hex << Address << " ";
+    }
+    std::string out = ss.str();
+    if (out.length()) {
+        return "{ " + out + " }";
+    }
+    return "";
+}
+
 VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
 {
     if (!disasm) return;
@@ -876,12 +933,8 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
         std::stringstream ss;
         ss << "[" << std::dec << tid << "] ";
         ss << disasm;
-        if (!base && rva == (ADDRINT)m_Settings.disasmStart) {
-            ss << " # disasm start";
-        }
-        if (!base && rva == (ADDRINT)m_Settings.disasmStop) {
-            ss << " # disasm end";
-        }
+
+        ss << "\n\t\t\t\t" << dumpContext(disasm, ctxt);
         traceLog.logInstruction(base, rva, ss.str());
     }
 
