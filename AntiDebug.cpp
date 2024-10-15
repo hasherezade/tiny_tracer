@@ -256,7 +256,7 @@ VOID AntiDbg::InterruptCheck(const CONTEXT* ctxt)
     const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
     const WatchedType wType = isWatchedAddress(Address);
     if (wType == WatchedType::NOT_WATCHED) return;
-    
+
     int interruptID = 0;
     if (!fetchInterruptID(Address, interruptID)) return;
 
@@ -539,7 +539,7 @@ VOID AntiDbg::WatchThreadStart(THREADID threadid, CONTEXT* ctxt, INT32 flags, VO
 #endif
 
     // Get Heap flags addresses (https://anti-debug.checkpoint.com/techniques/debug-flags.html#manual-checks-heap-flags)
-    if (!PIN_SafeCopy(&heapBase, reinterpret_cast<VOID*>(m_pebAddr + heapBaseOffset), sizeof(heapBase)) == sizeof(heapBase)) {
+    if (PIN_SafeCopy(&heapBase, reinterpret_cast<VOID*>(m_pebAddr + heapBaseOffset), sizeof(heapBase)) != sizeof(heapBase)) {
         return;
     }
     m_heapFlags = heapBase + heapFlagsOffset;
