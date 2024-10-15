@@ -904,8 +904,6 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
 
     PinLocker locker;
 
-    static BOOL traceStarted = FALSE;
-
     const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
     const WatchedType wType = isWatchedAddress(Address);
 
@@ -918,11 +916,8 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
     if (wType == WatchedType::WATCHED_MY_MODULE) {
         rva = addr_to_rva(Address); // convert to RVA
         base = 0;
-        if (rva == (ADDRINT)m_Settings.disasmStart) {
-            traceStarted = TRUE;
-        }
     }
-    if (!traceStarted) {
+    if (rva == UNKNOWN_ADDR || rva < m_Settings.disasmStart || rva > m_Settings.disasmStop) {
         return;
     }
     if (wType == WatchedType::WATCHED_SHELLCODE) {
@@ -936,10 +931,6 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
 
         ss << "\n\t\t\t\t" << dumpContext(disasm, ctxt);
         traceLog.logInstruction(base, rva, ss.str());
-    }
-
-    if (wType == WatchedType::WATCHED_MY_MODULE && rva == (ADDRINT)m_Settings.disasmStop) {
-        traceStarted = FALSE;
     }
 }
 
