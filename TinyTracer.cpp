@@ -883,6 +883,13 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
     };
     const size_t count = sizeof(regs) / sizeof(regs[0]);
     static ADDRINT values[count] = { 0 };
+    static ADDRINT spVal = 0;
+
+    ADDRINT Address = getReturnFromTheStack(ctx);
+    if (Address != spVal) {
+        ss << "[rsp] -> " << std::hex << Address << "; ";
+        spVal = Address;
+    }
 
     for (size_t i = 0; i < count; i++) {
         REG reg = regs[i];
@@ -928,8 +935,7 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
         std::stringstream ss;
         ss << "[" << std::dec << tid << "] ";
         ss << disasm;
-
-        ss << "\n\t\t\t\t" << dumpContext(disasm, ctxt);
+        traceLog.logLine("\t\t\t\t" + dumpContext(disasm, ctxt));
         traceLog.logInstruction(base, rva, ss.str());
     }
 }
