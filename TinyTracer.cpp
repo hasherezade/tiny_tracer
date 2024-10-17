@@ -933,6 +933,7 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
             ss << "VAL: " << changedTracked;
         }
     }
+    hasTrackedRes = _hasTrackedRes;
 
     if (wasLastMul) {
         trackedMulRes = (ADDRINT)PIN_GetContextReg(ctx, REG_GAX);
