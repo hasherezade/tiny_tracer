@@ -852,6 +852,26 @@ int getValIndx(ADDRINT rax)
 }
 #endif //TEST
 
+void printDifference(std::stringstream &ss, const ADDRINT& changedTracked, const ADDRINT& changed)
+{
+    if (!changedTracked) {
+        return;
+    }
+    ss << " UNK " << "[";
+    if ((int64_t)changed > (int64_t)changedTracked) {
+        ADDRINT diff = (int64_t)changed - (int64_t)changedTracked;
+        ss << " res += 0x" << diff;
+    }
+    else {
+        ADDRINT diff = (int64_t)changedTracked - (int64_t)changed;
+        ss << " res -= 0x" << diff;
+    }
+    ss << "; ";
+    ADDRINT diff = (int64_t)changed ^ (int64_t)changedTracked;
+    ss << " res ^= 0x" << diff;
+    ss << " ] ";
+}
+
 std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
 {
     std::stringstream ss;
@@ -948,6 +968,7 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
                 REG reg = regs[i];
                 const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctx, reg);
                 ss << reg_names[i] << " = " << std::hex << Address;
+                printDifference(ss, changedTracked, Address);
             }
         }
     }
@@ -968,21 +989,7 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         ss << std::hex << rax;
 #endif
         ss << std::hex << " * 0x" << spVal << " ) " << "// res = " << changed;
-        if (changedTracked) {
-            ss << " UNK " << "[";
-            if ((int64_t)changed > (int64_t)changedTracked) {
-                ADDRINT diff = (int64_t)changed - (int64_t)changedTracked;
-                ss << " res += 0x" << diff;
-            }
-            else {
-                ADDRINT diff = (int64_t)changedTracked - (int64_t)changed;
-                ss << " res -= 0x" << diff;
-            }
-            ss << "; ";
-            ADDRINT diff = (int64_t)changed ^ (int64_t)changedTracked;
-            ss << " res ^= 0x" << diff;
-            ss << " ] ";
-        }
+        printDifference(ss, changedTracked, changed);
         trackedRes = changed;
         wasLastMul = true;
         ss << " m = " << std::hex << m;
