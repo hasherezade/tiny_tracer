@@ -41,7 +41,7 @@
 #include "AntiVm.h"
 #endif
 
-
+#define TEST
 /* ================================================================== */
 // Global variables 
 /* ================================================================== */
@@ -841,6 +841,17 @@ VOID MonitorFunctionArgs(IMG Image, const WFuncInfo& funcInfo)
 
 DisasmCache m_disasmCache;
 
+#ifdef TEST
+int getValIndx(ADDRINT rax)
+{
+    char str[] = "0123456789ABCDEFabcdefghijklmopq";
+    for (int i = 0; i < strlen(str); i++) {
+        if (rax == ADDRINT(str[i])) return i;
+    }
+    return (-1);
+}
+#endif //TEST
+
 std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
 {
     std::stringstream ss;
@@ -885,19 +896,52 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
     static ADDRINT values[count] = { 0 };
     static ADDRINT spVal = 0;
 
+    static bool wasLastMul = false;
+    static ADDRINT trackedMulRes = 0;
+    static ADDRINT trackedRes = 0;
+    static bool hasTrackedRes = false;
     ADDRINT Address = getReturnFromTheStack(ctx);
     if (Address != spVal) {
         ss << "[rsp] -> " << std::hex << Address << "; ";
         spVal = Address;
     }
-
+    bool _hasTrackedRes = false;
+    REG changedReg = REG_STACK_PTR; //last changed
     for (size_t i = 0; i < count; i++) {
         REG reg = regs[i];
         const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctx, reg);
         if (values[i] == Address) continue;
+        if (trackedRes && Address == trackedRes) {
+            _hasTrackedRes = true;
+        }
         values[i] = Address;
+        changedReg = reg;
         ss << reg_names[i] << " = " << std::hex << Address << " ";
     }
+    if (_hasTrackedRes != hasTrackedRes) {
+        ss << " TRACKED_CHANGED ";
+    }
+    hasTrackedRes = _hasTrackedRes;
+#ifdef TEST
+    if (wasLastMul) {
+        trackedMulRes = (ADDRINT)PIN_GetContextReg(ctx, REG_GAX);
+        ss << " !!! TRACKED: " << std::hex << trackedMulRes;
+        wasLastMul = false;
+    }
+    if (disasm.find("mul ") != std::string::npos) {
+        const ADDRINT rax = (ADDRINT)PIN_GetContextReg(ctx, REG_GAX);
+        ADDRINT changed = 0;
+        if (changedReg != REG_STACK_PTR) {
+            changed = (ADDRINT)PIN_GetContextReg(ctx, changedReg);
+        }
+        int indx = getValIndx(rax);
+        ADDRINT m = rax * spVal;
+        ss << " !!! MULTIPLYING: ( x_" << std::dec << indx << std::hex << " * " << spVal << " ) " << "// res = " << changed;
+        trackedRes = changed;
+        wasLastMul = true;
+        ss << " m = " << std::hex << m;
+    }
+#endif
     std::string out = ss.str();
     if (out.length()) {
         return "{ " + out + " }";
