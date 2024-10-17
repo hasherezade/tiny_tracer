@@ -892,8 +892,8 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         REG_R14,
         REG_R15
     };
-    const size_t count = sizeof(regs) / sizeof(regs[0]);
-    static ADDRINT values[count] = { 0 };
+    const size_t regsCount = sizeof(regs) / sizeof(regs[0]);
+    static ADDRINT values[regsCount] = { 0 };
     static ADDRINT spVal = 0;
 
     static bool wasLastMul = false;
@@ -910,7 +910,7 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
     }
     bool _hasTrackedRes = false;
     REG changedReg = REG_STACK_PTR; //last changed
-    for (size_t i = 0; i < count; i++) {
+    for (size_t i = 0; i < regsCount; i++) {
         REG reg = regs[i];
         const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctx, reg);
         if (values[i] == Address) continue;
@@ -939,13 +939,24 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         ss << " !!! MUL_RES: " << std::hex << trackedMulRes;
         wasLastMul = false;
     }
+
+    if (disasm.find("test ") != std::string::npos) {
+        ss << " TRACKED_TEST ";
+        for (size_t i = 0; i < regsCount; i++) {
+            if (disasm.find(reg_names[i]) != std::string::npos) {
+                REG reg = regs[i];
+                const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctx, reg);
+                ss << reg_names[i] << " = " << std::hex << Address;
+            }
+        }
+    }
+
     if (disasm.find("mul ") != std::string::npos) {
         const ADDRINT rax = (ADDRINT)PIN_GetContextReg(ctx, REG_GAX);
         ADDRINT changed = 0;
         if (changedReg != REG_STACK_PTR) {
             changed = (ADDRINT)PIN_GetContextReg(ctx, changedReg);
         }
-
 
         ADDRINT m = rax * spVal;
         ss << " !!! TRACKED_MULTIPLYING: ( ";
