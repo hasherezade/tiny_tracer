@@ -900,6 +900,9 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
     static ADDRINT trackedMulRes = 0;
     static ADDRINT trackedRes = 0;
     static bool hasTrackedRes = false;
+    static REG trackedReg = REG_STACK_PTR;
+    static ADDRINT changedTracked = 0;
+
     ADDRINT Address = getReturnFromTheStack(ctx);
     if (Address != spVal) {
         ss << "[rsp] -> " << std::hex << Address << "; ";
@@ -913,6 +916,7 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         if (values[i] == Address) continue;
         if (trackedRes && Address == trackedRes) {
             _hasTrackedRes = true;
+            trackedReg = reg;
         }
         values[i] = Address;
         changedReg = reg;
@@ -920,12 +924,20 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
     }
     if (_hasTrackedRes != hasTrackedRes) {
         ss << " TRACKED_CHANGED ";
+        if (_hasTrackedRes) {
+            ss << "BY: " << disasm;
+            changedTracked = 0;
+        }
+        else {
+            changedTracked = (ADDRINT)PIN_GetContextReg(ctx, trackedReg);
+            ss << "VAL: " << changedTracked;
+        }
     }
     hasTrackedRes = _hasTrackedRes;
 #ifdef TEST
     if (wasLastMul) {
         trackedMulRes = (ADDRINT)PIN_GetContextReg(ctx, REG_GAX);
-        ss << " !!! TRACKED: " << std::hex << trackedMulRes;
+        ss << " !!! MUL_RES: " << std::hex << trackedMulRes;
         wasLastMul = false;
     }
     if (disasm.find("mul ") != std::string::npos) {
@@ -934,9 +946,22 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         if (changedReg != REG_STACK_PTR) {
             changed = (ADDRINT)PIN_GetContextReg(ctx, changedReg);
         }
+        
         int indx = getValIndx(rax);
         ADDRINT m = rax * spVal;
-        ss << " !!! MULTIPLYING: ( x_" << std::dec << indx << std::hex << " * " << spVal << " ) " << "// res = " << changed;
+        ss << " !!! TRACKED_MULTIPLYING: ( x_" << std::dec << indx << std::hex << " * " << spVal << " ) " << "// res = " << changed;
+        if (changedTracked) {
+            ss << " UNK " << "[";
+            if ((int64_t)changed > (int64_t)changedTracked) {
+                ADDRINT diff = (int64_t)changed - (int64_t)changedTracked;
+                ss << " res += 0x" << diff;
+            }
+            else {
+                ADDRINT diff = (int64_t)changedTracked - (int64_t)changed;
+                ss << " res -= 0x" << diff;
+            }
+            ss << " ] ";
+        }
         trackedRes = changed;
         wasLastMul = true;
         ss << " m = " << std::hex << m;
