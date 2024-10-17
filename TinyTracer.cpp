@@ -993,7 +993,7 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         ss << " !!! TRACKED_MULTIPLYING: ( ";
 #ifdef TEST
         int indx = getValIndx(rax);
-        ss << "inp[" << std::dec << indx << "]";
+        ss << "x_" << std::dec << indx << " ";
 #else
         ss << std::hex << rax;
 #endif
