@@ -41,7 +41,7 @@
 #include "AntiVm.h"
 #endif
 
-//#define TEST
+#define TEST
 /* ================================================================== */
 // Global variables 
 /* ================================================================== */
@@ -845,7 +845,8 @@ DisasmCache m_disasmCache;
 int getValIndx(ADDRINT rax)
 {
     char str[] = "0123456789ABCDEFabcdefghijklmopq";
-    for (int i = 0; i < strlen(str); i++) {
+    const size_t len = strlen(str);
+    for (int i = 0; i < len; i++) {
         if (rax == ADDRINT(str[i])) return i;
     }
     return (-1);
@@ -922,6 +923,7 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
     static bool hasTrackedRes = false;
     static REG trackedReg = REG_STACK_PTR;
     static ADDRINT changedTracked = 0;
+    static size_t mulCntr = 0;
 
     ADDRINT Address = getReturnFromTheStack(ctx);
     if (Address != spVal) {
@@ -943,14 +945,17 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         ss << reg_names[i] << " = " << std::hex << Address << " ";
     }
     if (_hasTrackedRes != hasTrackedRes) {
-        ss << " TRACKED_CHANGED ";
+        
         if (_hasTrackedRes) {
+            ss << " TRACKED_CHANGED ";
             ss << "BY: " << disasm;
+            
             changedTracked = 0;
         }
         else {
             changedTracked = (ADDRINT)PIN_GetContextReg(ctx, trackedReg);
-            ss << "VAL: " << changedTracked;
+            ss << " TRACKED_CHANGED ";
+            ss << " -> VAL: " << changedTracked;
         }
     }
     hasTrackedRes = _hasTrackedRes;
@@ -969,6 +974,8 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
                 const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctx, reg);
                 ss << reg_names[i] << " = " << std::hex << Address;
                 printDifference(ss, changedTracked, Address);
+                changedTracked = Address;
+                mulCntr = 0;
             }
         }
     }
@@ -977,24 +984,31 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         const ADDRINT rax = (ADDRINT)PIN_GetContextReg(ctx, REG_GAX);
         ADDRINT changed = 0;
         if (changedReg != REG_STACK_PTR) {
+            mulCntr++;
             changed = (ADDRINT)PIN_GetContextReg(ctx, changedReg);
         }
-
+        bool showDiff = true;
         ADDRINT m = rax * spVal;
+
         ss << " !!! TRACKED_MULTIPLYING: ( ";
 #ifdef TEST
         int indx = getValIndx(rax);
-        ss << "x_" << std::dec << indx;
+        ss << "inp[" << std::dec << indx << "]";
 #else
         ss << std::hex << rax;
 #endif
-        ss << std::hex << " * 0x" << spVal << " ) " << "// res = " << changed;
-        printDifference(ss, changedTracked, changed);
+        ss << std::hex << " * 0x" << spVal << " ) " << "// [CNTR: " << mulCntr << "] res = " << changed;
+        if (showDiff && mulCntr > 1) {
+            printDifference(ss, changedTracked, changed);
+        }
         trackedRes = changed;
         wasLastMul = true;
         ss << " m = " << std::hex << m;
+        if (mulCntr == 1) {
+            ss << " UNK = ( res += 0x" << changed - trackedMulRes << " )";
+        }
     }
-
+    
     std::string out = ss.str();
     if (out.length()) {
         return "{ " + out + " }";
