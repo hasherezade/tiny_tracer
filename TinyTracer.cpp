@@ -949,7 +949,7 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         
         int indx = getValIndx(rax);
         ADDRINT m = rax * spVal;
-        ss << " !!! TRACKED_MULTIPLYING: ( x_" << std::dec << indx << std::hex << " * " << spVal << " ) " << "// res = " << changed;
+        ss << " !!! TRACKED_MULTIPLYING: ( x_" << std::dec << indx << std::hex << " * 0x" << spVal << " ) " << "// res = " << changed;
         if (changedTracked) {
             ss << " UNK " << "[";
             if ((int64_t)changed > (int64_t)changedTracked) {
@@ -960,6 +960,9 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
                 ADDRINT diff = (int64_t)changedTracked - (int64_t)changed;
                 ss << " res -= 0x" << diff;
             }
+            ss << "; ";
+            ADDRINT diff = (int64_t)changed ^ (int64_t)changedTracked;
+            ss << " res ^= 0x" << diff;
             ss << " ] ";
         }
         trackedRes = changed;
