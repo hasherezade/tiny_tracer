@@ -858,7 +858,7 @@ void printDifference(std::stringstream &ss, const ADDRINT& changedTracked, const
     if (!changedTracked) {
         return;
     }
-    ss << " UNK " << "[";
+    ss << " UNK: " << "#[";
     if ((int64_t)changed > (int64_t)changedTracked) {
         ADDRINT diff = (int64_t)changed - (int64_t)changedTracked;
         ss << " res += 0x" << diff;
@@ -867,7 +867,7 @@ void printDifference(std::stringstream &ss, const ADDRINT& changedTracked, const
         ADDRINT diff = (int64_t)changedTracked - (int64_t)changed;
         ss << " res -= 0x" << diff;
     }
-    ss << "; ";
+    ss << " ; ";
     ADDRINT diff = (int64_t)changed ^ (int64_t)changedTracked;
     ss << " res ^= 0x" << diff;
     ss << " ] ";
@@ -925,6 +925,7 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
     static ADDRINT changedTracked = 0;
     static size_t mulCntr = 0;
 
+
     ADDRINT Address = getReturnFromTheStack(ctx);
     if (Address != spVal) {
         ss << "[rsp] -> " << std::hex << Address << "; ";
@@ -948,8 +949,12 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         
         if (_hasTrackedRes) {
             ss << " TRACKED_CHANGED ";
-            ss << "BY: " << disasm;
-            
+            ss << "BY: " << disasm << " #[ ";
+
+            if (disasm.find("sub") != std::string::npos) ss << "res -= m";
+            if (disasm.find("add") != std::string::npos) ss << "res += m";
+            if (disasm.find("xor") != std::string::npos) ss << "res ^= m";;
+            ss << " ] ";
             changedTracked = 0;
         }
         else {
@@ -990,23 +995,32 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         bool showDiff = true;
         ADDRINT m = rax * spVal;
 
-        ss << " !!! TRACKED_MULTIPLYING: ( ";
+        ss << " !!! TRACKED_MULTIPLYING: #[ ";
+        if (mulCntr == 0) 
+            ss << "res";
+        else 
+            ss << "m";
+
+        ss << " = ";
+
 #ifdef TEST
         int indx = getValIndx(rax);
         ss << "x_" << std::dec << indx << " ";
 #else
         ss << std::hex << rax;
 #endif
-        ss << std::hex << " * 0x" << spVal << " ) " << "// [CNTR: " << mulCntr << "] res = " << changed;
+        ss << std::hex << "* 0x" << spVal << " ] ";
+        //ss << " = " << std::hex << m;
+
         if (showDiff && mulCntr > 1) {
             printDifference(ss, changedTracked, changed);
         }
         trackedRes = changed;
         wasLastMul = true;
-        ss << " m = " << std::hex << m;
         if (mulCntr == 1) {
-            ss << " UNK = ( res += 0x" << changed - trackedMulRes << " )";
+            ss << " #[ res += 0x" << changed - trackedMulRes << " ]";
         }
+        ss << "// [CNTR: " << mulCntr << "] ";
     }
     
     std::string out = ss.str();
