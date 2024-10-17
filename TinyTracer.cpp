@@ -41,7 +41,7 @@
 #include "AntiVm.h"
 #endif
 
-#define TEST
+//#define TEST
 /* ================================================================== */
 // Global variables 
 /* ================================================================== */
@@ -933,8 +933,7 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
             ss << "VAL: " << changedTracked;
         }
     }
-    hasTrackedRes = _hasTrackedRes;
-#ifdef TEST
+
     if (wasLastMul) {
         trackedMulRes = (ADDRINT)PIN_GetContextReg(ctx, REG_GAX);
         ss << " !!! MUL_RES: " << std::hex << trackedMulRes;
@@ -946,10 +945,17 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         if (changedReg != REG_STACK_PTR) {
             changed = (ADDRINT)PIN_GetContextReg(ctx, changedReg);
         }
-        
-        int indx = getValIndx(rax);
+
+
         ADDRINT m = rax * spVal;
-        ss << " !!! TRACKED_MULTIPLYING: ( x_" << std::dec << indx << std::hex << " * 0x" << spVal << " ) " << "// res = " << changed;
+        ss << " !!! TRACKED_MULTIPLYING: ( ";
+#ifdef TEST
+        int indx = getValIndx(rax);
+        ss << "x_" << std::dec << indx;
+#else
+        ss << std::hex << rax;
+#endif
+        ss << std::hex << " * 0x" << spVal << " ) " << "// res = " << changed;
         if (changedTracked) {
             ss << " UNK " << "[";
             if ((int64_t)changed > (int64_t)changedTracked) {
@@ -969,7 +975,7 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         wasLastMul = true;
         ss << " m = " << std::hex << m;
     }
-#endif
+
     std::string out = ss.str();
     if (out.length()) {
         return "{ " + out + " }";
