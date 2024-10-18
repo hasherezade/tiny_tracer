@@ -860,7 +860,7 @@ void printDifference(std::stringstream &mS, const ADDRINT& changedTracked, const
         return;
     }
     s1 << std::hex;
-    s1 << " UNK: " << "#[";
+    s1 << "#[";
     if ((int64_t)changed > (int64_t)changedTracked) {
         ADDRINT diff = (int64_t)changed - (int64_t)changedTracked;
         s1 << " res += 0x" << diff;
@@ -873,7 +873,7 @@ void printDifference(std::stringstream &mS, const ADDRINT& changedTracked, const
     ADDRINT diff = (int64_t)changed ^ (int64_t)changedTracked;
     s1 << " res ^= 0x" << diff;
     s1 << " ] ";
-    mS << s1.str();
+    mS << "UNK: " << s1.str();
     
     traceLog.logListingLine(s1.str());
 }
@@ -956,12 +956,11 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
             ss << " TRACKED_CHANGED ";
             ss << "BY: " << disasm;
             std::stringstream s1;
-            s1 << std::hex <<" #[ ";
+            s1 << std::hex ;
             if (disasm.find("sub") != std::string::npos) s1 << "res -= m";
             if (disasm.find("add") != std::string::npos) s1 << "res += m";
             if (disasm.find("xor") != std::string::npos) s1 << "res ^= m";
-            s1 << " ] ";
-            ss << s1.str();
+            ss << " #[ " << s1.str() << " ] ";
             traceLog.logListingLine(s1.str());
             changedTracked = 0;
         }
@@ -989,7 +988,7 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
                 printDifference(ss, changedTracked, Address);
                 changedTracked = Address;
                 mulCntr = 0;
-                traceLog.logListingLine("###");
+                traceLog.logListingLine("\n###\n");
             }
         }
     }
@@ -1007,10 +1006,7 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         ss << " !!! TRACKED_MULTIPLYING: ";
 
         std::stringstream s1;
-        s1 << std::hex << mulCntr << "#[ ";
-        //if (mulCntr == 1) {
-        //    s1 << "res += 0x" << changed - trackedMulRes << " ";
-        //}
+        s1 << std::hex;
 
         if (mulCntr == 0) 
             s1 << "res";
@@ -1025,9 +1021,9 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
 #else
         s1 << std::hex << rax;
 #endif
-        s1 << std::hex << " * 0x" << spVal << " ] ";
+        s1 << std::hex << " * 0x" << spVal;
         traceLog.logListingLine(s1.str());
-        ss << s1.str();
+        ss << "#[ " << s1.str() << " ] ";
         //ss << " = " << std::hex << m;
 
         if (showDiff && mulCntr > 1) {
@@ -1038,12 +1034,11 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         
         if (mulCntr == 1) {
             std::stringstream s1;
-            s1 << std::hex << " #[ ";
+            s1 << std::hex ;
             s1 << "res += 0x" << changed - trackedMulRes;
-            s1 << " ]";
             traceLog.logListingLine(s1.str());
 
-            ss << s1.str();
+            ss << " #[ " << s1.str() << " ]";
         }
         ss << "// [CNTR: " << mulCntr << "] ";
     }
