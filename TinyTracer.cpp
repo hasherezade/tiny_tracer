@@ -874,7 +874,7 @@ void printDifference(std::stringstream &mS, const ADDRINT& changedTracked, const
     }
     s1 << std::hex;
     s1 << "#[ ";
-    printArithm(s1, changed, changedTracked);
+    printArithm(s1, changedTracked, changed);
     s1 << " ; ";
     ADDRINT diff = (int64_t)changed ^ (int64_t)changedTracked;
     s1 << " res ^= 0x" << diff;
@@ -1041,7 +1041,7 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         if (mulCntr == 1) {
             std::stringstream s1;
             s1 << std::hex ;
-            printArithm(s1, changed, trackedMulRes);
+            printArithm(s1, trackedMulRes, changed);
             traceLog.logListingLine(s1.str());
 
             ss << " #[ " << s1.str() << " ]";
