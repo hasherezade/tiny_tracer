@@ -41,7 +41,7 @@
 #include "AntiVm.h"
 #endif
 
-#define TEST
+//#define TEST
 /* ================================================================== */
 // Global variables 
 /* ================================================================== */
@@ -853,24 +853,35 @@ int getValIndx(ADDRINT rax)
 }
 #endif //TEST
 
-void printDifference(std::stringstream &ss, const ADDRINT& changedTracked, const ADDRINT& changed)
+
+void printArithm(std::stringstream &s1, const ADDRINT& val1, const ADDRINT& val2)
 {
+    if ((int64_t)val2 > (int64_t)val1) {
+        ADDRINT diff = (int64_t)val2 - (int64_t)val1;
+        s1 << "res += 0x" << diff;
+    }
+    else {
+        ADDRINT diff = (int64_t)val1 - (int64_t)val2;
+        s1 << "res -= 0x" << diff;
+    }
+}
+
+void printDifference(std::stringstream &mS, const ADDRINT& changedTracked, const ADDRINT& changed)
+{
+    std::stringstream s1;
     if (!changedTracked) {
         return;
     }
-    ss << " UNK: " << "#[";
-    if ((int64_t)changed > (int64_t)changedTracked) {
-        ADDRINT diff = (int64_t)changed - (int64_t)changedTracked;
-        ss << " res += 0x" << diff;
-    }
-    else {
-        ADDRINT diff = (int64_t)changedTracked - (int64_t)changed;
-        ss << " res -= 0x" << diff;
-    }
-    ss << " ; ";
+    s1 << std::hex;
+    s1 << "#[ ";
+    printArithm(s1, changedTracked, changed);
+    s1 << " ; ";
     ADDRINT diff = (int64_t)changed ^ (int64_t)changedTracked;
-    ss << " res ^= 0x" << diff;
-    ss << " ] ";
+    s1 << " res ^= 0x" << diff;
+    s1 << " ] ";
+    mS << " UNK: " << s1.str();
+    
+    traceLog.logListingLine(s1.str());
 }
 
 std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
@@ -949,12 +960,14 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         
         if (_hasTrackedRes) {
             ss << " TRACKED_CHANGED ";
-            ss << "BY: " << disasm << " #[ ";
-
-            if (disasm.find("sub") != std::string::npos) ss << "res -= m";
-            if (disasm.find("add") != std::string::npos) ss << "res += m";
-            if (disasm.find("xor") != std::string::npos) ss << "res ^= m";;
-            ss << " ] ";
+            ss << "BY: " << disasm;
+            std::stringstream s1;
+            s1 << std::hex ;
+            if (disasm.find("sub") != std::string::npos) s1 << "res -= m";
+            if (disasm.find("add") != std::string::npos) s1 << "res += m";
+            if (disasm.find("xor") != std::string::npos) s1 << "res ^= m";
+            ss << " #[ " << s1.str() << " ] ";
+            traceLog.logListingLine(s1.str());
             changedTracked = 0;
         }
         else {
@@ -981,6 +994,7 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
                 printDifference(ss, changedTracked, Address);
                 changedTracked = Address;
                 mulCntr = 0;
+                traceLog.logListingLine("\n###\n");
             }
         }
     }
@@ -995,21 +1009,27 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         bool showDiff = true;
         ADDRINT m = rax * spVal;
 
-        ss << " !!! TRACKED_MULTIPLYING: #[ ";
-        if (mulCntr == 0) 
-            ss << "res";
-        else 
-            ss << "m";
+        ss << " !!! TRACKED_MULTIPLYING: ";
 
-        ss << " = ";
+        std::stringstream s1;
+        s1 << std::hex;
+
+        if (mulCntr == 0) 
+            s1 << "res";
+        else 
+            s1 << "m";
+
+        s1 << " = ";
 
 #ifdef TEST
         int indx = getValIndx(rax);
-        ss << "x_" << std::dec << indx << " ";
+        s1 << "x_" << std::dec << indx << " ";
 #else
-        ss << std::hex << rax;
+        s1 << std::hex << rax;
 #endif
-        ss << std::hex << "* 0x" << spVal << " ] ";
+        s1 << std::hex << " * 0x" << spVal;
+        traceLog.logListingLine(s1.str());
+        ss << "#[ " << s1.str() << " ] ";
         //ss << " = " << std::hex << m;
 
         if (showDiff && mulCntr > 1) {
@@ -1017,8 +1037,14 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         }
         trackedRes = changed;
         wasLastMul = true;
+        
         if (mulCntr == 1) {
-            ss << " #[ res += 0x" << changed - trackedMulRes << " ]";
+            std::stringstream s1;
+            s1 << std::hex ;
+            printArithm(s1, trackedMulRes, changed);
+            traceLog.logListingLine(s1.str());
+
+            ss << " #[ " << s1.str() << " ]";
         }
         ss << "// [CNTR: " << mulCntr << "] ";
     }

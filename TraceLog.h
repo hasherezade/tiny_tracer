@@ -26,7 +26,8 @@ public:
         if (fileName.empty()) fileName = "output.txt";
         m_logFileName = fileName;
         m_shortLog = is_short;
-        createFile();
+        _createFile(m_traceFile, m_logFileName);
+        _createFile(m_ListingFile, m_logFileName + ".listing.txt");
     }
 
     void logCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, bool isRVA, const std::string &module, const std::string &func = "");
@@ -40,16 +41,21 @@ public:
     void logSyscall(const ADDRINT base, const ADDRINT rva, const ADDRINT param, const std::string &funcName);
 
     void logLine(const std::string &str);
-
+    void logListingLine(const std::string& str);
 protected:
 
     bool createFile()
     {
-        if (m_traceFile.is_open()) {
+        return _createFile(m_traceFile, m_logFileName);
+    }
+
+    bool _createFile(std::ofstream &file, const std::string &fileName)
+    {
+        if (file.is_open()) {
             return true;
         }
-        m_traceFile.open(m_logFileName.c_str());
-        if (m_traceFile.is_open()) {
+        file.open(fileName.c_str());
+        if (file.is_open()) {
             return true;
         }
         return false;
@@ -57,5 +63,6 @@ protected:
 
     std::string m_logFileName;
     std::ofstream m_traceFile;
+    std::ofstream m_ListingFile;
     bool m_shortLog;
 };
