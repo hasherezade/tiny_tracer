@@ -41,7 +41,7 @@
 #include "AntiVm.h"
 #endif
 
-#define TEST
+//#define TEST
 /* ================================================================== */
 // Global variables 
 /* ================================================================== */
@@ -873,7 +873,7 @@ void printDifference(std::stringstream &mS, const ADDRINT& changedTracked, const
     ADDRINT diff = (int64_t)changed ^ (int64_t)changedTracked;
     s1 << " res ^= 0x" << diff;
     s1 << " ] ";
-    mS << "UNK: " << s1.str();
+    mS << " UNK: " << s1.str();
     
     traceLog.logListingLine(s1.str());
 }
