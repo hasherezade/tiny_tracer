@@ -942,12 +942,14 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         ss << "[rsp] -> " << std::hex << Address << "; ";
         spVal = Address;
     }
+    bool anyChanged = false;
     bool _hasTrackedRes = false;
     REG changedReg = REG_STACK_PTR; //last changed
     for (size_t i = 0; i < regsCount; i++) {
         REG reg = regs[i];
         const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctx, reg);
         if (values[i] == Address) continue;
+        anyChanged = true;
         if (trackedRes && Address == trackedRes) {
             _hasTrackedRes = true;
             trackedReg = reg;
@@ -983,7 +985,25 @@ std::string dumpContext(const std::string &disasm, const CONTEXT* ctx)
         ss << " !!! MUL_RES: " << std::hex << trackedMulRes;
         wasLastMul = false;
     }
-
+    static bool isPrevArithm = false;
+    bool arithm = false;
+    if (disasm.find("sub ") == 0 ||
+        disasm.find("add ") == 0 ||
+        disasm.find("xor ") == 0 ||
+        disasm.find("or ") == 0 ||
+        disasm.find("and ") == 0 
+        )
+    {
+        arithm = true;
+    }
+    bool isArithmTrackingEnabled = (mulCntr == 7) ? true : false;
+    if (isArithmTrackingEnabled && arithm) {
+        ss << " TRACKED_ARITHM: " << disasm;
+    }
+    if (isArithmTrackingEnabled && isPrevArithm && anyChanged) {
+        ss << " TRACKED_ARITHM_RES ";
+    }
+    isPrevArithm = arithm;
     if (disasm.find("test ") != std::string::npos) {
         ss << " TRACKED_TEST ";
         for (size_t i = 0; i < regsCount; i++) {
