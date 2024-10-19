@@ -41,7 +41,7 @@
 #include "AntiVm.h"
 #endif
 
-//#define TEST
+#define TEST
 /* ================================================================== */
 // Global variables 
 /* ================================================================== */
@@ -854,15 +854,17 @@ int getValIndx(ADDRINT rax)
 #endif //TEST
 
 
-void printArithm(std::stringstream &s1, const uint32_t val1, const uint32_t val2)
+void printArithm(std::stringstream &s1, const ADDRINT& val1, const ADDRINT& val2)
 {
     {
-        uint32_t diff = uint32_t(val2 - val1);
+        ADDRINT diff = val2 - val1;
+        diff &= 0x0FFFFFFFF;
         s1 << "res += 0x" << diff;//<< "#[ " << val2 << " - " << val1 << " ]";
     }
     s1 << " ; ";
     {
-        uint32_t diff = uint32_t(val1 - val2);
+        ADDRINT diff = val1 - val2;
+        diff &= 0x0FFFFFFFF;
         s1 << "res -= 0x" << diff;// << "#[ " << val1 << " - " << val2 << " ]";
     }
 }
