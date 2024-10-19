@@ -41,7 +41,7 @@
 #include "AntiVm.h"
 #endif
 
-#define TEST
+//#define TEST
 /* ================================================================== */
 // Global variables 
 /* ================================================================== */
@@ -867,6 +867,12 @@ void printArithm(std::stringstream &s1, const ADDRINT& val1, const ADDRINT& val2
         diff &= 0x0FFFFFFFF;
         s1 << "res -= 0x" << diff;// << "#[ " << val1 << " - " << val2 << " ]";
     }
+    s1 << " ; ";
+    {
+        ADDRINT diff = val2 ^ val1;
+        diff &= 0x0FFFFFFFF;
+        s1 << " res ^= 0x" << diff;
+    }
 }
 
 void printDifference(std::stringstream &mS, const ADDRINT& changedTracked, const ADDRINT& changed)
@@ -878,9 +884,6 @@ void printDifference(std::stringstream &mS, const ADDRINT& changedTracked, const
     s1 << std::hex;
     s1 << "#[ ";
     printArithm(s1, changedTracked, changed);
-    s1 << " ; ";
-    uint32_t diff = (int64_t)changed ^ (int64_t)changedTracked;
-    s1 << " res ^= 0x" << diff;
     s1 << " ] ";
     mS << " UNK: " << s1.str();
     
