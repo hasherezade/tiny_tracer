@@ -150,16 +150,6 @@ void TraceLog::logLine(const std::string &str)
     m_traceFile.flush();
 }
 
-
-void TraceLog::logListingLine(const std::string& str)
-{
-    if (!_createFile(m_ListingFile, m_logFileName + ".listing.txt")) return;
-
-    m_ListingFile
-        << str
-        << std::endl;
-    m_ListingFile.flush();
-}
 void TraceLog::logNewSectionCalled(const ADDRINT prevAddr, const std::string &prevSection, const std::string &currSection)
 {
     createFile();
