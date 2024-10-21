@@ -154,6 +154,89 @@ inline ADDRINT getReturnFromTheStack(const CONTEXT* ctx)
     return retAddr;
 }
 
+std::string dumpContext(const std::string& disasm, const CONTEXT* ctx)
+{
+    std::stringstream ss;
+    const char* reg_names[] = {
+        "rdi",
+        "rsi",
+        "rbp",
+        "rsp",
+        "rbx",
+        "rdx",
+        "rcx",
+        "rax",
+        "r8",
+        "r9",
+        "r10",
+        "r11",
+        "r12",
+        "r13",
+        "r14",
+        "r15",
+    };
+    const REG regs[] =
+    {
+        REG_GDI,
+        REG_GSI,
+        REG_GBP,
+        REG_STACK_PTR,
+        REG_GBX,
+        REG_GDX,
+        REG_GCX,
+        REG_GAX,
+#ifdef _WIN64
+        REG_R8,
+        REG_R9,
+        REG_R10,
+        REG_R11,
+        REG_R12,
+        REG_R13,
+        REG_R14,
+        REG_R15
+#endif
+    };
+    const size_t regsCount = sizeof(regs) / sizeof(regs[0]);
+    static ADDRINT values[regsCount] = { 0 };
+    static ADDRINT spVal = 0;
+
+    static bool wasLastMul = false;
+    static ADDRINT trackedMulRes = 0;
+    static ADDRINT trackedRes = 0;
+    static bool hasTrackedRes = false;
+    static REG trackedReg = REG_STACK_PTR;
+    static ADDRINT changedTracked = 0;
+    static size_t mulCntr = 0;
+
+
+    ADDRINT Address = getReturnFromTheStack(ctx);
+    if (Address != spVal) {
+        ss << "[rsp] -> " << std::hex << Address << "; ";
+        spVal = Address;
+    }
+    bool anyChanged = false;
+    bool _hasTrackedRes = false;
+    REG changedReg = REG_STACK_PTR; //last changed
+    for (size_t i = 0; i < regsCount; i++) {
+        REG reg = regs[i];
+        const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctx, reg);
+        if (values[i] == Address) continue;
+        anyChanged = true;
+        if (trackedRes && Address == trackedRes) {
+            _hasTrackedRes = true;
+            trackedReg = reg;
+        }
+        values[i] = Address;
+        changedReg = reg;
+        ss << reg_names[i] << " = " << std::hex << Address << " ";
+    }
+    std::string out = ss.str();
+    if (out.length()) {
+        return "{ " + out + " }";
+    }
+    return "";
+}
+
 VOID SaveHeavensGateTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, ADDRINT seg, const CONTEXT* ctx = NULL)
 {
     PinLocker locker;
@@ -882,6 +965,7 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
         if (!base && rva == (ADDRINT)m_Settings.disasmStop) {
             ss << " # disasm end";
         }
+        traceLog.logLine("\t\t\t\t" + dumpContext(disasm, ctxt));
         traceLog.logInstruction(base, rva, ss.str());
     }
 
