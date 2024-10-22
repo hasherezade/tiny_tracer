@@ -156,7 +156,6 @@ inline ADDRINT getReturnFromTheStack(const CONTEXT* ctx)
 
 std::string dumpContext(const std::string& disasm, const CONTEXT* ctx)
 {
-    std::stringstream ss;
     const char* reg_names[] = {
         "rdi",
         "rsi",
@@ -200,14 +199,10 @@ std::string dumpContext(const std::string& disasm, const CONTEXT* ctx)
     static ADDRINT values[regsCount] = { 0 };
     static ADDRINT spVal = 0;
 
-    static bool wasLastMul = false;
-    static ADDRINT trackedMulRes = 0;
-    static ADDRINT trackedRes = 0;
-    static bool hasTrackedRes = false;
     static REG trackedReg = REG_STACK_PTR;
     static ADDRINT changedTracked = 0;
-    static size_t mulCntr = 0;
-
+    
+    std::stringstream ss;
 
     ADDRINT Address = getReturnFromTheStack(ctx);
     if (Address != spVal) {
@@ -222,16 +217,12 @@ std::string dumpContext(const std::string& disasm, const CONTEXT* ctx)
         const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctx, reg);
         if (values[i] == Address) continue;
         anyChanged = true;
-        if (trackedRes && Address == trackedRes) {
-            _hasTrackedRes = true;
-            trackedReg = reg;
-        }
         values[i] = Address;
         changedReg = reg;
         ss << reg_names[i] << " = " << std::hex << Address << " ";
     }
     std::string out = ss.str();
-    if (out.length()) {
+    if (!out.empty()) {
         return "{ " + out + " }";
     }
     return "";
@@ -965,7 +956,10 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
         if (!base && rva == (ADDRINT)m_Settings.disasmStop) {
             ss << " # disasm end";
         }
-        traceLog.logLine("\t\t\t\t" + dumpContext(disasm, ctxt));
+        const std::string ctxStr = dumpContext(disasm, ctxt);
+        if (!ctxStr.empty()) {
+            traceLog.logLine("\t\t\t\t" + ctxStr);
+        }
         traceLog.logInstruction(base, rva, ss.str());
     }
 
