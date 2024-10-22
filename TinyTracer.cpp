@@ -241,6 +241,7 @@ std::string dumpContext(const ADDRINT& VA, const std::string& disasm, const CONT
         const ADDRINT base = 0x188abf81000;
         ADDRINT rcx = (ADDRINT)PIN_GetContextReg(ctx, REG_GCX);
         ADDRINT rax = (ADDRINT)PIN_GetContextReg(ctx, REG_GAX);
+        ADDRINT r9 = (ADDRINT)PIN_GetContextReg(ctx, REG_R9);
         //> 188abf81000+2c3;[0] inc qword ptr [rip+0xb73f6]
         if (VA == (base + 0x2c3)) {
             s1 << "# op = " << rax;
@@ -248,8 +249,7 @@ std::string dumpContext(const ADDRINT& VA, const std::string& disasm, const CONT
         else if (VA == (base + 0x42e)) { 
             //> 188abf81000+42e;[0] shl rcx, 0x8
             //ADDRINT rcx = (ADDRINT)PIN_GetContextReg(ctx, REG_GCX);
-            s1 << "\t( " << rcx << " << 8 ) + " << rax;
-            ADDRINT r9 = (ADDRINT)PIN_GetContextReg(ctx, REG_R9);
+            s1 << "\tshl rcx, 0x8 ; (" << rcx << " << 8) + " << rax;
         }
         else if (VA == (base + 0x435)) {
             //> 188abf81000+435;[0] mov qword ptr [r9], rcx
@@ -259,50 +259,110 @@ std::string dumpContext(const ADDRINT& VA, const std::string& disasm, const CONT
             ADDRINT r14 = (ADDRINT)PIN_GetContextReg(ctx, REG_R14);
             ADDRINT pos = r14 + rax * 8 + 0x810;
             //> 188abf81000+352;[0] mov qword ptr [r14+rax*8+0x810], rcx
-            s1 << "\tmov qword ptr ["<<pos <<"], " << rcx;
+            s1 << "\tmov qword ptr ["<<pos <<"], rcx=(" << rcx << ") ->\trcx = " << rcx;
 
         }
         else if (VA == (base + 0x67e)) {
-            ADDRINT pos = (ADDRINT)PIN_GetContextReg(ctx, REG_R9) - 0x8;
+            ADDRINT pos = r9 - 0x8;
             ADDRINT val = getMemValue((ADDRINT*)pos);
-            s1 << "\tor qword ptr [" << pos << "], " << rax << " ;\t" << val << " | " << rax;
+            s1 << "\tor qword ptr [" << pos << "], " << rax << " ->\t" << val << " | " << rax;
             checkVal = true;
             //> 188abf81000+67e;[0] or qword ptr [r9-0x8], rax
         }
         else if (VA == (base + 0x682) && checkVal) {
             //188abf81000+682
-            ADDRINT pos = (ADDRINT)PIN_GetContextReg(ctx, REG_R9) - 0x8;
+            ADDRINT pos = r9 - 0x8;
             ADDRINT val = getMemValue((ADDRINT*)pos);
             s1 << "\t= " << val;
             checkVal = false;
         }
         else if (VA == (base + 0x8f7)) {
             //188abf81000+8f7;[0] shl qword ptr [r9-0x8], cl
-            ADDRINT pos = (ADDRINT)PIN_GetContextReg(ctx, REG_R9) - 0x8;
+            ADDRINT pos = r9 - 0x8;
             ADDRINT val = getMemValue((ADDRINT*)pos);
             ADDRINT cl = rcx & 0xFF;
             checkVal = true;
-            s1 << "\tqword ptr [" << pos << "] << " << cl << " ;\t" << val << " << " << cl;
+            s1 << "\tshl qword ptr [" << pos << "], cl=(" << cl << ") ->\t" << val << " << " << cl;
         }
         else if (VA == (base + 0x8fb) && checkVal) {
-            ADDRINT pos = (ADDRINT)PIN_GetContextReg(ctx, REG_R9) - 0x8;
+            ADDRINT pos = r9 - 0x8;
             ADDRINT val = getMemValue((ADDRINT*)pos);
             s1 << "\t\t = " << val;
             checkVal = false;
             //> 188abf81000+8fb;[0] mov r9, qword ptr [rip+0xb75c6]
         }
         else if (VA == (base + 0x4c6)) {
-            ADDRINT pos = (ADDRINT)PIN_GetContextReg(ctx, REG_R9) - 0x8;
+            ADDRINT pos = r9 - 0x8;
             ADDRINT val = getMemValue((ADDRINT*)pos);
-            s1 << "\tcmp qword ptr [" << pos << "] , " << rax << " ->\t" << val << " , " << rax;
+            s1 << "\tcmp qword ptr [" << pos << "] , rax=(" << rax << ") ->\tcmp " << val << " , " << rax;
             //> 188abf81000+4c6;[0] cmp qword ptr [r9-0x8], rax
         }
         else if (VA == (base + 0x40f)) {
             ADDRINT r9 = (ADDRINT)PIN_GetContextReg(ctx, REG_R9);
             //> 188abf81000+40f;[0] mov qword ptr [r9], rax
-            s1 << "\tmov qword ptr [" << r9 << "], " << rax;
+            s1 << "\tmov qword ptr [" << r9 << "], rax=(" << rax <<")";
         }
+        else if (VA == (base + 0x584)) {
+            ADDRINT val = getMemValue((ADDRINT*)r9);
+            s1 << "\timul rax, qword ptr[" << r9 << "] ->\t" << rax << " * " << val;
+            //> 188abf81000 + 584; [0] imul rax, qword ptr[r9]
+        }
+        else if (VA == (base + 0x5a7)) {
+            // 188abf81000+5a7;[0] mov qword ptr [r9-0x8], rax
+            ADDRINT pos = r9 - 0x8;
+            s1 << "\tmov qword ptr[" << r9 << "], rax=(" << rax << ")";
+        }
+        else if (VA == (base + 0x668)) {
+            // > 188abf81000+665;[0] mov rax, qword ptr [r9]
+            // > 188abf81000+668;[0] and qword ptr [r9-0x8], rax
+            ADDRINT pos = r9 - 0x8;
+            ADDRINT val = getMemValue((ADDRINT*)pos);
+            s1 << "\tand qword ptr [" << pos << "], rax=(" << rax << ") ->\t"<< val << " & " << rax;
+        }
+        else if (VA == (base + 0x4f3)) {
+            ADDRINT rdx = (ADDRINT)PIN_GetContextReg(ctx, REG_GDX);
+            s1 << "\trcx = (byte ptr [" << (rdx - 2) << "] << 8) + byte ptr ["<< (rdx - 1) <<"]" 
+                << " ->\t(" << rcx << " << 8) + " << rax << "\t";
+        }
+        else if (VA == (base + 0x72b)) {
+            ADDRINT pos = r9 - 0x8;
+            ADDRINT val = getMemValue((ADDRINT*)pos);
+            ADDRINT val2 = getMemValue((ADDRINT*)r9);
+            s1 << "\trax = qword ptr [" << pos << "] -> rax "<< " = " << val << " \n"
+                << "\tdiv qword ptr [" << r9 << "] ->\tdiv " << val2;
+        }
+        else if (VA == (base + 0x3dd)) {
+            ADDRINT pos = r9 - 0x8;
+            ADDRINT val = getMemValue((ADDRINT*)pos);
+            s1 << "\tadd qword ptr [" << pos << "], rax ->\t" << val << " + " << rax;
+            //> 188abf81000+3dd;[0] add qword ptr [r9-0x8], rax
+        }
+        else if (VA == (base + 0x8e4)) {
+            ADDRINT pos = r9 - 0x8;
+            ADDRINT val = getMemValue((ADDRINT*)pos);
+            ADDRINT cl = rcx & 0xFF;
+            s1 << "\tmov rcx, qword ptr [" << r9 << "]->\trcx = " << rcx << "\n";
+            s1 << "\tshr qword ptr [" << pos << "], cl=(" << cl << ") ->\t" << val << " >> " << cl;
+            /*
+            > 188abf81000+8e1;[0] mov rcx, qword ptr [r9]
+            > 188abf81000+8e4;[0] shr qword ptr [r9-0x8], cl
+            */
+        }
+        else if (VA == (base + 0x4b2)) {
+            ADDRINT pos = r9 - 0x8;
+            ADDRINT val = getMemValue((ADDRINT*)pos);
+            s1 << "\tmov rax, qword ptr [" << r9 << "] ->\trax = " << rax << "\n";
+            s1 << "\tcmp qword ptr [" << pos << "], rax ->\t" << "cmp " << val << ", " << rax << "\n";
+            s1 << "\tsetb cl\n";
+        }
+        /*
+> 188abf81000+4ab;[0] mov rax, qword ptr [r9]
+				{ rax = 8  }
+> 188abf81000+4ae;[0] cmp qword ptr [r9-0x8], rax
+> 188abf81000+4b2;[0] setb cl
+        */
 
+        //---
         std::string listingLine = s1.str();
         if (!listingLine.empty()) {
             traceLog.logListingLine(s1.str());
