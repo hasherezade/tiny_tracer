@@ -54,6 +54,8 @@ size_t util::getAsciiLenW(const wchar_t *inp, size_t maxInp)
 std::string util::getDllName(const std::string& str)
 {
     std::size_t len = str.length();
+    if (!len) return str;
+
     std::size_t found = str.find_last_of("/\\");
     std::size_t ext = str.find_last_of(".");
     if (ext > len) ext = len;

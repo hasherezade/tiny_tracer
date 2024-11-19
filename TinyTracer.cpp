@@ -181,8 +181,32 @@ VOID SaveHeavensGateTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, AD
  
     traceLog.logInstruction(pageFrom, RvaFrom, ss.str());
     PIN_WriteErrorMessage("ERROR: Cannot trace after the far transition", 1000, PIN_ERR_SEVERITY_TYPE::PIN_ERR_FATAL, 0);
-
 }
+
+std::string resolve_func_name(const ADDRINT addrTo, const std::string& dll_name, const CONTEXT* ctx)
+{
+    ADDRINT diff = 0;
+    const std::string name = get_func_at(addrTo, diff);
+    // it doesn't start at the beginning of the routine
+    if (!diff) {
+        return name;
+    }
+    std::ostringstream sstr;
+    sstr << "[" << name << "+" << std::hex << diff << "]*";
+    
+    if (ctx && m_Settings.syscallsTable.count() 
+        && SyscallsTable::isSyscallFuncName(name) && SyscallsTable::isSyscallDll(util::getDllName(dll_name)))
+    { 
+        //possibly a proxy to the indirect syscall
+        const ADDRINT eax = (ADDRINT)PIN_GetContextReg(ctx, REG_GAX);
+        const std::string realName = m_Settings.syscallsTable.getName(eax);
+        if (realName.length() && SyscallsTable::convertNameToNt(name) != realName) {
+            sstr << " -> " << realName;
+        }
+    }
+    return sstr.str();
+}
+
 
 VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndirect, const CONTEXT* ctx = NULL)
 {
@@ -205,8 +229,8 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     {
         ADDRINT RvaFrom = addr_to_rva(addrFrom);
         if (isTargetPeModule) {
-            const std::string func = get_func_at(addrTo);
             const std::string dll_name = IMG_Name(targetModule);
+            const std::string func = resolve_func_name(addrTo, dll_name, ctx);
             if (m_Settings.excludedFuncs.contains(dll_name, func)) {
                 return;
             }
@@ -229,8 +253,8 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
         const ADDRINT pageTo = query_region_base(addrTo);
 
         if (isTargetPeModule) { // it is a call to a module
-            const std::string func = get_func_at(addrTo);
             const std::string dll_name = IMG_Name(targetModule);
+            const std::string func = resolve_func_name(addrTo, dll_name, ctx);
             if (m_Settings.excludedFuncs.contains(dll_name, func)) {
                 return;
             }
@@ -266,8 +290,8 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
         const ADDRINT returnAddr = getReturnFromTheStack(ctx);
         const WatchedType toWType = isWatchedAddress(returnAddr); // does it return into the traced area?
         if (toWType != WatchedType::NOT_WATCHED) {
-            const std::string func = get_func_at(addrTo);
             const std::string dll_name = IMG_Name(targetModule);
+            const std::string func = resolve_func_name(addrTo, dll_name, ctx);
             if (m_Settings.excludedFuncs.contains(dll_name, func)) {
                 return;
             }
@@ -609,9 +633,7 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
     // check if it is watched by the function name:
     std::string syscallFuncName = SyscallsTable::convertNameToNt(m_Settings.syscallsTable.getName(syscallNum));
     for (size_t i = 0; i < m_Settings.funcWatch.funcs.size(); i++) {
-        if (util::iequals("ntdll", m_Settings.funcWatch.funcs[i].dllName)
-            || util::iequals("win32u", m_Settings.funcWatch.funcs[i].dllName))
-        {
+        if (SyscallsTable::isSyscallDll(m_Settings.funcWatch.funcs[i].dllName)) {
             std::string funcName = SyscallsTable::convertNameToNt(m_Settings.funcWatch.funcs[i].funcName);
             if (syscallFuncName == funcName) {
                 LogSyscallsArgs(funcName.c_str(), ctxt, std, address, m_Settings.funcWatch.funcs[i].paramCount);
