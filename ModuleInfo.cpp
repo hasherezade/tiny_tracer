@@ -28,7 +28,7 @@ const s_module* get_by_addr(ADDRINT Address, std::map<ADDRINT, s_module> &module
     return nullptr;
 }
 
-std::string get_func_at(ADDRINT callAddr)
+std::string get_func_at(ADDRINT callAddr, ADDRINT& diff)
 {
     IMG pImg = IMG_FindByAddress(callAddr);
     if (!IMG_Valid(pImg)) {
@@ -43,16 +43,11 @@ std::string get_func_at(ADDRINT callAddr)
         sstr << "[ + " << (callAddr - base) << "]*";
         return sstr.str();
     }
+
     std::string name = get_unmangled_name(rtn);
     ADDRINT rtnAddr = RTN_Address(rtn);
-    if (rtnAddr == callAddr) {
-        return name;
-    }
-    // it doesn't start at the beginning of the routine
-    const ADDRINT diff = callAddr - rtnAddr;
-    std::ostringstream sstr;
-    sstr << "[" << name << "+" << std::hex << diff << "]*";
-    return sstr.str();
+    diff = callAddr - rtnAddr;
+    return name;
 }
 
 ADDRINT get_mod_base(ADDRINT Address)
