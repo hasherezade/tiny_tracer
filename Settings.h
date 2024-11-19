@@ -22,11 +22,21 @@ t_shellc_options ConvertShcOption(int value);
 
 class SyscallsTable {
 public:
-    static bool isSyscallFuncName(const std::string name)
+    static bool isSyscallFuncName(const std::string &name)
     {
         if (name.length() < 2) return false;
         if ((name[0] == 'Z' && name[1] == 'w') ||
             (name[0] == 'N' && name[1] == 't' && name[2] >= 'A' && name[2] <= 'Z'))
+        {
+            return true;
+        }
+        return false;
+    }
+
+    static bool isSyscallDll(const std::string& dllName)
+    {
+        if (util::iequals("ntdll", dllName)
+            || util::iequals("win32u", dllName))
         {
             return true;
         }
