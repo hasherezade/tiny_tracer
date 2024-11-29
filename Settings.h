@@ -119,7 +119,7 @@ public:
         useDebugSym(false),
         isHyperVSet(false),
         emulateSingleStep(true),
-        disasmStart(0), disasmStop(0)
+        disasmStart(0), disasmStop(0), disasmCtx(false)
     {
     }
 
@@ -146,6 +146,7 @@ public:
     bool emulateSingleStep; // If the Trap Flag is set, throw a SINGLE_STEP exception emulating the typical behavior. Works when antidebug is enabled. 
     int disasmStart;
     int disasmStop;
+    bool disasmCtx; // show context in a disasm mode
 
     SyscallsTable syscallsTable; //Syscalls table: mapping the syscall ID to the function name
     FuncWatchList funcWatch; //List of functions, arguments of which are going to be logged

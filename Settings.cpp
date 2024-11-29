@@ -26,6 +26,7 @@
 #define KEY_EMULATE_SINGLE_STEP         "EMULATE_SINGLE_STEP"
 #define KEY_DISASM_START                "DISASM_START"
 #define KEY_DISASM_STOP                 "DISASM_STOP"
+#define KEY_DISASM_CTX                  "DISASM_CTX"
 
 t_shellc_options ConvertShcOption(int value)
 {
@@ -204,6 +205,10 @@ bool fillSettings(Settings &s, std::string line)
         s.disasmStop = util::loadInt(valStr, true);
         isFilled = true;
     }
+    if (util::iequals(valName, KEY_DISASM_CTX)) {
+        s.disasmCtx = loadBoolean(valStr);
+        isFilled = true;
+    }
     return isFilled;
 }
 
@@ -263,6 +268,7 @@ bool Settings::saveINI(const std::string &filename)
     myfile << KEY_EMULATE_SINGLE_STEP << DELIM << std::dec << booleanToStr(this->emulateSingleStep) << "\r\n";
     myfile << KEY_DISASM_START << DELIM << std::hex << this->disasmStart << "\r\n";
     myfile << KEY_DISASM_STOP << DELIM << std::hex << this->disasmStop << "\r\n";
+    myfile << KEY_DISASM_CTX << DELIM << std::dec << booleanToStr(this->disasmCtx) << "\r\n";
     myfile.close();
     return true;
 }
