@@ -93,7 +93,7 @@ bool StopOffset::load(const std::string& sline, char delimiter)
 
 //---
 
-bool loadBoolean(const std::string &str, bool defaultVal)
+bool loadBoolean(const std::string &str)
 {
     if (util::iequals(str, "True") || util::iequals(str, "on") || util::iequals(str, "yes")) {
         return true;
@@ -104,6 +104,11 @@ bool loadBoolean(const std::string &str, bool defaultVal)
     const int val = util::loadInt(str);
     if (val == 0) return false;
     return true;
+}
+
+std::string booleanToStr(const bool &val)
+{
+    return (val) ? "True" : "False";
 }
 
 bool fillSettings(Settings &s, std::string line)
@@ -126,27 +131,27 @@ bool fillSettings(Settings &s, std::string line)
         isFilled = true;
     }
     if (util::iequals(valName, KEY_LOG_RTDSC)) {
-        s.traceRDTSC = loadBoolean(valStr, s.traceRDTSC);
+        s.traceRDTSC = loadBoolean(valStr);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_LOG_INT)) {
-        s.traceINT = loadBoolean(valStr, s.traceINT);
+        s.traceINT = loadBoolean(valStr);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_LOG_SYSCALL)) {
-        s.traceSYSCALL = loadBoolean(valStr, s.traceSYSCALL);
+        s.traceSYSCALL = loadBoolean(valStr);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_LOG_SECTIONS_TRANSITIONS)) {
-        s.logSectTrans = loadBoolean(valStr, s.logSectTrans);
+        s.logSectTrans = loadBoolean(valStr);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_LOG_SHELLCODES_TRANSITIONS)) {
-        s.logShelcTrans = loadBoolean(valStr, s.logShelcTrans);
+        s.logShelcTrans = loadBoolean(valStr);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_SHORT_LOGGING)) {
-        s.shortLogging = loadBoolean(valStr, s.shortLogging);
+        s.shortLogging = loadBoolean(valStr);
         isFilled = true;
     }
     if (util::iequals(valName, HEXDUMP_SIZE)) {
@@ -154,11 +159,11 @@ bool fillSettings(Settings &s, std::string line)
         isFilled = true;
     }
     if (util::iequals(valName, LOG_INDIRECT)) {
-        s.logIndirect = loadBoolean(valStr, s.logIndirect);
+        s.logIndirect = loadBoolean(valStr);
         isFilled = true;
     }
     if (util::iequals(valName, HOOK_SLEEP)) {
-        s.hookSleep = loadBoolean(valStr, s.hookSleep);
+        s.hookSleep = loadBoolean(valStr);
         isFilled = true;
     }
     if (util::iequals(valName, SLEEP_TIME)) {
@@ -180,15 +185,15 @@ bool fillSettings(Settings &s, std::string line)
         isFilled = true;
     }
     if (util::iequals(valName, KEY_USE_DEBUG_SYMBOLS)) {
-        s.useDebugSym = loadBoolean(valStr, s.useDebugSym);
+        s.useDebugSym = loadBoolean(valStr);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_HYPREV_SET)) {
-        s.isHyperVSet = loadBoolean(valStr, s.isHyperVSet);
+        s.isHyperVSet = loadBoolean(valStr);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_EMULATE_SINGLE_STEP)) {
-        s.emulateSingleStep = loadBoolean(valStr, s.emulateSingleStep);
+        s.emulateSingleStep = loadBoolean(valStr);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_DISASM_START)) {
@@ -240,22 +245,22 @@ bool Settings::saveINI(const std::string &filename)
         return false;
     }
     myfile << KEY_FOLLOW_SHELLCODES << DELIM << this->followShellcode << "\r\n";
-    myfile << KEY_LOG_RTDSC << DELIM << this->traceRDTSC << "\r\n";
-    myfile << KEY_LOG_INT << DELIM << this->traceINT << "\r\n";
-    myfile << KEY_LOG_SYSCALL << DELIM << this->traceSYSCALL << "\r\n";
-    myfile << KEY_LOG_SECTIONS_TRANSITIONS << DELIM << this->logSectTrans << "\r\n";
-    myfile << KEY_LOG_SHELLCODES_TRANSITIONS << DELIM << this->logShelcTrans << "\r\n";
-    myfile << KEY_SHORT_LOGGING << DELIM << this->shortLogging << "\r\n";
-    myfile << KEY_USE_DEBUG_SYMBOLS << DELIM << this->useDebugSym << "\r\n";
+    myfile << KEY_LOG_RTDSC << DELIM << booleanToStr(this->traceRDTSC) << "\r\n";
+    myfile << KEY_LOG_INT << DELIM << booleanToStr(this->traceINT) << "\r\n";
+    myfile << KEY_LOG_SYSCALL << DELIM << booleanToStr(this->traceSYSCALL) << "\r\n";
+    myfile << KEY_LOG_SECTIONS_TRANSITIONS << DELIM << booleanToStr(this->logSectTrans) << "\r\n";
+    myfile << KEY_LOG_SHELLCODES_TRANSITIONS << DELIM << booleanToStr(this->logShelcTrans) << "\r\n";
+    myfile << KEY_SHORT_LOGGING << DELIM << booleanToStr(this->shortLogging) << "\r\n";
+    myfile << KEY_USE_DEBUG_SYMBOLS << DELIM << booleanToStr(this->useDebugSym) << "\r\n";
     myfile << HEXDUMP_SIZE << DELIM << std::dec << this->hexdumpSize << "\r\n";
-    myfile << HOOK_SLEEP << DELIM << std::dec << this->hookSleep << "\r\n";
+    myfile << HOOK_SLEEP << DELIM << std::dec << booleanToStr(this->hookSleep) << "\r\n";
     myfile << SLEEP_TIME << DELIM << std::dec << this->sleepTime << "\r\n";
-    myfile << LOG_INDIRECT << DELIM << this->logIndirect << "\r\n";
+    myfile << LOG_INDIRECT << DELIM << booleanToStr(this->logIndirect) << "\r\n";
     myfile << KEY_ANTIDEBUG << DELIM << this->antidebug << "\r\n";
     myfile << KEY_ANTIVM << DELIM << this->antivm << "\r\n";
-    myfile << KEY_HYPREV_SET << DELIM << this->isHyperVSet << "\r\n";
+    myfile << KEY_HYPREV_SET << DELIM << booleanToStr(this->isHyperVSet) << "\r\n";
     myfile << KEY_STOP_OFFSET_TIME << DELIM << std::dec << this->stopOffsetTime << "\r\n";
-    myfile << KEY_EMULATE_SINGLE_STEP << DELIM << std::dec << this->emulateSingleStep << "\r\n";
+    myfile << KEY_EMULATE_SINGLE_STEP << DELIM << std::dec << booleanToStr(this->emulateSingleStep) << "\r\n";
     myfile << KEY_DISASM_START << DELIM << std::hex << this->disasmStart << "\r\n";
     myfile << KEY_DISASM_STOP << DELIM << std::hex << this->disasmStop << "\r\n";
     myfile.close();
