@@ -174,7 +174,6 @@ std::string flagsToStr(ADDRINT oldFlags, ADDRINT flags)
     const size_t max = sizeof(flag) / sizeof(flag[0]);
     std::stringstream ss;
     ss << "[";
-    size_t pos = 0;
     for (size_t i = 0; i < max; i++) {
         ADDRINT flagSet = flags & flag[i];
         if (flagSet != (oldFlags & flag[i])) {
