@@ -155,6 +155,36 @@ inline ADDRINT getReturnFromTheStack(const CONTEXT* ctx)
     return retAddr;
 }
 
+std::string flagsToStr(ADDRINT oldFlags, ADDRINT flags)
+{
+    const int flag[] = {
+        0x1,
+        0x4,
+        0x10,
+        0x40,
+        0x80,
+        0x100,
+        0x200,
+        0x400,
+        0x800
+    };
+    const char flagName[] = {
+        'C', 'P', 'A', 'Z', 'S', 'T', 'I', 'D', 'O'
+    };
+    const size_t max = sizeof(flag) / sizeof(flag[0]);
+    std::stringstream ss;
+    ss << "[";
+    size_t pos = 0;
+    for (size_t i = 0; i < max; i++) {
+        ADDRINT flagSet = flags & flag[i];
+        if (flagSet != (oldFlags & flag[i])) {
+            ss << " " << flagName[i] << "=" << (flagSet != 0);
+        }
+    }
+    ss << " ]";
+    return ss.str();
+}
+
 std::string dumpContext(const std::string& disasm, const CONTEXT* ctx)
 {
     const char* reg_names[] = {
@@ -202,9 +232,6 @@ std::string dumpContext(const std::string& disasm, const CONTEXT* ctx)
     static ADDRINT values[regsCount] = { 0 };
     static ADDRINT spVal = 0;
 
-    static REG trackedReg = REG_STACK_PTR;
-    static ADDRINT changedTracked = 0;
-
     std::stringstream ss;
 
     ADDRINT Address = getReturnFromTheStack(ctx);
@@ -212,18 +239,19 @@ std::string dumpContext(const std::string& disasm, const CONTEXT* ctx)
         ss << "[rsp] -> 0x" << std::hex << Address << "; ";
         spVal = Address;
     }
-    bool anyChanged = false;
-    bool _hasTrackedRes = false;
+    ADDRINT prev = 0;
     REG changedReg = REG_STACK_PTR; //last changed
     for (size_t i = 0; i < regsCount; i++) {
         REG reg = regs[i];
         const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctx, reg);
-        if (values[i] == Address) continue;
-        anyChanged = true;
+        if (values[i] == Address) {
+            continue;
+        }
+        prev = values[i];
         values[i] = Address;
         changedReg = reg;
         if (reg == REG_GFLAGS) {
-            ss << reg_names[i] << " = b" << std::bitset<8>(Address) << "; ";
+            ss << reg_names[i] << " = b" << std::bitset<8>(Address) << " " << flagsToStr(prev, Address) << "; ";
             continue;
         }
         ss << reg_names[i] << " = 0x" << std::hex << Address << "; ";
