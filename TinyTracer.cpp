@@ -239,7 +239,6 @@ std::string dumpContext(const std::string& disasm, const CONTEXT* ctx)
         spVal = Address;
     }
     ADDRINT prev = 0;
-    REG changedReg = REG_STACK_PTR; //last changed
     for (size_t i = 0; i < regsCount; i++) {
         REG reg = regs[i];
         const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctx, reg);
@@ -248,7 +247,6 @@ std::string dumpContext(const std::string& disasm, const CONTEXT* ctx)
         }
         prev = values[i];
         values[i] = Address;
-        changedReg = reg;
         if (reg == REG_GFLAGS) {
             ss << reg_names[i] << " = b" << std::bitset<8>(Address) << " " << flagsToStr(prev, Address) << "; ";
             continue;
