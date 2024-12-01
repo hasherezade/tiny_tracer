@@ -112,7 +112,7 @@ std::string booleanToStr(const bool &val)
     return (val) ? "True" : "False";
 }
 
-bool fillSettings(Settings &s, std::string line)
+bool fillSettings(Settings &s, const std::string &line)
 {
     std::vector<std::string> args;
     util::splitList(line, DELIM, args);
