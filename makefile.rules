@@ -41,7 +41,12 @@ TEST_TOOL_ROOTS := TinyTracer$(BITNESS)
 # This section contains the build rules for all binaries that have special build rules.
 # See makefile.default.rules for the default build rules.
 
+ifeq ($(TARGET), WIN32)
+EVASION_CHECKS=$(OBJDIR)AntiDebug$(OBJ_SUFFIX) $(OBJDIR)AntiVm$(OBJ_SUFFIX) $(OBJDIR)EvasionWatch$(OBJ_SUFFIX)
+else
+EVASION_CHECKS=
+endif
 
-$(OBJDIR)TinyTracer$(BITNESS)$(PINTOOL_SUFFIX): $(OBJDIR)Util$(OBJ_SUFFIX) $(OBJDIR)Settings$(OBJ_SUFFIX) $(OBJDIR)TraceLog$(OBJ_SUFFIX) $(OBJDIR)TinyTracer$(OBJ_SUFFIX) $(OBJDIR)ModuleInfo$(OBJ_SUFFIX) $(OBJDIR)ProcessInfo$(OBJ_SUFFIX) $(OBJDIR)FuncWatch$(OBJ_SUFFIX)  $(OBJDIR)AntiDebug$(OBJ_SUFFIX) $(OBJDIR)AntiVm$(OBJ_SUFFIX) $(OBJDIR)EvasionWatch$(OBJ_SUFFIX)
+$(OBJDIR)TinyTracer$(BITNESS)$(PINTOOL_SUFFIX): $(OBJDIR)Util$(OBJ_SUFFIX) $(OBJDIR)Settings$(OBJ_SUFFIX) $(OBJDIR)TraceLog$(OBJ_SUFFIX) $(OBJDIR)TinyTracer$(OBJ_SUFFIX) $(OBJDIR)ModuleInfo$(OBJ_SUFFIX) $(OBJDIR)ProcessInfo$(OBJ_SUFFIX) $(OBJDIR)FuncWatch$(OBJ_SUFFIX) $(EVASION_CHECKS)
 	$(LINKER) $(TOOL_LDFLAGS) $(LINK_EXE)$@ $^ $(TOOL_LPATHS) $(TOOL_LIBS)
 	
