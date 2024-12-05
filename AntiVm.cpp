@@ -76,10 +76,10 @@ VOID AntiVm_WmiQueries(const ADDRINT addr, const THREADID tid, const CHAR* name,
     if (wType == WatchedType::NOT_WATCHED) return;
 
     const wchar_t* wmi_query = reinterpret_cast<const wchar_t*>(arg2);
-    if (wmi_query == NULL) return;
+    if (!wmi_query) return;
 
-    char wmi_query_field[PATH_BUFSIZE];
-    GET_STR_TO_UPPER(wmi_query, wmi_query_field, PATH_BUFSIZE);
+    char wmi_query_field[PATH_BUFSIZE] = { 0 };
+    util::wstr_to_str(wmi_query, wmi_query_field, PATH_BUFSIZE);
 
     if (util::iequals(wmi_query_field, WMI_NUMBER_CORES) || util::iequals(wmi_query_field, WMI_PROCESSOR)) {
         return LogAntiVm(wType, addr, "^ WMI query - number of CPU cores",

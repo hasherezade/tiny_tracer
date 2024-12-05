@@ -34,4 +34,14 @@ namespace util {
 
     // compare strings, ignore case
     bool isStrEqualI(const std::string& str1, const std::string& str2);
+
+    inline void wstr_to_str(const wchar_t* c, char* buf, const size_t bufSize)
+    {
+        size_t i;
+        for (i = 0; i < bufSize; i++) {
+            buf[i] = c[i];
+            if (c[i] == '\0') break;
+        }
+    }
+
 };
