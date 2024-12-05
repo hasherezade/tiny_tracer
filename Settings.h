@@ -48,7 +48,7 @@ public:
         std::string prefix1("Nt");
         std::string prefix2("Zw");
         if (!funcName.compare(0, prefix2.size(), prefix2)) {
-            funcName.replace(0, 2, prefix1); // replace with Zw prefix
+            funcName.replace(0, 2, prefix1); // replace with Nt prefix
         }
         return funcName;
     }

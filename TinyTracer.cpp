@@ -20,7 +20,7 @@
 #include "DisasmCache.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.8.3"
+#define VERSION "2.8.4"
 
 #include "Util.h"
 #include "Settings.h"
@@ -42,6 +42,7 @@
 #include "AntiVm.h"
 #endif
 
+bool g_IsIndirectSyscall = false;
 
 /* ================================================================== */
 // Global variables 
@@ -293,10 +294,11 @@ std::string resolve_func_name(const ADDRINT addrTo, const std::string& dll_name,
 {
     ADDRINT diff = 0;
     const std::string name = get_func_at(addrTo, diff);
-    // it doesn't start at the beginning of the routine
     if (!diff) {
+        // simple case, return the name
         return name;
     }
+    // it doesn't start at the beginning of the routine:
     std::ostringstream sstr;
     sstr << "[" << name << "+" << std::hex << diff << "]*";
     
@@ -308,6 +310,7 @@ std::string resolve_func_name(const ADDRINT addrTo, const std::string& dll_name,
         const std::string realName = m_Settings.syscallsTable.getName(eax);
         if (realName.length() && SyscallsTable::convertNameToNt(name) != realName) {
             sstr << " -> " << realName;
+            g_IsIndirectSyscall = true;
         }
     }
     return sstr.str();
@@ -700,50 +703,54 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
 {
     PinLocker locker;
 
-    syscallFromThread[tid] = SyscallInfo(); // reset just in case
+    //reset just in case:
+    syscallFromThread[tid] = SyscallInfo();
     ADDRINT address = UNKNOWN_ADDR;
+
     if (!_fetchSyscallData(ctxt, std, address)) {
         return;
     }
     const WatchedType wType = isWatchedAddress(address);
-    if (wType == WatchedType::NOT_WATCHED) return;
-    
+    if (wType == WatchedType::NOT_WATCHED && !g_IsIndirectSyscall) {
+        return;
+    }
     const ADDRINT syscallNum = PIN_GetSyscallNumber(ctxt, std);
     if (syscallNum == UNKNOWN_ADDR) return; //invalid
 
     syscallFromThread[tid].fill(syscallNum, address);
 
-    std::string funcName = m_Settings.syscallsTable.getName(syscallNum);
-
+    const std::string syscallFuncName = SyscallsTable::convertNameToNt(m_Settings.syscallsTable.getName(syscallNum));
     if (wType == WatchedType::WATCHED_MY_MODULE) {
         ADDRINT rva = addr_to_rva(address); // convert to RVA
-        traceLog.logSyscall(0, rva, syscallNum, funcName);
+        traceLog.logSyscall(0, rva, syscallNum, syscallFuncName);
     }
     else if (wType == WatchedType::WATCHED_SHELLCODE) {
         const ADDRINT start = query_region_base(address);
         ADDRINT rva = address - start;
         if (start != UNKNOWN_ADDR) {
-            traceLog.logSyscall(start, rva, syscallNum, funcName);
+            traceLog.logSyscall(start, rva, syscallNum, syscallFuncName);
         }
     }
-
     // Log arguments if needed:
     // 
     // check if it is watched by the syscall number:
+    bool argsDumped = false;
     const auto& it = m_Settings.funcWatch.syscalls.find(syscallNum);
     if (it != m_Settings.funcWatch.syscalls.end()) {
         LogSyscallsArgs(WSyscallInfo::formatSyscallName(syscallNum).c_str(), ctxt, std, address, it->second.paramCount);
-        return;
+        argsDumped = true;
     }
 #ifdef _WIN32 // supported only for Windows
     // check if it is watched by the function name:
-    std::string syscallFuncName = SyscallsTable::convertNameToNt(m_Settings.syscallsTable.getName(syscallNum));
-    for (size_t i = 0; i < m_Settings.funcWatch.funcs.size(); i++) {
-        if (SyscallsTable::isSyscallDll(m_Settings.funcWatch.funcs[i].dllName)) {
-            std::string funcName = SyscallsTable::convertNameToNt(m_Settings.funcWatch.funcs[i].funcName);
-            if (syscallFuncName == funcName) {
-                LogSyscallsArgs(funcName.c_str(), ctxt, std, address, m_Settings.funcWatch.funcs[i].paramCount);
-                break;
+    if (!argsDumped) {
+        for (size_t i = 0; i < m_Settings.funcWatch.funcs.size(); i++) {
+            if (SyscallsTable::isSyscallDll(m_Settings.funcWatch.funcs[i].dllName)) {
+                std::string watchFuncName = SyscallsTable::convertNameToNt(m_Settings.funcWatch.funcs[i].funcName);
+                if (util::iequals(syscallFuncName, watchFuncName)) {
+                    LogSyscallsArgs(watchFuncName.c_str(), ctxt, std, address, m_Settings.funcWatch.funcs[i].paramCount);
+                    argsDumped = true;
+                    break;
+                }
             }
         }
     }
@@ -765,6 +772,7 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
 VOID SyscallCalledAfter(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
 {
     PinLocker locker;
+    g_IsIndirectSyscall = false; //reset
 
     auto itr = syscallFromThread.find(tid);
     if (itr == syscallFromThread.end() || itr->second.ssid == UNKNOWN_ADDR) {
@@ -908,8 +916,6 @@ ss << "}";
 
 VOID _LogFunctionArgs(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10, VOID* arg11)
 {
-    if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
-
     const size_t argsMax = LOGGED_ARGS_MAX;
     VOID* args[argsMax] = { arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11 };
     std::wstringstream ss;
@@ -930,6 +936,7 @@ VOID LogFunctionArgs(const ADDRINT Address, CHAR* name, uint32_t argCount, VOID*
     if (argCount == 0) return;
 
     PinLocker locker;
+    if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
     _LogFunctionArgs(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
 }
 
