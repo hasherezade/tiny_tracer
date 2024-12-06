@@ -246,13 +246,15 @@ std::string dumpContext(const std::string& disasm, const CONTEXT* ctx)
         if (values[i] == Address) {
             continue;
         }
+        // update saved:
         prev = values[i];
         values[i] = Address;
+
+        ss << reg_names[i] << " = 0x" << std::hex << Address;
         if (reg == REG_GFLAGS) {
-            ss << reg_names[i] << " = b" << std::bitset<8>(Address) << " " << flagsToStr(prev, Address) << "; ";
-            continue;
+            ss << " " << flagsToStr(prev, Address);
         }
-        ss << reg_names[i] << " = 0x" << std::hex << Address << "; ";
+        ss << "; ";
     }
     std::string out = ss.str();
     if (!out.empty()) {
