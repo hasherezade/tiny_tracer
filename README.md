@@ -13,8 +13,7 @@ A Pin Tool for tracing:
 +  selected instructions: [RDTSC](https://c9x.me/x86/html/file_module_x86_id_278.html), [CPUID](https://c9x.me/x86/html/file_module_x86_id_45.html), [INT](https://c9x.me/x86/html/file_module_x86_id_142.html)
 +  [inline system calls, including parameters of selected syscalls](https://github.com/hasherezade/tiny_tracer/wiki/Tracing-syscalls)
 +  transition between sections of the traced module (helpful in finding OEP of the packed module)
-
-Bypasses the anti-tracing check based on RDTSC.
++  evades some of the known [anti-debug](https://github.com/hasherezade/tiny_tracer/wiki/The-INI-file#antidebug) and [anti-VM](https://github.com/hasherezade/tiny_tracer/wiki/The-INI-file#antivm) techniques
 
 Generates a report in a `.tag` format (which can be [loaded into other analysis tools](https://github.com/hasherezade/tiny_tracer/wiki/Using-the-TAGs-with-disassemblers-and-debuggers)):
 
