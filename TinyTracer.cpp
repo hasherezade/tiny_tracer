@@ -303,20 +303,25 @@ std::string resolve_func_name(const ADDRINT addrTo, const std::string& dll_name,
     // it doesn't start at the beginning of the routine:
     std::ostringstream sstr;
     sstr << "[" << name << "+" << std::hex << diff << "]*";
-
-    if (ctx && m_Settings.syscallsTable.count()
+#ifdef _WIN32
+    if (ctx
         && SyscallsTable::isSyscallFuncName(name)
         && SyscallsTable::isSyscallDll(util::getDllName(dll_name))
         )
     { 
         //possibly a proxy to the indirect syscall
+        g_IsIndirectSyscall = true;
         const ADDRINT eax = (ADDRINT)PIN_GetContextReg(ctx, REG_GAX);
         const std::string realName = m_Settings.syscallsTable.getName(eax);
+        sstr << " -> ";
         if (realName.length()) {
-            sstr << " -> " << realName;
-            g_IsIndirectSyscall = true;
+            sstr << realName;
+        }
+        else {
+            sstr << "SYSCALL:0x" << eax;
         }
     }
+#endif //_WIN32
     return sstr.str();
 }
 
