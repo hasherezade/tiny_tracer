@@ -734,11 +734,15 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
     // Log arguments if needed:
     // 
     // check if it is watched by the syscall number:
+#ifdef _WIN32 // used only on Windows
     bool argsDumped = false;
+#endif //_WIN32
     const auto& it = m_Settings.funcWatch.syscalls.find(syscallNum);
     if (it != m_Settings.funcWatch.syscalls.end()) {
         LogSyscallsArgs(WSyscallInfo::formatSyscallName(syscallNum).c_str(), ctxt, std, address, it->second.paramCount);
+#ifdef _WIN32 // used only on Windows
         argsDumped = true;
+#endif //_WIN32
     }
 #ifdef _WIN32 // supported only for Windows
     // check if it is watched by the function name:
@@ -778,8 +782,10 @@ VOID SyscallCalledAfter(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID*
     if (itr == syscallFromThread.end() || itr->second.ssid == UNKNOWN_ADDR) {
         return;
     }
-
+#ifdef USE_ANTIVM
     const ADDRINT syscallNum = itr->second.ssid;
+#endif //USE_ANTIVM
+
     const ADDRINT address = itr->second.addrFrom;
 
     itr->second.reset(); // sycall completed, erase the stored info
