@@ -787,9 +787,9 @@ VOID SyscallCalledAfter(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID*
     if (address == UNKNOWN_ADDR) {
         return;
     }
-    const std::string syscallFuncName = SyscallsTable::convertNameToNt(m_Settings.syscallsTable.getName(syscallNum));
 #ifdef USE_ANTIVM
     if (m_Settings.antivm != WATCH_DISABLED) {
+        const std::string syscallFuncName = SyscallsTable::convertNameToNt(m_Settings.syscallsTable.getName(syscallNum));
         AntiVm::MonitorSyscallExit(tid, syscallFuncName.c_str(), ctxt, std, address);
     }
 #endif //USE_ANTIVM
