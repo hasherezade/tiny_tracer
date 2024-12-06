@@ -301,14 +301,16 @@ std::string resolve_func_name(const ADDRINT addrTo, const std::string& dll_name,
     // it doesn't start at the beginning of the routine:
     std::ostringstream sstr;
     sstr << "[" << name << "+" << std::hex << diff << "]*";
-    
-    if (ctx && m_Settings.syscallsTable.count() 
-        && SyscallsTable::isSyscallFuncName(name) && SyscallsTable::isSyscallDll(util::getDllName(dll_name)))
+
+    if (ctx && m_Settings.syscallsTable.count()
+        && SyscallsTable::isSyscallFuncName(name)
+        && SyscallsTable::isSyscallDll(util::getDllName(dll_name))
+        )
     { 
         //possibly a proxy to the indirect syscall
         const ADDRINT eax = (ADDRINT)PIN_GetContextReg(ctx, REG_GAX);
         const std::string realName = m_Settings.syscallsTable.getName(eax);
-        if (realName.length() && SyscallsTable::convertNameToNt(name) != realName) {
+        if (realName.length()) {
             sstr << " -> " << realName;
             g_IsIndirectSyscall = true;
         }
