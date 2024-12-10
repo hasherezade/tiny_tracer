@@ -1312,6 +1312,17 @@ static void OnCtxChange(THREADID threadIndex,
     _SaveTransitions(addrFrom, addrTo, FALSE);
 }
 
+BOOL FollowChild(CHILD_PROCESS childProcess, VOID * userData)
+{
+    if (m_Settings.followChildprocesses) {
+        OS_PROCESS_ID childPid = CHILD_PROCESS_GetId(childProcess);
+        std::cerr << "Following Subprocess: " << childPid << std::endl;
+        return TRUE;
+    }
+    // If the callback return FALSE, the child is not followed
+    return FALSE;
+}
+
 /*!
 * The main procedure of the tool.
 * This function is called when the application image is loaded but not yet started.
@@ -1390,8 +1401,11 @@ int main(int argc, char *argv[])
     }
 
     // init output file:
-    traceLog.init(KnobOutputFile.Value(), m_Settings.shortLogging);
-
+    int pid = PIN_GetPid();
+    std::stringstream filename;
+    filename << KnobOutputFile.Value() << "_" << pid << ".log";
+    traceLog.init(filename.str(), m_Settings.shortLogging);
+    
     // Register function to be called for every loaded module
     IMG_AddInstrumentFunction(ImageLoad, NULL);
 
@@ -1418,10 +1432,13 @@ int main(int argc, char *argv[])
     std::cerr << "Tracing module: " << app_name << std::endl;
     if (!KnobOutputFile.Value().empty())
     {
-        std::cerr << "See file " << KnobOutputFile.Value() << " for analysis results" << std::endl;
+        std::cerr << "See file " << filename.str() << " for analysis results" << std::endl;
     }
     std::cerr << "===============================================" << std::endl;
 
+    // Register the callback function for child processes
+    PIN_AddFollowChildProcessFunction(FollowChild, 0);
+    
     // Start the program, never returns
     PIN_StartProgram();
     return 0;
