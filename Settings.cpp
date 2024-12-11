@@ -8,6 +8,7 @@
 #define DELIM '='
 
 #define KEY_FOLLOW_SHELLCODES           "FOLLOW_SHELLCODES"
+#define KEY_FOLLOW_CHILDPROCESSES       "FOLLOW_CHILDPROCESSES"
 #define KEY_LOG_RTDSC                   "TRACE_RDTSC"
 #define KEY_LOG_INT                     "TRACE_INT"
 #define KEY_LOG_SYSCALL                 "TRACE_SYSCALL"
@@ -131,6 +132,10 @@ bool fillSettings(Settings &s, const std::string &line)
         s.followShellcode = ConvertShcOption(val);
         isFilled = true;
     }
+    if (util::iequals(valName, KEY_FOLLOW_CHILDPROCESSES)) {
+        s.followChildprocesses = loadBoolean(valStr);
+        isFilled = true;
+    }
     if (util::iequals(valName, KEY_LOG_RTDSC)) {
         s.traceRDTSC = loadBoolean(valStr);
         isFilled = true;
@@ -250,6 +255,7 @@ bool Settings::saveINI(const std::string &filename)
         return false;
     }
     myfile << KEY_FOLLOW_SHELLCODES << DELIM << this->followShellcode << "\r\n";
+    myfile << KEY_FOLLOW_CHILDPROCESSES << DELIM << this->followChildprocesses << "\r\n";
     myfile << KEY_LOG_RTDSC << DELIM << booleanToStr(this->traceRDTSC) << "\r\n";
     myfile << KEY_LOG_INT << DELIM << booleanToStr(this->traceINT) << "\r\n";
     myfile << KEY_LOG_SYSCALL << DELIM << booleanToStr(this->traceSYSCALL) << "\r\n";
