@@ -1325,7 +1325,7 @@ BOOL FollowChild(CHILD_PROCESS childProcess, VOID * userData)
         INT childArgc;
         CHAR const* const* childArgv;
         CHILD_PROCESS_GetCommandLine(childProcess, &childArgc, &childArgv);
-        // Set Pin's command line for child process, rebuilding with the same options skipping "-m"
+        // Set Pin's command line for child process, rebuilding with the same options updated
         INT pinArgc = 0;
         const INT pinArgcMax = 40;
         CHAR const* pinArgv[pinArgcMax];
@@ -1346,6 +1346,8 @@ BOOL FollowChild(CHILD_PROCESS childProcess, VOID * userData)
         pinArgv[pinArgc++] = KnobStopOffsets.Value().c_str();
         pinArgv[pinArgc++] = "-l";
         pinArgv[pinArgc++] = KnobSyscallsTable.Value().c_str();
+        pinArgv[pinArgc++] = "-m";
+        pinArgv[pinArgc++] = childArgv[0];
         pinArgv[pinArgc++] = "--";
         // Now copy the child command line
         for (int i = 0; i < childArgc && pinArgc < pinArgcMax; i++) {
