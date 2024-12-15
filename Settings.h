@@ -103,7 +103,6 @@ public:
 
     Settings() 
         : followShellcode(SHELLC_FOLLOW_FIRST),
-        followChildprocesses(false),
         traceRDTSC(false),
         traceINT(false),
         traceSYSCALL(true),
@@ -129,7 +128,6 @@ public:
 
     t_shellc_options followShellcode;
 
-    bool followChildprocesses; // Follow Child Processes
     bool traceRDTSC; // Trace RDTSC
     bool traceINT; // trace INT
     bool traceSYSCALL; // Trace syscall instructions (i.e., syscall, int 2Eh, sysenter)

@@ -1317,49 +1317,60 @@ static void OnCtxChange(THREADID threadIndex,
 
 BOOL FollowChild(CHILD_PROCESS childProcess, VOID * userData)
 {
-    if (m_Settings.followChildprocesses) {
-        OS_PROCESS_ID childPid = CHILD_PROCESS_GetId(childProcess);
-        std::cerr << "Following Subprocess: " << childPid << std::endl;
+    OS_PROCESS_ID childPid = CHILD_PROCESS_GetId(childProcess);
+    std::cerr << "Following Subprocess: " << childPid << std::endl;
 
-        // Get child process command line
-        INT childArgc;
-        CHAR const* const* childArgv;
-        CHILD_PROCESS_GetCommandLine(childProcess, &childArgc, &childArgv);
-        // Set Pin's command line for child process, rebuilding with the same options updated
-        INT pinArgc = 0;
-        const INT pinArgcMax = 40;
-        CHAR const* pinArgv[pinArgcMax];
+    // Get child process command line
+    INT childArgc;
+    CHAR const* const* childArgv;
+    CHILD_PROCESS_GetCommandLine(childProcess, &childArgc, &childArgv);
+    // Set Pin's command line for child process, rebuilding with the same options updated
+    INT pinArgc = 0;
+    const INT pinArgcMax = 40;
+    CHAR const* pinArgv[pinArgcMax];
 
-        pinArgv[pinArgc++] = pinPath.c_str();
-        pinArgv[pinArgc++] = "-follow_execv";
-        pinArgv[pinArgc++] = "-t";
-        pinArgv[pinArgc++] = PIN_ToolFullPath();
-        pinArgv[pinArgc++] = "-o";
-        pinArgv[pinArgc++] = KnobOutputFile.Value().c_str();
-        pinArgv[pinArgc++] = "-s";
-        pinArgv[pinArgc++] = KnobIniFile.Value().c_str();
-        pinArgv[pinArgc++] = "-b";
-        pinArgv[pinArgc++] = KnobWatchListFile.Value().c_str();
-        pinArgv[pinArgc++] = "-x";
-        pinArgv[pinArgc++] = KnobExcludedListFile.Value().c_str();
-        pinArgv[pinArgc++] = "-p";
-        pinArgv[pinArgc++] = KnobStopOffsets.Value().c_str();
-        pinArgv[pinArgc++] = "-l";
-        pinArgv[pinArgc++] = KnobSyscallsTable.Value().c_str();
-        pinArgv[pinArgc++] = "-m";
-        pinArgv[pinArgc++] = childArgv[0];
-        pinArgv[pinArgc++] = "--";
-        // Now copy the child command line
-        for (int i = 0; i < childArgc && pinArgc < pinArgcMax; i++) {
-            pinArgv[pinArgc++] = childArgv[i];
-        }
-
-        CHILD_PROCESS_SetPinCommandLine(childProcess, pinArgc, pinArgv);
-        return TRUE;
+    pinArgv[pinArgc++] = pinPath.c_str();
+    pinArgv[pinArgc++] = "-follow_execv";
+    pinArgv[pinArgc++] = "-t";
+    pinArgv[pinArgc++] = PIN_ToolFullPath();
+    pinArgv[pinArgc++] = "-o";
+    pinArgv[pinArgc++] = KnobOutputFile.Value().c_str();
+    pinArgv[pinArgc++] = "-s";
+    pinArgv[pinArgc++] = KnobIniFile.Value().c_str();
+    pinArgv[pinArgc++] = "-b";
+    pinArgv[pinArgc++] = KnobWatchListFile.Value().c_str();
+    pinArgv[pinArgc++] = "-x";
+    pinArgv[pinArgc++] = KnobExcludedListFile.Value().c_str();
+    pinArgv[pinArgc++] = "-p";
+    pinArgv[pinArgc++] = KnobStopOffsets.Value().c_str();
+    pinArgv[pinArgc++] = "-l";
+    pinArgv[pinArgc++] = KnobSyscallsTable.Value().c_str();
+    pinArgv[pinArgc++] = "-m";
+    pinArgv[pinArgc++] = childArgv[0];
+    pinArgv[pinArgc++] = "--";
+    // Now copy the child command line
+    for (int i = 0; i < childArgc && pinArgc < pinArgcMax; i++) {
+        pinArgv[pinArgc++] = childArgv[i];
     }
-    // If the callback return FALSE, the child is not followed
-    return FALSE;
+
+    CHILD_PROCESS_SetPinCommandLine(childProcess, pinArgc, pinArgv);
+    return TRUE;
 }
+
+
+std::string addPidToFilename(const std::string& filename, int pid)
+{
+    std::stringstream fnamestr;
+    size_t pos = filename.find_last_of('.');
+    if (pos == std::string::npos || pos >= filename.length()) {
+        fnamestr << filename << "." << pid;
+    }
+    else {
+        fnamestr << filename.substr(0, pos) << "." << pid << '.' << filename.substr(pos + 1);
+    }
+    return fnamestr.str();
+}
+
 
 /*!
 * The main procedure of the tool.
@@ -1441,10 +1452,8 @@ int main(int argc, char *argv[])
     }
 
     // init output file:
-    int pid = PIN_GetPid();
-    std::stringstream filename;
-    filename << KnobOutputFile.Value() << "_" << pid << ".log";
-    traceLog.init(filename.str(), m_Settings.shortLogging);
+    std::string filename = addPidToFilename(KnobOutputFile.Value(), PIN_GetPid());
+    traceLog.init(filename, m_Settings.shortLogging);
     
     // Register function to be called for every loaded module
     IMG_AddInstrumentFunction(ImageLoad, NULL);
@@ -1472,13 +1481,13 @@ int main(int argc, char *argv[])
     std::cerr << "Tracing module: " << app_name << std::endl;
     if (!KnobOutputFile.Value().empty())
     {
-        std::cerr << "See file " << filename.str() << " for analysis results" << std::endl;
+        std::cerr << "See file " << filename << " for analysis results" << std::endl;
     }
     std::cerr << "===============================================" << std::endl;
 
     // Register the callback function for child processes
     PIN_AddFollowChildProcessFunction(FollowChild, 0);
-    
+
     // Start the program, never returns
     PIN_StartProgram();
     return 0;
