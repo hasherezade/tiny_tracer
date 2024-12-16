@@ -1317,6 +1317,10 @@ static void OnCtxChange(THREADID threadIndex,
 
 BOOL FollowChild(CHILD_PROCESS childProcess, VOID * userData)
 {
+    if (!m_Settings.followChildprocesses) {
+        std::cerr << "Following child process is disabled\n";
+        return FALSE;
+    }
     OS_PROCESS_ID childPid = CHILD_PROCESS_GetId(childProcess);
     std::cerr << "Following Subprocess: " << childPid << std::endl;
 
@@ -1452,7 +1456,10 @@ int main(int argc, char *argv[])
     }
 
     // init output file:
-    std::string filename = addPidToFilename(KnobOutputFile.Value(), PIN_GetPid());
+    std::string filename = KnobOutputFile.Value();
+    if (m_Settings.followChildprocesses) {
+        filename = addPidToFilename(filename, PIN_GetPid());
+    }
     traceLog.init(filename, m_Settings.shortLogging);
     
     // Register function to be called for every loaded module
