@@ -120,7 +120,8 @@ public:
         useDebugSym(false),
         isHyperVSet(false),
         emulateSingleStep(true),
-        disasmStart(0), disasmStop(0), disasmCtx(false)
+        disasmStart(0), disasmStop(0), disasmCtx(false),
+        logReturn(false), followArgReturn(false)
     {
     }
 
@@ -149,6 +150,8 @@ public:
     int disasmStart;
     int disasmStop;
     bool disasmCtx; // show context in a disasm mode
+    bool logReturn; // Log return value
+    bool followArgReturn; // Log changes of args and returns ptr
 
     SyscallsTable syscallsTable; //Syscalls table: mapping the syscall ID to the function name
     FuncWatchList funcWatch; //List of functions, arguments of which are going to be logged

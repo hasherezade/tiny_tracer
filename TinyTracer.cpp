@@ -143,6 +143,247 @@ WatchedType isWatchedAddress(const ADDRINT Address)
 }
 
 /* ===================================================================== */
+// Utilities for tracking API/system calls and returns 
+/* ===================================================================== */
+
+struct CallInfo {
+    uint64_t callNumber;                            // Unique (incremented) identifier for each call (per thread)
+    ADDRINT returnAddress;                          // Return address of the call
+    std::string functionName;                       // Name of the API
+    uint32_t argCount;                              // Number of arguments
+    std::vector<std::wstring> args;                 // Stored arguments values (result of paramToStr)
+    std::vector<VOID*> argPointers;                 // Stored args pointers (empty if args is not a pointer)
+    std::vector<std::vector<uint8_t>> argSnapshots; // Memory snapshots for arguments
+    std::wstring returnValue;                       // Stored return value (ret of paramToStr)
+    ADDRINT returnPtr;                              // Stored return Ptr if return value is ptr
+    std::vector<uint8_t> returnSnapshot;            // Exists if return is ptr. Memory snapshot for return value
+    std::vector<bool> argChangeLogged;              // Track whether changes were logged for each argument (track only one change)
+    bool returnChangeLogged = false;                // Track whether return value change was logged (track only one change)
+};
+
+struct FunctionTracker {
+    std::map<THREADID, std::vector<CallInfo>> threadCalls;  // Stores all calls grouped by thread
+    std::map<THREADID, uint64_t> threadCallCounts;          // Per-thread sequential call counters
+
+    // Add a function call for global tracking per thread
+    void addCall(THREADID tid, CallInfo& callInfo) {
+        if (threadCallCounts.find(tid) == threadCallCounts.end()) {
+            threadCallCounts[tid] = 0; // Initialize the counter for this thread
+        }
+
+        // Assign a sequential call number
+        callInfo.callNumber = threadCallCounts[tid]++;
+
+        // Initialize argChangeLogged
+        callInfo.argChangeLogged.resize(callInfo.argCount, false); // Initialize all values to `false`
+
+        // Add the function call to the thread list
+        threadCalls[tid].push_back(callInfo);
+    }
+
+    // Log all stored function calls and their details
+    void logAll() const {
+        for (const auto& thread : threadCalls) {
+            THREADID tid = thread.first;
+            const auto& calls = thread.second;
+
+            std::wstringstream ss;
+            ss << L" " << L"\n";
+            ss << L"Display the call tracker struct for debugging purpose\n";
+            ss << L"Thread ID: " << tid << L"\n";
+            for (const auto& call : calls) {
+                ss << L"  Call #" << call.callNumber << L", Function: " << call.functionName.c_str() << L"\n";
+                ss << L"    Return Address: 0x" << std::hex << call.returnAddress << std::dec << L"\n";
+                ss << L"    Arguments (" << call.argCount << L"):\n";
+
+                for (size_t i = 0; i < call.args.size(); ++i) {
+                    ss << L"      Arg[" << i << L"]: " << call.args[i] << L"\n";
+                }
+
+                if (!call.returnValue.empty()) {
+                    ss << L"    Return Value: " << call.returnValue << L"\n";
+                }
+
+                ss << L"  -----\n";
+            }
+
+            // Convert to string and log
+            std::wstring wstr = ss.str();
+            std::string s(wstr.begin(), wstr.end());
+            traceLog.logLine(s);
+        }
+    }
+};
+
+void CheckAndLogChanges(CallInfo& callInfo) {
+    std::wstringstream ss;
+
+    // Check argument changes
+    for (size_t i = 0; i < callInfo.argCount; i++) {
+
+        if (callInfo.argChangeLogged[i] || callInfo.argSnapshots[i].empty()) continue;
+
+        // Should be always true because previous condition checks if argSnapshots is not empty
+        // .ie a corresponding valid pointer exists as it is used to do the snapshot
+        if (callInfo.argPointers[i] == nullptr) continue;
+
+        const uint8_t* currentData = reinterpret_cast<const uint8_t*>(callInfo.argPointers[i]);
+
+        // Compare the current memory with the stored snapshot
+        if (memcmp(currentData, &callInfo.argSnapshots[i][0], callInfo.argSnapshots[i].size()) != 0) {
+            ss << callInfo.functionName.c_str()
+                << L", Arg[" << i << L"] Pointer: " << callInfo.argPointers[i] << L" changed:\n"
+                << L"\tOld: {" << callInfo.args[i] << L"}\n"
+                << L"\tNew: {" << paramToStr(callInfo.argPointers[i]) << L"}\n";
+            callInfo.argChangeLogged[i] = true; // Mark as logged
+        }
+    }
+
+    // Check return value changes : compare stored return pointer previous data to current
+    if (!callInfo.returnChangeLogged && !callInfo.returnSnapshot.empty()) {
+        const uint8_t* currentData = reinterpret_cast<const uint8_t*>(callInfo.returnPtr);
+        if (memcmp(currentData, &callInfo.returnSnapshot[0], callInfo.returnSnapshot.size()) != 0) {
+            ss << callInfo.functionName.c_str()
+                << L", Return Pointer: " << callInfo.returnPtr << L" changed:\n"
+                << L"\tOld: {" << callInfo.returnValue << L"}\n"
+                << L"\tNew: {" << paramToStr(reinterpret_cast<void*>(callInfo.returnPtr)) << L"}\n";
+
+            callInfo.returnChangeLogged = true; // Mark as logged
+        }
+    }
+
+    if (!ss.str().empty()) {
+        std::wstring wstr = ss.str();
+        std::string s(wstr.begin(), wstr.end());
+        traceLog.logLine(s); // Log the changes
+    }
+}
+
+FunctionTracker globalCallTracker;
+PIN_LOCK globalLock;
+static TLS_KEY tlsKey;
+
+VOID ThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
+{
+    std::map<ADDRINT, CallInfo>* newMap = new std::map<ADDRINT, CallInfo>();
+    PIN_SetThreadData(tlsKey, newMap, tid);
+}
+
+// Save args/return pointers and values of each call
+// Log any change in logged args and return values
+VOID LogCallDetails(const ADDRINT Address, CHAR* name, uint32_t argCount,
+    VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4,
+    VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8,
+    VOID* arg9, VOID* arg10, VOID* arg11)
+{
+    THREADID tid = PIN_ThreadId();
+
+    if (m_Settings.logReturn && m_Settings.followArgReturn) {
+        // Check for changes in previous arg/returned pointers
+        for (auto it = globalCallTracker.threadCalls.begin(); it != globalCallTracker.threadCalls.end(); ++it) {
+            THREADID tid = it->first;
+            auto& calls = it->second;
+            for (auto callIt = calls.begin(); callIt != calls.end(); ++callIt) {
+                CheckAndLogChanges(*callIt);
+            }
+        }
+    }
+
+    // Retrieve the thread-local call map
+    auto* callMap = static_cast<std::map<ADDRINT, CallInfo>*>(PIN_GetThreadData(tlsKey, tid));
+
+    // Initialize CallInfo
+    CallInfo info;
+    info.returnAddress = Address;
+    info.functionName = name;
+    info.argCount = argCount;
+
+    // Prepare arguments to log their value (paramToStr result)
+    VOID* args[] = { arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11 };
+
+    for (size_t i = 0; i < argCount; i++) {
+        info.args.push_back(paramToStr(args[i]));   // Convert and store arguments
+
+        // Take memory snapshot for pointers
+        if (isValidReadPtr(args[i])) {
+            info.argPointers.push_back(args[i]);    // Store the raw address
+
+            size_t size = 16;                       // Change the size if needed
+            std::vector<uint8_t> snapshot(size);
+            memcpy(&snapshot[0], args[i], size);    // Copy memory contents into the snapshot
+            info.argSnapshots.push_back(snapshot);  // Add the snapshot to the vector
+        }
+        else {
+            info.argSnapshots.push_back(std::vector<uint8_t>()); // Push an empty vector for non-pointers
+            info.argPointers.push_back(nullptr); // Push empty vector
+        }
+    }
+
+    // Store function call info in the thread map
+    (*callMap)[Address] = info;
+
+    // Add the call to the global log
+    PIN_GetLock(&globalLock, tid);
+    globalCallTracker.addCall(tid, info); // Increment the call counter and add the call
+    PIN_ReleaseLock(&globalLock);
+}
+
+VOID CheckIfFunctionReturned(THREADID tid, ADDRINT ip, ADDRINT retVal)
+{
+    auto* callMap = static_cast<std::map<ADDRINT, CallInfo>*>(PIN_GetThreadData(tlsKey, tid));
+
+
+
+    auto it = callMap->find(ip);
+    if (it != callMap->end()) {
+        std::wstringstream ss;
+
+        CallInfo& info = it->second;
+
+        ss << info.functionName.c_str() << L"\n";
+        ss << L"\treturned: " << paramToStr(reinterpret_cast<VOID*>(retVal));
+        ss << "\n";
+
+        // Update the global call tracker
+        PIN_GetLock(&globalLock, tid + 1); // Lock for thread safety
+        auto& threadCalls = globalCallTracker.threadCalls[tid];
+        for (auto& call : threadCalls) {
+            if (call.returnAddress == info.returnAddress && call.functionName == info.functionName) {
+                call.returnValue = paramToStr(reinterpret_cast<VOID*>(retVal)); // Update the return value
+                info.returnValue = paramToStr(reinterpret_cast<VOID*>(retVal));
+
+                // Snapshot the return value if the return is a ptr
+                if (!call.returnValue.empty() && isValidReadPtr(reinterpret_cast<VOID*>(retVal))) {
+                    size_t size = 16; // Change if needed
+                    call.returnSnapshot.resize(size);
+                    memcpy(&call.returnSnapshot[0], reinterpret_cast<VOID*>(retVal), size); // Copy memory content into the snapshot
+
+                    // Also store the pointer itself
+                    call.returnPtr = retVal;
+                }
+                break;
+            }
+        }
+
+
+        PIN_ReleaseLock(&globalLock);
+
+        callMap->erase(it);
+        std::wstring wstr = ss.str();
+        std::string s(wstr.begin(), wstr.end());
+        traceLog.logLine(s);
+    }
+
+}
+
+VOID Fini(INT32 code, VOID* v)
+{
+    PIN_GetLock(&globalLock, 0);          // Acquire lock for thread safety
+    globalCallTracker.logAll();              // Log all calls through traceLog
+    PIN_ReleaseLock(&globalLock);         // Release lock
+}
+
+/* ===================================================================== */
 // Analysis routines
 /* ===================================================================== */
 
@@ -650,6 +891,23 @@ VOID LogSyscallsArgs(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std
         syscall_args[8],
         syscall_args[9],
         syscall_args[10]);
+
+    if (m_Settings.logReturn) {
+        LogCallDetails(Address,
+            const_cast<CHAR*>(name),
+            argCount,
+            syscall_args[0],
+            syscall_args[1],
+            syscall_args[2],
+            syscall_args[3],
+            syscall_args[4],
+            syscall_args[5],
+            syscall_args[6],
+            syscall_args[7],
+            syscall_args[8],
+            syscall_args[9],
+            syscall_args[10]);
+    }
 }
 
 BOOL _fetchSyscallData(CONTEXT* ctxt, SYSCALL_STANDARD &std, ADDRINT &address)
@@ -800,6 +1058,38 @@ VOID SyscallCalledAfter(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID*
 #endif //USE_ANTIVM
 
     const ADDRINT address = itr->second.addrFrom;
+
+    // Retrieve the syscall return value
+    ADDRINT returnValue = PIN_GetSyscallReturn(ctxt, std);
+
+    PIN_GetLock(&globalLock, tid); // Lock for thread safety
+    auto& threadCalls = globalCallTracker.threadCalls[tid];
+
+    // Retrieve the corresponding syscall from globalCallTracker
+    for (auto& call : threadCalls) {
+        if (call.returnAddress == address) {
+            std::wstringstream ss;
+            call.returnValue = paramToStr(reinterpret_cast<VOID*>(returnValue));; // Update the return value
+            ss << call.functionName.c_str() << L"\n";
+            ss << L"\treturned: " << paramToStr(reinterpret_cast<VOID*>(returnValue));
+            ss << "\n";
+
+            // Snapshot the return value if the return is a ptr
+            if (!call.returnValue.empty() && isValidReadPtr(reinterpret_cast<VOID*>(returnValue))) {
+                size_t size = 16; // Example size, adjust as needed
+                call.returnSnapshot.resize(size); // Resize the vector to hold the snapshot
+                memcpy(&call.returnSnapshot[0], reinterpret_cast<VOID*>(returnValue), size); // Copy memory content into the snapshot
+
+                // Also store the pointer itself
+                call.returnPtr = returnValue;
+            }
+            std::wstring wstr = ss.str();
+            std::string s(wstr.begin(), wstr.end());
+            traceLog.logLine(s);
+            break;
+        }
+    }
+    PIN_ReleaseLock(&globalLock);
 
     itr->second.reset(); // sycall completed, erase the stored info
 
@@ -957,6 +1247,10 @@ VOID LogFunctionArgs(const ADDRINT Address, CHAR* name, uint32_t argCount, VOID*
     PinLocker locker;
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
     _LogFunctionArgs(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
+
+    if (m_Settings.logReturn) {
+        LogCallDetails(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
+    }
 }
 
 VOID MonitorFunctionArgs(IMG Image, const WFuncInfo& funcInfo)
@@ -1058,6 +1352,14 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
 
 VOID InstrumentInstruction(INS ins, VOID *v)
 {
+    if (m_Settings.logReturn) {
+        // Insert callback for function returns
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)CheckIfFunctionReturned,
+            IARG_THREAD_ID,        // Thread ID for TLS
+            IARG_INST_PTR,         // Instruction pointer
+            IARG_REG_VALUE, REG_GAX, // Return value in EAX/RAX
+            IARG_END);
+    }
     const IMG pImg = IMG_FindByAddress(INS_Address(ins));
     const BOOL isMyImg = pInfo.isMyImg(pImg);
     BOOL inWatchedModule = isMyImg;
@@ -1486,6 +1788,17 @@ int main(int argc, char *argv[])
         std::cerr << "See file " << filename << " for analysis results" << std::endl;
     }
     std::cerr << "===============================================" << std::endl;
+    
+    if (m_Settings.logReturn) {
+        // Create the TLS key 
+        tlsKey = PIN_CreateThreadDataKey(NULL);
+
+        // Register the ThreadStart callback
+        PIN_AddThreadStartFunction(ThreadStart, NULL);
+
+        // Register the Fini function
+        PIN_AddFiniFunction(Fini, nullptr);
+    }
 
     // Register the callback function for child processes
     PIN_AddFollowChildProcessFunction(FollowChild, 0);
