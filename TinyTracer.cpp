@@ -244,7 +244,7 @@ void CheckAndLogChanges(CallInfo& callInfo) {
         const uint8_t* currentData = reinterpret_cast<const uint8_t*>(callInfo.returnPtr);
         if (memcmp(currentData, &callInfo.returnSnapshot[0], callInfo.returnSnapshot.size()) != 0) {
             ss << callInfo.functionName.c_str()
-                << L", Return Pointer: " << callInfo.returnPtr << L" changed:\n"
+                << L", Return Pointer: 0x" << std::hex << callInfo.returnPtr << L" changed:\n"
                 << L"\tOld: {" << callInfo.returnValue << L"}\n"
                 << L"\tNew: {" << paramToStr(reinterpret_cast<void*>(callInfo.returnPtr)) << L"}\n";
 
