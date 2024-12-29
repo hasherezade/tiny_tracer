@@ -183,7 +183,7 @@ VOID AntiDbg::WatchCompareSoftBrk(ADDRINT Address, UINT64 immVal)
 }
 
 namespace AntiDbg {
-    std::set<THREADID> popfThreads;
+    std::map<THREADID, int> popfThreads;
 
     VOID FlagsCheck(const CONTEXT* ctxt, THREADID tid)
     {
@@ -209,23 +209,35 @@ namespace AntiDbg {
         PIN_SafeCopy((VOID*)stackPtr, (const VOID*)&pushedVal, sizeof(pushedVal));
 
         if (m_Settings.emulateSingleStep) {
-            popfThreads.insert(tid);
+            popfThreads[tid] = 0;
         }
     }
 
     VOID FlagsCheck_after(const CONTEXT* ctxt, THREADID tid, ADDRINT eip)
     {
+        bool throwExcept = false;
+
         {
             PinLocker locker;
-
-            if (popfThreads.find(tid) == popfThreads.end()) {
+            auto itr = popfThreads.find(tid);
+            if (itr == popfThreads.end()) {
                 return; // trap flag wasn't set in this thread
             }
-            popfThreads.erase(tid); // erase the stored TID
+            if (itr->second == 1) {
+                popfThreads.erase(tid); // erase the stored TID
+                throwExcept = true;
+            }
+            else {
+                itr->second++;
+            }
         }
-        EXCEPTION_INFO exc;
-        exc.Init(EXCEPTCODE_DBG_SINGLE_STEP_TRAP, eip);
-        PIN_RaiseException(ctxt, tid, &exc);
+
+        if (throwExcept) {
+            EXCEPTION_INFO exc;
+            exc.Init(EXCEPTCODE_DBG_SINGLE_STEP_TRAP, eip);
+            PIN_RaiseException(ctxt, tid, &exc);
+        }
+
     }
 }; // namespace AntiDbg
 
