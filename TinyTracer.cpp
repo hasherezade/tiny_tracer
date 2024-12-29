@@ -1310,7 +1310,9 @@ static void OnCtxChange(THREADID threadIndex,
 BOOL FollowChild(CHILD_PROCESS childProcess, VOID * userData)
 {
     if (!m_Settings.followChildprocesses) {
+#ifdef _DEBUG
         std::cerr << "Following child process is disabled\n";
+#endif
         return FALSE;
     }
     OS_PROCESS_ID childPid = CHILD_PROCESS_GetId(childProcess);
