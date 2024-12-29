@@ -1193,16 +1193,8 @@ VOID InstrumentInstruction(INS ins, VOID *v)
                 IARG_INST_PTR,        // Instruction address
                 IARG_END);
         }
-
-#ifdef _WIN64
-        const char *POPF_MNEM = "popfq";
-#else
-        const char *POPF_MNEM = "popfd";
-#endif
-        if (util::isStrEqualI(INS_Mnemonic(ins), POPF_MNEM))
-        {
-            AntiDbg::InstrumentFlagsCheck(ins);
-        }
+        
+        AntiDbg::InstrumentFlagsCheck(ins);
 
         if (INS_IsInterrupt(ins)) {
             INS_InsertCall(
