@@ -20,7 +20,7 @@
 #include "DisasmCache.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.9.1"
+#define VERSION "2.9.5"
 
 #include "Util.h"
 #include "Settings.h"
