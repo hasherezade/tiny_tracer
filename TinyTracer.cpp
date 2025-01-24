@@ -20,7 +20,7 @@
 #include "DisasmCache.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.9.5"
+#define VERSION "2.9.6"
 
 #include "Util.h"
 #include "Settings.h"
@@ -726,8 +726,9 @@ VOID SyscallCalled(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID* v)
     if (wType == WatchedType::NOT_WATCHED && !g_IsIndirectSyscall) {
         return;
     }
-    const ADDRINT syscallNum = PIN_GetSyscallNumber(ctxt, std);
+    ADDRINT syscallNum = PIN_GetSyscallNumber(ctxt, std);
     if (syscallNum == UNKNOWN_ADDR) return; //invalid
+    syscallNum &= MAX_WORD;
 
     syscallFromThread[tid].fill(syscallNum, address);
 

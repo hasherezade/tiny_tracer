@@ -10,6 +10,9 @@
 #define IS_PRINTABLE(c) (c >= 0x20 && c < 0x7f)
 #define IS_ENDLINE(c) (c == 0x0A || c == 0xD)
 
+#define MAX_DWORD 0xffffffff
+#define MAX_WORD 0xffff
+
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 0x1000
 #endif
