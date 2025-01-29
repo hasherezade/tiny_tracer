@@ -3,6 +3,7 @@ rem This script is to be used from the command line
 
 set TARGET_APP=%~1
 set TARGET_PID=%~2
+set TAG_FILE=%~3
 
 if "%TARGET_PID%"=="" goto display_args
 if "%TARGET_APP%"=="" goto display_args
@@ -31,7 +32,7 @@ set PINTOOL=%PINTOOL32%
 rem TRACED_MODULE - by default it is the main module, but it can be also a DLL within the traced process
 set TRACED_MODULE=%TARGET_APP%
 
-set TAG_FILE="%TRACED_MODULE%.tag"
+if "%TAG_FILE%"=="" set TAG_FILE="%TRACED_MODULE%.tag"
 
 rem The ini file specifying the settings of the tracer
 set SETTINGS_FILE=%PIN_TOOLS_DIR%\TinyTracer.ini
