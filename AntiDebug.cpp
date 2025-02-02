@@ -14,10 +14,6 @@
 #include "TinyTracer.h"
 #include "ModuleInfo.h"
 
-#ifdef USE_WINDOWS_HDR
-#include "win/win_paths.h"
-#endif
-
 #include "EvasionWatch.h"
 
 #define ANTIDBG_LABEL "[ANTIDEBUG] --> "

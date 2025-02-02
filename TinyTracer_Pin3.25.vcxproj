@@ -130,12 +130,6 @@
       <AllowIsolation>true</AllowIsolation>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
-    <PreBuildEvent>
-      <Command>win_hdrs_init.bat "$(WindowsSdkDir)"</Command>
-    </PreBuildEvent>
-    <PreBuildEvent>
-      <Message>Generate "my_paths.h"</Message>
-    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Midl>
@@ -174,12 +168,6 @@
       <TargetMachine>MachineX64</TargetMachine>
       <AllowIsolation>true</AllowIsolation>
     </Link>
-    <PreBuildEvent>
-      <Command>win_hdrs_init.bat "$(WindowsSdkDir)"</Command>
-    </PreBuildEvent>
-    <PreBuildEvent>
-      <Message>Generate "my_paths.h"</Message>
-    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -222,12 +210,6 @@
       <TargetMachine>MachineX86</TargetMachine>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
-    <PreBuildEvent>
-      <Command>win_hdrs_init.bat "$(WindowsSdkDir)"</Command>
-    </PreBuildEvent>
-    <PreBuildEvent>
-      <Message>Generate "my_paths.h"</Message>
-    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Midl>
@@ -271,12 +253,6 @@
       <BaseAddress>0xC5000000</BaseAddress>
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
-    <PreBuildEvent>
-      <Command>win_hdrs_init.bat "$(WindowsSdkDir)"</Command>
-    </PreBuildEvent>
-    <PreBuildEvent>
-      <Message>Generate "my_paths.h"</Message>
-    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="EvasionWatch.cpp" />
