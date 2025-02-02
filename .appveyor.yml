@@ -24,7 +24,7 @@ install:
   - cd ..
   - curl -fsS -o pin.zip https://software.intel.com/sites/landingpage/pintool/downloads/pin-external-3.31-98869-gfa6f126a8-msvc-windows.zip
   - 7z x pin.zip
-  - cd pin-external-3.31-98861-g71afcc22f-msvc-windows
+  - cd pin-external-3.31-98869-gfa6f126a8-msvc-windows
   - cd source
   - cd tools
   - cp -r ../../../%projName% ./
