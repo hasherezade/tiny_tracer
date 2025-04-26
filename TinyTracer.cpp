@@ -145,11 +145,13 @@ WatchedType isWatchedAddress(const ADDRINT Address)
 
 VOID ThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
 {
+    PinLocker locker;
     RetTracker::InitTrackerForThread(tid);
 }
 
 VOID Fini(INT32 code, VOID* v)
 {
+    PinLocker locker;
     RetTracker::LogAllTrackedCalls();
 }
 
@@ -1090,12 +1092,17 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
 // Instrumentation callbacks
 /* ===================================================================== */
 
+VOID CheckIfFunctionReturned(const THREADID tid, const ADDRINT ip, const ADDRINT retVal)
+{
+    PinLocker locker;
+    return RetTracker::CheckIfFunctionReturned(tid, ip, retVal);
+}
 
 VOID InstrumentInstruction(INS ins, VOID *v)
 {
     if (m_Settings.logReturn) {
         // Insert callback for function returns
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)RetTracker::CheckIfFunctionReturned,
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)CheckIfFunctionReturned,
             IARG_THREAD_ID,        // Thread ID for TLS
             IARG_INST_PTR,         // Instruction pointer
             IARG_REG_VALUE, REG_GAX, // Return value in EAX/RAX
