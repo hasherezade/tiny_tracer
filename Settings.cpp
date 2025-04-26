@@ -28,6 +28,9 @@
 #define KEY_DISASM_START                "DISASM_START"
 #define KEY_DISASM_STOP                 "DISASM_STOP"
 #define KEY_DISASM_CTX                  "DISASM_CTX"
+#define KEY_LOG_RETURN_VALUE            "LOG_RETURN_VALUE"
+#define KEY_FOLLOW_ARGS_RETURN          "FOLLOW_ARGS_RETURN"
+
 
 t_shellc_options ConvertShcOption(int value)
 {
@@ -214,6 +217,14 @@ bool fillSettings(Settings &s, const std::string &line)
         s.disasmCtx = loadBoolean(valStr);
         isFilled = true;
     }
+    if (util::iequals(valName, KEY_LOG_RETURN_VALUE)) {
+        s.logReturn = loadBoolean(valStr);
+        isFilled = true;
+    }
+    if (util::iequals(valName, KEY_FOLLOW_ARGS_RETURN)) {
+        s.followArgReturn = loadBoolean(valStr);
+        isFilled = true;
+    }
     return isFilled;
 }
 
@@ -275,6 +286,9 @@ bool Settings::saveINI(const std::string &filename)
     myfile << KEY_DISASM_START << DELIM << std::hex << this->disasmStart << "\r\n";
     myfile << KEY_DISASM_STOP << DELIM << std::hex << this->disasmStop << "\r\n";
     myfile << KEY_DISASM_CTX << DELIM << std::dec << booleanToStr(this->disasmCtx) << "\r\n";
+    myfile << KEY_LOG_RETURN_VALUE << DELIM << std::dec << booleanToStr(this->logReturn) << "\r\n";
+    myfile << KEY_FOLLOW_ARGS_RETURN << DELIM << std::dec << booleanToStr(this->followArgReturn) << "\r\n";
+
     myfile.close();
     return true;
 }
