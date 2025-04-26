@@ -263,6 +263,7 @@
     <ClCompile Include="TinyTracer.cpp" />
     <ClCompile Include="TraceLog.cpp" />
     <ClCompile Include="FuncWatch.cpp" />
+    <ClCompile Include="TrackReturns.cpp" />
     <ClCompile Include="Util.cpp" />
     <ClCompile Include="Settings.cpp" />
   </ItemGroup>
@@ -275,6 +276,7 @@
     <ClInclude Include="ProcessInfo.h" />
     <ClInclude Include="TraceLog.h" />
     <ClInclude Include="FuncWatch.h" />
+    <ClInclude Include="TrackReturns.h" />
     <ClInclude Include="Util.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="DisasmCache.h" />
