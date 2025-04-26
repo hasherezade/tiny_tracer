@@ -22,6 +22,16 @@ struct CallInfo
 };
 
 //---
+// 
+// Convert to string and log
+void LogBuffer(const std::wstringstream &ss)
+{
+    if (!ss.str().empty()) {
+        const std::wstring wstr = ss.str();
+        const std::string s(wstr.begin(), wstr.end());
+        traceLog.logLine(s);
+    }
+}
 
 struct FunctionTracker
 {
@@ -71,11 +81,7 @@ struct FunctionTracker
 
                 ss << L"  -----\n";
             }
-
-            // Convert to string and log
-            const std::wstring wstr = ss.str();
-            const std::string s(wstr.begin(), wstr.end());
-            traceLog.logLine(s);
+            LogBuffer(ss);
         }
     }
 }; //struct FunctionTracker
@@ -178,12 +184,7 @@ namespace RetTracker {
                 callInfo.returnChangeLogged = true; // Mark as logged
             }
         }
-
-        if (!ss.str().empty()) {
-            std::wstring wstr = ss.str();
-            std::string s(wstr.begin(), wstr.end());
-            traceLog.logLine(s); // Log the changes
-        }
+        LogBuffer(ss);
     }
 }; // namespace RetTracker
 
@@ -281,9 +282,7 @@ VOID RetTracker::CheckIfFunctionReturned(const THREADID tid, const ADDRINT ip, c
 
     callMap->erase(it);
 
-    const std::wstring wstr = ss.str();
-    const std::string s(wstr.begin(), wstr.end());
-    traceLog.logLine(s);
+    LogBuffer(ss);
 }
 
 VOID RetTracker::LogAllTrackedCalls()
@@ -318,9 +317,7 @@ VOID RetTracker::SaveReturnValue(const THREADID tid, const ADDRINT address, cons
                 // Also store the pointer itself
                 call.returnPtr = returnValue;
             }
-            const std::wstring wstr = ss.str();
-            const std::string s(wstr.begin(), wstr.end());
-            traceLog.logLine(s);
+            LogBuffer(ss);
             break;
         }
     }
