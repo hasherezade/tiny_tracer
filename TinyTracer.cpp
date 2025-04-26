@@ -940,19 +940,19 @@ std::wstring paramToStr(VOID *arg1)
 
     bool isString = false;
     const char* val = reinterpret_cast<char*>(arg1);
-    size_t len = util::getAsciiLen(val, kMaxStr);
-    if (len > 0) {
-        ss << " -> ";
-    }
+    const size_t len = util::getAsciiLen(val, kMaxStr);
+
     if (len == 1) { // Possible wideString
         wchar_t* val = reinterpret_cast<wchar_t*>(arg1);
         size_t wLen = util::getAsciiLenW(val, kMaxStr);
         if (wLen >= len) {
+            ss << " -> ";
             ss << "L\"" << val << "\"";
             isString = true;
         }
     }
     else if (len > 1) { // ASCII string
+        ss << " -> ";
         ss << "\"" << val << "\"";
         isString = true;
     }
