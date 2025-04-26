@@ -3,6 +3,7 @@
 #include "TinyTracer.h"
 #include "ModuleInfo.h"
 
+#define MEM_SNAPSHOT_SIZE 8
 
 struct CallInfo
 {
@@ -106,6 +107,41 @@ namespace RetTracker {
         return static_cast<std::map<ADDRINT, CallInfo>*>(PIN_GetThreadData(RetTracker::tlsKey, tid));
     }
 
+    // Copy memory content into the snapshot
+    bool MakeMemorySnapshot(const ADDRINT addr, std::vector<uint8_t>& vec, const size_t size)
+    {
+        if (!addr || addr == UNKNOWN_ADDR) return false;
+
+        vec.clear();
+        uint8_t* ptr = (uint8_t*)addr;
+        for (size_t i = 0; i < size; i++) {
+            uint8_t* cPtr = ptr + i;
+            if (!isValidReadPtr(cPtr)) break;
+            vec.push_back(*cPtr);
+        }
+        return vec.size() ? true : false;
+    }
+
+    // Compare the current memory with the stored snapshot
+    bool IsMemorySame(const ADDRINT addr, const std::vector<uint8_t>& snapshot)
+    {
+        if (!addr || addr == UNKNOWN_ADDR) {
+            if (snapshot.empty()) return true;
+            return false;
+        }
+        uint8_t* ptr = (uint8_t*)addr;
+        for (size_t i = 0; i < snapshot.size(); i++) {
+            uint8_t* cPtr = ptr + i;
+            if (!isValidReadPtr(cPtr)) {
+                return false;
+            }
+            if (snapshot.at(i) != (*cPtr)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     void CheckAndLogChanges(CallInfo& callInfo)
     {
         std::wstringstream ss;
@@ -119,10 +155,7 @@ namespace RetTracker {
             // .ie a corresponding valid pointer exists as it is used to do the snapshot
             if (callInfo.argPointers[i] == nullptr) continue;
 
-            const uint8_t* currentData = reinterpret_cast<const uint8_t*>(callInfo.argPointers[i]);
-
-            // Compare the current memory with the stored snapshot
-            if (memcmp(currentData, &callInfo.argSnapshots[i][0], callInfo.argSnapshots[i].size()) != 0) {
+            if (!IsMemorySame((ADDRINT)callInfo.argPointers[i], callInfo.argSnapshots[i])) {
                 ss << callInfo.functionName.c_str()
                     << L", Arg[" << i << L"] Pointer: " << callInfo.argPointers[i] << L" changed:\n"
                     << L"\tOld: {" << callInfo.args[i] << L"}\n"
@@ -135,8 +168,7 @@ namespace RetTracker {
         if (!callInfo.returnChangeLogged && !callInfo.returnSnapshot.empty()
             && callInfo.returnPtr && callInfo.returnPtr != UNKNOWN_ADDR)
         {
-            const uint8_t* currentData = reinterpret_cast<const uint8_t*>(callInfo.returnPtr);
-            if (memcmp(currentData, &callInfo.returnSnapshot[0], callInfo.returnSnapshot.size()) != 0) {
+            if (!IsMemorySame(callInfo.returnPtr, callInfo.returnSnapshot)) {
                 ss << callInfo.functionName.c_str()
                     << L", Return Pointer: 0x" << std::hex << callInfo.returnPtr << L" changed:\n"
                     << L"\tOld: {" << callInfo.returnValue << L"}\n"
@@ -193,10 +225,9 @@ VOID RetTracker::LogCallDetails(const ADDRINT Address, const CHAR* name, uint32_
         // Take memory snapshot for pointers
         if (isValidReadPtr(args[i])) {
             info.argPointers.push_back(args[i]);    // Store the raw address
-
-            size_t size = 16;                       // Change the size if needed
-            std::vector<uint8_t> snapshot(size);
-            memcpy(&snapshot[0], args[i], size);    // Copy memory contents into the snapshot
+            
+            std::vector<uint8_t> snapshot;
+            MakeMemorySnapshot((ADDRINT)args[i], snapshot, MEM_SNAPSHOT_SIZE);
             info.argSnapshots.push_back(snapshot);  // Add the snapshot to the vector
         }
         else {
@@ -235,14 +266,11 @@ VOID RetTracker::CheckIfFunctionReturned(const THREADID tid, const ADDRINT ip, c
     for (auto& call : threadCalls) {
         if (call.returnAddress == info.returnAddress && call.functionName == info.functionName) {
             call.returnValue = paramToStr(reinterpret_cast<VOID*>(retVal)); // Update the return value
-            info.returnValue = paramToStr(reinterpret_cast<VOID*>(retVal));
+            info.returnValue = call.returnValue;
 
             // Snapshot the return value if the return is a ptr
             if (!call.returnValue.empty() && isValidReadPtr(reinterpret_cast<VOID*>(retVal))) {
-                size_t size = 16; // Change if needed
-                call.returnSnapshot.resize(size);
-                memcpy(&call.returnSnapshot[0], reinterpret_cast<VOID*>(retVal), size); // Copy memory content into the snapshot
-
+                MakeMemorySnapshot(retVal, call.returnSnapshot, MEM_SNAPSHOT_SIZE);
                 // Also store the pointer itself
                 call.returnPtr = retVal;
             }
@@ -285,9 +313,7 @@ VOID RetTracker::SaveReturnValue(const THREADID tid, const ADDRINT address, cons
 
             // Snapshot the return value if the return is a ptr
             if (!call.returnValue.empty() && isValidReadPtr(reinterpret_cast<VOID*>(returnValue))) {
-                size_t size = 16; // Example size, adjust as needed
-                call.returnSnapshot.resize(size); // Resize the vector to hold the snapshot
-                memcpy(&call.returnSnapshot[0], reinterpret_cast<VOID*>(returnValue), size); // Copy memory content into the snapshot
+                MakeMemorySnapshot(returnValue, call.returnSnapshot, MEM_SNAPSHOT_SIZE);
 
                 // Also store the pointer itself
                 call.returnPtr = returnValue;

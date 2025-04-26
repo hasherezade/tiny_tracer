@@ -86,7 +86,7 @@ ADDRINT addr_to_rva(ADDRINT Address)
 
 ADDRINT query_region_base(ADDRINT memoryAddr)
 {
-    if (memoryAddr == UNKNOWN_ADDR) {
+    if (!memoryAddr || memoryAddr == UNKNOWN_ADDR) {
         return UNKNOWN_ADDR;
     }
     return GetPageOfAddr((ADDRINT)memoryAddr);
