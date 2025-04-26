@@ -157,9 +157,10 @@ namespace RetTracker {
 
             if (!IsMemorySame((ADDRINT)callInfo.argPointers[i], callInfo.argSnapshots[i])) {
                 ss << callInfo.functionName.c_str()
-                    << L", Arg[" << i << L"] Pointer: " << callInfo.argPointers[i] << L" changed:\n"
-                    << L"\tOld: {" << callInfo.args[i] << L"}\n"
-                    << L"\tNew: {" << paramToStr(callInfo.argPointers[i]) << L"}\n";
+                    << L", Arg[" << i << L"] = " << std::hex << callInfo.argPointers[i] << L" changed:\n"
+                    << L"\tOld: " << callInfo.args[i] << L"\n"
+                    << L"\tNew: " << paramToStr(callInfo.argPointers[i])
+                    << L"\n";
                 callInfo.argChangeLogged[i] = true; // Mark as logged
             }
         }
@@ -171,10 +172,9 @@ namespace RetTracker {
             if (!IsMemorySame(callInfo.returnPtr, callInfo.returnSnapshot)) {
                 ss << callInfo.functionName.c_str()
                     << L", Return Pointer: 0x" << std::hex << callInfo.returnPtr << L" changed:\n"
-                    << L"\tOld: {" << callInfo.returnValue << L"}\n"
-                    << L"\tNew: {" << paramToStr(reinterpret_cast<void*>(callInfo.returnPtr)) << L"}"
+                    << L"\tOld: " << callInfo.returnValue << L"\n"
+                    << L"\tNew: " << paramToStr(reinterpret_cast<void*>(callInfo.returnPtr))
                     << L"\n";
-
                 callInfo.returnChangeLogged = true; // Mark as logged
             }
         }
