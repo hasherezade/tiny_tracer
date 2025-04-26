@@ -21,7 +21,7 @@
 #include "TrackReturns.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.9.7"
+#define VERSION "2.9.8"
 
 #include "Util.h"
 #include "Settings.h"
@@ -89,7 +89,6 @@ KNOB<std::string> KnobStopOffsets(KNOB_MODE_WRITEONCE, "pintool",
 
 VOID _LogFunctionArgs(const ADDRINT Address, const CHAR* name, uint32_t argCount, VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4, VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8, VOID* arg9, VOID* arg10, VOID* arg11);
 
-
 /*!
 *  Print out help message.
 */
@@ -146,12 +145,12 @@ WatchedType isWatchedAddress(const ADDRINT Address)
 
 VOID ThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
 {
-    InitTrackerForThread(tid);
+    RetTracker::InitTrackerForThread(tid);
 }
 
 VOID Fini(INT32 code, VOID* v)
 {
-    LogAllTrackedCalls();
+    RetTracker::LogAllTrackedCalls();
 }
 
 /* ===================================================================== */
@@ -664,7 +663,7 @@ VOID LogSyscallsArgs(const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std
         syscall_args[10]);
 
     if (m_Settings.logReturn) {
-        LogCallDetails(Address,
+        RetTracker::LogCallDetails(Address,
             const_cast<CHAR*>(name),
             argCount,
             syscall_args[0],
@@ -831,7 +830,7 @@ VOID SyscallCalledAfter(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID*
     const ADDRINT address = itr->second.addrFrom;
 
     // Retrieve the syscall return value
-    SaveReturnValue(tid, address, PIN_GetSyscallReturn(ctxt, std));
+    RetTracker::SaveReturnValue(tid, address, PIN_GetSyscallReturn(ctxt, std));
 
     itr->second.reset(); // sycall completed, erase the stored info
 
@@ -991,7 +990,7 @@ VOID LogFunctionArgs(const ADDRINT Address, CHAR* name, uint32_t argCount, VOID*
     _LogFunctionArgs(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
 
     if (m_Settings.logReturn) {
-        LogCallDetails(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
+        RetTracker::LogCallDetails(Address, name, argCount, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
     }
 }
 
@@ -1096,7 +1095,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
 {
     if (m_Settings.logReturn) {
         // Insert callback for function returns
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)CheckIfFunctionReturned,
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)RetTracker::CheckIfFunctionReturned,
             IARG_THREAD_ID,        // Thread ID for TLS
             IARG_INST_PTR,         // Instruction pointer
             IARG_REG_VALUE, REG_GAX, // Return value in EAX/RAX
@@ -1532,7 +1531,7 @@ int main(int argc, char *argv[])
     std::cerr << "===============================================" << std::endl;
     
     if (m_Settings.logReturn) {
-        InitTracker();
+        RetTracker::InitTracker();
 
         // Register the ThreadStart callback
         PIN_AddThreadStartFunction(ThreadStart, NULL);
