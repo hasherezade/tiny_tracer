@@ -958,8 +958,8 @@ std::wstring paramToStr(VOID *arg1)
     }
     if (!isString) {
         ss << " -> {";
-ss << util::hexdump(reinterpret_cast<const uint8_t*>(val), m_Settings.hexdumpSize);
-ss << "}";
+        ss << util::hexdump(reinterpret_cast<const uint8_t*>(val), m_Settings.hexdumpSize);
+        ss << "}";
     }
     return ss.str();
 }
@@ -1535,9 +1535,10 @@ int main(int argc, char *argv[])
 
         // Register the ThreadStart callback
         PIN_AddThreadStartFunction(ThreadStart, NULL);
-
+//#ifdef _DEBUG
         // Register the Fini function
         PIN_AddFiniFunction(Fini, nullptr);
+//#endif
     }
 
     // Register the callback function for child processes
