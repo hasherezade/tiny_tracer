@@ -152,7 +152,6 @@ VOID ThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
 VOID Fini(INT32 code, VOID* v)
 {
     PinLocker locker;
-    RetTracker::LogAllTrackedCalls();
 }
 
 /* ===================================================================== */
