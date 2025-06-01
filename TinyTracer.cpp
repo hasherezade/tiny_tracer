@@ -1371,6 +1371,39 @@ VOID HookNtDelayExecution(const CHAR* name, UINT64* sleepTimePtr)
 
 /* ===================================================================== */
 
+size_t walkExports(std::ofstream& fileStream, ADDRINT base, BYTE* mem)
+{
+    size_t count = 0;
+    IMAGE_DOS_HEADER* dos = reinterpret_cast<IMAGE_DOS_HEADER*>(mem);
+    if (dos->e_magic != IMAGE_DOS_SIGNATURE) {
+        return 0;
+    }
+    IMAGE_NT_HEADERS* nt = reinterpret_cast<IMAGE_NT_HEADERS*>(mem + dos->e_lfanew);
+    if (nt->Signature != IMAGE_NT_SIGNATURE) {
+        return 0;
+    }
+    IMAGE_DATA_DIRECTORY exportDirEntry = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+    if (exportDirEntry.VirtualAddress == 0) return 0;
+
+    IMAGE_EXPORT_DIRECTORY* exportDir = reinterpret_cast<IMAGE_EXPORT_DIRECTORY*>(mem + exportDirEntry.VirtualAddress);
+    DWORD funcsListRVA = exportDir->AddressOfFunctions;
+    DWORD funcNamesListRVA = exportDir->AddressOfNames;
+    DWORD namesOrdsListRVA = exportDir->AddressOfNameOrdinals;
+    DWORD namesCount = exportDir->NumberOfNames;
+
+    for (DWORD i = 0; i < namesCount; i++) {
+        DWORD* nameRVA = (DWORD*)((ADDRINT)mem + funcNamesListRVA + i * sizeof(DWORD));
+        WORD* nameIndex = (WORD*)((ADDRINT)mem + namesOrdsListRVA + i * sizeof(WORD));
+        DWORD* funcRVA = (DWORD*)((ADDRINT)mem + funcsListRVA + (*nameIndex) * sizeof(DWORD));
+
+        ADDRINT funcVA = base + (*funcRVA);
+        const char* name = reinterpret_cast<const char*>(mem + (*nameRVA));
+        fileStream << "\t" << std::hex << funcVA << " : " << (*funcRVA) << " : " << std::string(name) << "\n";
+        count++;
+    }
+    return count;
+}
+
 size_t dumpModuleExports(std::ofstream& fileStream, IMG& img)
 {
     ADDRINT base = IMG_LoadOffset(img);
@@ -1391,28 +1424,7 @@ size_t dumpModuleExports(std::ofstream& fileStream, IMG& img)
     IMAGE_DATA_DIRECTORY exportDirEntry = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
     if (exportDirEntry.VirtualAddress == 0) return 0;
     fileStream << "\n" << "---In-memory IMPORTS---\n";
-    IMAGE_EXPORT_DIRECTORY* exportDir = reinterpret_cast<IMAGE_EXPORT_DIRECTORY*>(mem + exportDirEntry.VirtualAddress);
-    /*
-    DWORD* functions = reinterpret_cast<DWORD*>(mem + exportDir->AddressOfFunctions);
-    DWORD* names = reinterpret_cast<DWORD*>(mem + exportDir->AddressOfNames);
-    WORD* ordinals = reinterpret_cast<WORD*>(mem + exportDir->AddressOfNameOrdinals);
-    */
-    DWORD funcsListRVA = exportDir->AddressOfFunctions;
-    DWORD funcNamesListRVA = exportDir->AddressOfNames;
-    DWORD namesOrdsListRVA = exportDir->AddressOfNameOrdinals;
-    DWORD namesCount = exportDir->NumberOfNames;
-
-    for (DWORD i = 0; i < namesCount; i++) {
-        DWORD* nameRVA = (DWORD*)(base + funcNamesListRVA + i * sizeof(DWORD));
-        WORD* nameIndex = (WORD*)(base + namesOrdsListRVA + i * sizeof(WORD));
-        DWORD* funcRVA = (DWORD*)(base + funcsListRVA + (*nameIndex) * sizeof(DWORD));
-
-        //DWORD funcRVA = functions[ordinals[i]];
-        ADDRINT funcVA = base + (*funcRVA);
-        const char* name = reinterpret_cast<const char*>(mem + (*nameRVA));
-        fileStream << "\t" << std::hex << funcVA << " : " << (*funcRVA) << " : " << std::string(name) << "\n";
-        count++;
-    }
+    count = walkExports(fileStream, base, mem);
     fileStream << "\n" << "---END In-memory IMPORTS---\n";
     return count;
 }
