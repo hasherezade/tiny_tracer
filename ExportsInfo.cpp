@@ -153,3 +153,70 @@ size_t dumpModuleSymbols(std::ofstream& fileStream, IMG& img)
     fileStream << "\n" << "---END SYMBOLS---\n";
     return count;
 }
+
+///---
+
+
+size_t ExportsLookup::fillExports(const ADDRINT base, const void* mod)
+{
+    BYTE* mem = (BYTE*)mod;
+    size_t count = 0;
+    IMAGE_DOS_HEADER* dos = reinterpret_cast<IMAGE_DOS_HEADER*>(mem);
+    if (dos->e_magic != IMAGE_DOS_SIGNATURE) {
+        return 0;
+    }
+    IMAGE_NT_HEADERS* nt = reinterpret_cast<IMAGE_NT_HEADERS*>(mem + dos->e_lfanew);
+    if (nt->Signature != IMAGE_NT_SIGNATURE) {
+        return 0;
+    }
+    IMAGE_DATA_DIRECTORY exportDirEntry = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+    if (exportDirEntry.VirtualAddress == 0) return 0;
+
+    IMAGE_EXPORT_DIRECTORY* exportDir = reinterpret_cast<IMAGE_EXPORT_DIRECTORY*>(mem + exportDirEntry.VirtualAddress);
+    DWORD funcsListRVA = exportDir->AddressOfFunctions;
+    DWORD funcNamesListRVA = exportDir->AddressOfNames;
+    DWORD namesOrdsListRVA = exportDir->AddressOfNameOrdinals;
+    DWORD namesCount = exportDir->NumberOfNames;
+
+    for (DWORD i = 0; i < namesCount; i++) {
+        DWORD* nameRVA = (DWORD*)((ADDRINT)mem + funcNamesListRVA + i * sizeof(DWORD));
+        WORD* nameIndex = (WORD*)((ADDRINT)mem + namesOrdsListRVA + i * sizeof(WORD));
+        DWORD* funcRVA = (DWORD*)((ADDRINT)mem + funcsListRVA + (*nameIndex) * sizeof(DWORD));
+
+        ADDRINT funcVA = base + (*funcRVA);
+        const char* name = reinterpret_cast<const char*>(mem + (*nameRVA));
+        this->appendExport(funcVA, name);
+        count++;
+    }
+    return count;
+}
+
+size_t ExportsLookup::addFromFile(const IMG& img)
+{
+    if (!IMG_Valid(img)) {
+        return 0;
+    }
+    ADDRINT base = IMG_LoadOffset(img);
+    if (base == 0) {
+        base = IMG_LowAddress(img);
+    }
+    const std::string imagePath = IMG_Name(img);
+    std::ifstream file(imagePath, std::ios::binary | std::ios::in);
+    if (!file.is_open()) return 0;
+
+    file.seekg(0, std::ios::end);
+
+    const std::streamsize fileSize = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    std::vector<char> buffer(fileSize);
+    bool isOk = file.read(&buffer[0], fileSize);
+    file.close();
+    if (!isOk) return 0;
+
+    std::vector<char> mapped;
+    if (!loadPE(buffer, mapped)) return 0;
+
+    BYTE* mem = (BYTE*)&mapped[0];
+    return fillExports(base, mem);
+}

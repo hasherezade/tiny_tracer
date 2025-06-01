@@ -44,6 +44,7 @@
 #endif
 
 #include "ExportsInfo.h"
+ExportsLookup g_Exports;
 
 bool g_IsIndirectSyscall = false;
 
@@ -319,15 +320,23 @@ std::string resolve_func_name(const ADDRINT addrTo, const std::string& dll_name,
         // simple case, return the name
         return name;
     }
+
+    const std::string exp = g_Exports.fetchExport(addrTo);
+
     // it doesn't start at the beginning of the routine:
     std::ostringstream sstr;
-    if (name == ".text") {
+
+    if (name == ".text" || name == "unnamedImageEntryPoint") {
+        if (!exp.empty()) {
+            return exp;
+        }
         sstr << " = " << std::hex << addrTo;
         g_backlock_addr.insert(addrTo);
     }
     else {
         sstr << "[" << name << "+" << std::hex << diff << "]*";
     }
+
 #ifdef _WIN32
     if (ctx
         && SyscallsTable::isSyscallFuncName(name)
@@ -348,54 +357,6 @@ std::string resolve_func_name(const ADDRINT addrTo, const std::string& dll_name,
     }
 #endif //_WIN32
     return sstr.str();
-}
-
-#include "mini_pe.h"
-std::string GetExportNameFromMemory(ADDRINT targetAddr, ADDRINT addrFrom)
-{
-    ADDRINT base = get_base(targetAddr);
-    BYTE* mem = reinterpret_cast<BYTE*>(base);
-    std::stringstream ss;
-    IMAGE_DOS_HEADER* dos = reinterpret_cast<IMAGE_DOS_HEADER*>(mem);
-    if (dos->e_magic != IMAGE_DOS_SIGNATURE) {
-        ss << "<not a PE image>:" << std::hex << dos->e_magic;
-        return ss.str();
-    }
-    IMAGE_NT_HEADERS* nt = reinterpret_cast<IMAGE_NT_HEADERS*>(mem + dos->e_lfanew);
-    if (nt->Signature != IMAGE_NT_SIGNATURE) {
-        ss << "<invalid NT header>:" << std::hex << nt->Signature;
-        return ss.str();
-    }
-    IMAGE_DATA_DIRECTORY exportDirEntry = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
-    if (exportDirEntry.VirtualAddress == 0) return "<no export directory>";
-
-    IMAGE_EXPORT_DIRECTORY* exportDir = reinterpret_cast<IMAGE_EXPORT_DIRECTORY*>(mem + exportDirEntry.VirtualAddress);
-    /*
-    DWORD* functions = reinterpret_cast<DWORD*>(mem + exportDir->AddressOfFunctions);
-    DWORD* names = reinterpret_cast<DWORD*>(mem + exportDir->AddressOfNames);
-    WORD* ordinals = reinterpret_cast<WORD*>(mem + exportDir->AddressOfNameOrdinals);
-    */
-    DWORD funcsListRVA = exportDir->AddressOfFunctions;
-    DWORD funcNamesListRVA = exportDir->AddressOfNames;
-    DWORD namesOrdsListRVA = exportDir->AddressOfNameOrdinals;
-    DWORD namesCount = exportDir->NumberOfNames;
-
-    ss << "<not found in export>:" << std::hex << exportDirEntry.VirtualAddress << " Count: " << namesCount << " list:";
-
-    for (DWORD i = 0; i < namesCount; i++) {
-        DWORD* nameRVA = (DWORD*)(base + funcNamesListRVA +  i * sizeof(DWORD));
-        WORD* nameIndex = (WORD*)(base + namesOrdsListRVA + i * sizeof(WORD));
-        DWORD* funcRVA = (DWORD*)(base + funcsListRVA + (*nameIndex) * sizeof(DWORD));
-
-        //DWORD funcRVA = functions[ordinals[i]];
-        ADDRINT funcVA = base + (*funcRVA);
-        const char* name = reinterpret_cast<const char*>(mem + (*nameRVA));
-        ss << "\n" << funcVA << " : " << std::string(name);
-        if (funcVA == targetAddr || funcVA == addrFrom) {
-            return std::string(name);
-        }
-    }
-    return ss.str();
 }
 
 VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndirect, const CONTEXT* ctx = NULL)
@@ -422,7 +383,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
             RTN rtn = RTN_FindByAddress(addrTo);
 
             ss << " : " << dll_name << ".[" << RTN_FindNameByAddress(addrTo) << "] ";
-            ss << GetExportNameFromMemory(addrTo, addrFrom);
+            ss << g_Exports.fetchExport(addrTo);
         }
         else {
             g_backlock_addr.insert(addrTo);
@@ -1374,7 +1335,6 @@ VOID HookNtDelayExecution(const CHAR* name, UINT64* sleepTimePtr)
 /* ===================================================================== */
 
 
-
 inline void logLoadedModule(IMG Image)
 {
     if (!IMG_Valid(Image)) {
@@ -1391,7 +1351,6 @@ inline void logLoadedModule(IMG Image)
     fileStream.open(filename.c_str(), std::fstream::app);
     fileStream << name << std::endl;
     fileStream.flush();
-    UNKNOWN_ADDR;
     dumpFileExports(fileStream, Image);
     dumpModuleExports(fileStream, Image);
     dumpModuleSymbols(fileStream, Image);
@@ -1402,8 +1361,9 @@ VOID ImageLoad(IMG Image, VOID *v)
 {
     PinLocker locker;
 
-    logLoadedModule(Image);
+    //logLoadedModule(Image);
     pInfo.addModule(Image);
+    g_Exports.addFromFile(Image);
     for (size_t i = 0; i < m_Settings.funcWatch.funcs.size(); i++) {
         const std::string dllName = util::getDllName(IMG_Name(Image));
         if (util::iequals(dllName, m_Settings.funcWatch.funcs[i].dllName)) {
