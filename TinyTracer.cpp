@@ -308,6 +308,7 @@ VOID SaveHeavensGateTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, AD
     PIN_WriteErrorMessage("ERROR: Cannot trace after the far transition", 1000, PIN_ERR_SEVERITY_TYPE::PIN_ERR_FATAL, 0);
 }
 
+std::set<ADDRINT> g_backlock_addr;
 std::string resolve_func_name(const ADDRINT addrTo, const std::string& dll_name, const CONTEXT* ctx)
 {
     ADDRINT diff = 0;
@@ -318,7 +319,13 @@ std::string resolve_func_name(const ADDRINT addrTo, const std::string& dll_name,
     }
     // it doesn't start at the beginning of the routine:
     std::ostringstream sstr;
-    sstr << "[" << name << "+" << std::hex << diff << "]*";
+    if (name == ".text") {
+        sstr << " = " << std::hex << addrTo;
+        g_backlock_addr.insert(addrTo);
+    }
+    else {
+        sstr << "[" << name << "+" << std::hex << diff << "]*";
+    }
 #ifdef _WIN32
     if (ctx
         && SyscallsTable::isSyscallFuncName(name)
@@ -341,6 +348,53 @@ std::string resolve_func_name(const ADDRINT addrTo, const std::string& dll_name,
     return sstr.str();
 }
 
+#include "mini_pe.h"
+std::string GetExportNameFromMemory(ADDRINT targetAddr, ADDRINT addrFrom)
+{
+    ADDRINT base = get_base(targetAddr);
+    BYTE* mem = reinterpret_cast<BYTE*>(base);
+    std::stringstream ss;
+    IMAGE_DOS_HEADER* dos = reinterpret_cast<IMAGE_DOS_HEADER*>(mem);
+    if (dos->e_magic != IMAGE_DOS_SIGNATURE) {
+        ss << "<not a PE image>:" << std::hex << dos->e_magic;
+        return ss.str();
+    }
+    IMAGE_NT_HEADERS* nt = reinterpret_cast<IMAGE_NT_HEADERS*>(mem + dos->e_lfanew);
+    if (nt->Signature != IMAGE_NT_SIGNATURE) {
+        ss << "<invalid NT header>:" << std::hex << nt->Signature;
+        return ss.str();
+    }
+    IMAGE_DATA_DIRECTORY exportDirEntry = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+    if (exportDirEntry.VirtualAddress == 0) return "<no export directory>";
+
+    IMAGE_EXPORT_DIRECTORY* exportDir = reinterpret_cast<IMAGE_EXPORT_DIRECTORY*>(mem + exportDirEntry.VirtualAddress);
+    /*
+    DWORD* functions = reinterpret_cast<DWORD*>(mem + exportDir->AddressOfFunctions);
+    DWORD* names = reinterpret_cast<DWORD*>(mem + exportDir->AddressOfNames);
+    WORD* ordinals = reinterpret_cast<WORD*>(mem + exportDir->AddressOfNameOrdinals);
+    */
+    DWORD funcsListRVA = exportDir->AddressOfFunctions;
+    DWORD funcNamesListRVA = exportDir->AddressOfNames;
+    DWORD namesOrdsListRVA = exportDir->AddressOfNameOrdinals;
+    DWORD namesCount = exportDir->NumberOfNames;
+
+    ss << "<not found in export>:" << std::hex << exportDirEntry.VirtualAddress << " Count: " << namesCount << " list:";
+
+    for (DWORD i = 0; i < namesCount; i++) {
+        DWORD* nameRVA = (DWORD*)(base + funcNamesListRVA +  i * sizeof(DWORD));
+        WORD* nameIndex = (WORD*)(base + namesOrdsListRVA + i * sizeof(WORD));
+        DWORD* funcRVA = (DWORD*)(base + funcsListRVA + (*nameIndex) * sizeof(DWORD));
+
+        //DWORD funcRVA = functions[ordinals[i]];
+        ADDRINT funcVA = base + (*funcRVA);
+        const char* name = reinterpret_cast<const char*>(mem + (*nameRVA));
+        ss << "\n" << funcVA << " : " << std::string(name);
+        if (funcVA == targetAddr || funcVA == addrFrom) {
+            return std::string(name);
+        }
+    }
+    return ss.str();
+}
 
 VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndirect, const CONTEXT* ctx = NULL)
 {
@@ -354,7 +408,25 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     const bool isCallerPeModule = IMG_Valid(callerModule);
     const bool isTargetPeModule = IMG_Valid(targetModule);
 
+    bool isBacklog = false;
+    if (g_backlock_addr.find(addrFrom) != g_backlock_addr.end()) {
+        g_backlock_addr.erase(addrFrom);
+        isBacklog = true;
+        std::stringstream ss;
+        ss << std::hex << "Backlog addr: " << addrFrom << " -> " << addrTo;
+        if (isTargetPeModule) {
+            IMG targetModule = IMG_FindByAddress(addrTo);
+            const std::string dll_name = IMG_Name(targetModule);
+            RTN rtn = RTN_FindByAddress(addrTo);
 
+            ss << " : " << dll_name << ".[" << RTN_FindNameByAddress(addrTo) << "] ";
+            ss << GetExportNameFromMemory(addrTo, addrFrom);
+        }
+        else {
+            g_backlock_addr.insert(addrTo);
+        }
+        traceLog.logLine(ss.str());
+    }
     /**
     is it a transition from the traced module to a foreign module?
     */
@@ -381,7 +453,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     /**
     trace calls from witin a shellcode:
     */
-    if (fromWType == WatchedType::WATCHED_SHELLCODE) {
+    if (fromWType == WatchedType::WATCHED_SHELLCODE || isBacklog) {
 
         const ADDRINT pageFrom = query_region_base(addrFrom);
         const ADDRINT pageTo = query_region_base(addrTo);
@@ -1366,6 +1438,7 @@ BOOL FollowChild(CHILD_PROCESS childProcess, VOID * userData)
 #endif
         return FALSE;
     }
+    PIN_InitSymbols(); // Make sure symbols are initialized
     OS_PROCESS_ID childPid = CHILD_PROCESS_GetId(childProcess);
     std::cerr << "Following Subprocess: " << childPid << std::endl;
 
@@ -1397,11 +1470,11 @@ BOOL FollowChild(CHILD_PROCESS childProcess, VOID * userData)
     pinArgv[pinArgc++] = "-m";
     pinArgv[pinArgc++] = childArgv[0];
     pinArgv[pinArgc++] = "--";
+    pinArgv[pinArgc++] = childArgv[0];
     // Now copy the child command line
-    for (int i = 0; i < childArgc && pinArgc < pinArgcMax; i++) {
+    /*for (int i = 0; i < childArgc && pinArgc < pinArgcMax; i++) {
         pinArgv[pinArgc++] = childArgv[i];
-    }
-
+    }*/
     CHILD_PROCESS_SetPinCommandLine(childProcess, pinArgc, pinArgv);
     return TRUE;
 }
