@@ -29,23 +29,23 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -257,6 +257,7 @@
   <ItemGroup>
     <ClCompile Include="EvasionWatch.cpp" />
     <ClCompile Include="AntiVm.cpp" />
+    <ClCompile Include="ExportsInfo.cpp" />
     <ClCompile Include="ModuleInfo.cpp" />
     <ClCompile Include="ProcessInfo.cpp" />
     <ClCompile Include="AntiDebug.cpp" />
@@ -271,6 +272,7 @@
     <ClInclude Include="EvasionWatch.h" />
     <ClInclude Include="AntiDebug.h" />
     <ClInclude Include="AntiVm.h" />
+    <ClInclude Include="ExportsInfo.h" />
     <ClInclude Include="TinyTracer.h" />
     <ClInclude Include="ModuleInfo.h" />
     <ClInclude Include="ProcessInfo.h" />
