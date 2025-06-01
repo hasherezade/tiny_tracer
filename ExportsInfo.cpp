@@ -157,7 +157,7 @@ size_t dumpModuleSymbols(std::ofstream& fileStream, IMG& img)
 ///---
 
 
-size_t ExportsLookup::fillExports(const ADDRINT base, const void* mod)
+size_t ExportsLookup::fillExports(IMG& img, const ADDRINT base, const void* mod)
 {
     BYTE* mem = (BYTE*)mod;
     size_t count = 0;
@@ -186,12 +186,17 @@ size_t ExportsLookup::fillExports(const ADDRINT base, const void* mod)
         ADDRINT funcVA = base + (*funcRVA);
         const char* name = reinterpret_cast<const char*>(mem + (*nameRVA));
         this->appendExport(funcVA, name);
+
+        RTN rtn = RTN_FindByAddress(funcVA);
+        if (RTN_Address(rtn) != funcVA) {
+            RTN_CreateAt(funcVA, name);
+        }
         count++;
     }
     return count;
 }
 
-size_t ExportsLookup::addFromFile(const IMG& img)
+size_t ExportsLookup::addFromFile(IMG& img)
 {
     if (!IMG_Valid(img)) {
         return 0;
@@ -218,5 +223,5 @@ size_t ExportsLookup::addFromFile(const IMG& img)
     if (!loadPE(buffer, mapped)) return 0;
 
     BYTE* mem = (BYTE*)&mapped[0];
-    return fillExports(base, mem);
+    return fillExports(img, base, mem);
 }

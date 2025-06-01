@@ -311,7 +311,6 @@ VOID SaveHeavensGateTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, AD
     PIN_WriteErrorMessage("ERROR: Cannot trace after the far transition", 1000, PIN_ERR_SEVERITY_TYPE::PIN_ERR_FATAL, 0);
 }
 
-std::set<ADDRINT> g_backlock_addr;
 std::string resolve_func_name(const ADDRINT addrTo, const std::string& dll_name, const CONTEXT* ctx)
 {
     ADDRINT diff = 0;
@@ -320,29 +319,28 @@ std::string resolve_func_name(const ADDRINT addrTo, const std::string& dll_name,
         // simple case, return the name
         return name;
     }
-
-    const std::string exp = g_Exports.fetchExport(addrTo);
-
     // it doesn't start at the beginning of the routine:
-    std::ostringstream sstr;
 
-    if (name == ".text" || name == "unnamedImageEntryPoint") {
-        if (!exp.empty()) {
-            return exp;
-        }
-        sstr << " = " << std::hex << addrTo;
-        g_backlock_addr.insert(addrTo);
+    std::ostringstream sstr;
+    bool isResolved = false;
+#ifdef _WIN32
+    const std::string exp = g_Exports.fetchExport(addrTo);
+    if (!exp.empty()) {
+        RTN rtn2 = RTN_FindByAddress(addrTo);
+        sstr << exp << " [E] " << std::hex << RTN_Address(rtn2);
+        isResolved = true;
     }
-    else {
+#endif // _WIN32
+
+    if (!isResolved) {
         sstr << "[" << name << "+" << std::hex << diff << "]*";
     }
-
 #ifdef _WIN32
     if (ctx
         && SyscallsTable::isSyscallFuncName(name)
         && SyscallsTable::isSyscallDll(util::getDllName(dll_name))
         )
-    { 
+    {
         //possibly a proxy to the indirect syscall
         g_IsIndirectSyscall = true;
         const ADDRINT eax = (ADDRINT)PIN_GetContextReg(ctx, REG_GAX);
@@ -371,25 +369,6 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     const bool isCallerPeModule = IMG_Valid(callerModule);
     const bool isTargetPeModule = IMG_Valid(targetModule);
 
-    bool isBacklog = false;
-    if (g_backlock_addr.find(addrFrom) != g_backlock_addr.end()) {
-        g_backlock_addr.erase(addrFrom);
-        isBacklog = true;
-        std::stringstream ss;
-        ss << std::hex << "Backlog addr: " << addrFrom << " -> " << addrTo;
-        if (isTargetPeModule) {
-            IMG targetModule = IMG_FindByAddress(addrTo);
-            const std::string dll_name = IMG_Name(targetModule);
-            RTN rtn = RTN_FindByAddress(addrTo);
-
-            ss << " : " << dll_name << ".[" << RTN_FindNameByAddress(addrTo) << "] ";
-            ss << g_Exports.fetchExport(addrTo);
-        }
-        else {
-            g_backlock_addr.insert(addrTo);
-        }
-        traceLog.logLine(ss.str());
-    }
     /**
     is it a transition from the traced module to a foreign module?
     */
@@ -416,7 +395,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     /**
     trace calls from witin a shellcode:
     */
-    if (fromWType == WatchedType::WATCHED_SHELLCODE || isBacklog) {
+    if (fromWType == WatchedType::WATCHED_SHELLCODE) {
 
         const ADDRINT pageFrom = query_region_base(addrFrom);
         const ADDRINT pageTo = query_region_base(addrTo);
@@ -1363,7 +1342,9 @@ VOID ImageLoad(IMG Image, VOID *v)
 
     //logLoadedModule(Image);
     pInfo.addModule(Image);
+#ifdef _WIN32
     g_Exports.addFromFile(Image);
+#endif // _WIN32
     for (size_t i = 0; i < m_Settings.funcWatch.funcs.size(); i++) {
         const std::string dllName = util::getDllName(IMG_Name(Image));
         if (util::iequals(dllName, m_Settings.funcWatch.funcs[i].dllName)) {

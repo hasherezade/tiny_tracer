@@ -8,7 +8,7 @@
 class ExportsLookup
 {
 public:
-	size_t addFromFile(const IMG& img);
+	size_t addFromFile(IMG& img);
 	
 	std::string fetchExport(const ADDRINT& addr)
 	{
@@ -25,7 +25,7 @@ protected:
 		namesLookup[addr] = name;
 	}
 
-	size_t fillExports(const ADDRINT base, const void* mod);
+	size_t fillExports(IMG& img, const ADDRINT base, const void* mod);
 
 	std::map<ADDRINT, std::string> namesLookup;
 	std::map<ADDRINT, INT> ordinalsLookup;
