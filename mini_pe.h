@@ -6,7 +6,6 @@ typedef uint32_t DWORD;
 typedef uint32_t LONG;
 typedef uint64_t ULONGLONG;
 
-
 #define IMAGE_DOS_SIGNATURE                 0x5A4D      // MZ
 #define IMAGE_NT_SIGNATURE                  0x00004550  // PE00
 
@@ -109,7 +108,25 @@ typedef IMAGE_NT_HEADERS32                  IMAGE_NT_HEADERS;
 typedef PIMAGE_NT_HEADERS32                 PIMAGE_NT_HEADERS;
 #endif
 
+#define IMAGE_SIZEOF_SHORT_NAME              8
 
+typedef struct _IMAGE_SECTION_HEADER {
+    BYTE    Name[IMAGE_SIZEOF_SHORT_NAME];
+    union {
+        DWORD   PhysicalAddress;
+        DWORD   VirtualSize;
+    } Misc;
+    DWORD   VirtualAddress;
+    DWORD   SizeOfRawData;
+    DWORD   PointerToRawData;
+    DWORD   PointerToRelocations;
+    DWORD   PointerToLinenumbers;
+    WORD    NumberOfRelocations;
+    WORD    NumberOfLinenumbers;
+    DWORD   Characteristics;
+} IMAGE_SECTION_HEADER, * PIMAGE_SECTION_HEADER;
+
+#define IMAGE_SIZEOF_SECTION_HEADER          40
 
 typedef struct _IMAGE_EXPORT_DIRECTORY {
     DWORD   Characteristics;
@@ -124,3 +141,18 @@ typedef struct _IMAGE_EXPORT_DIRECTORY {
     DWORD   AddressOfNames;         // RVA from base of image
     DWORD   AddressOfNameOrdinals;  // RVA from base of image
 } IMAGE_EXPORT_DIRECTORY, * PIMAGE_EXPORT_DIRECTORY;
+
+#ifndef FIELD_OFFSET
+#define FIELD_OFFSET(type, field)    ((LONG)(BYTE*)&(((type *)0)->field))
+#define UFIELD_OFFSET(type, field)    ((DWORD)(BYTE*)&(((type *)0)->field))
+#endif
+
+
+// IMAGE_FIRST_SECTION doesn't need 32/64 versions since the file header is the same either way.
+
+#define IMAGE_FIRST_SECTION( ntheader ) ((PIMAGE_SECTION_HEADER)        \
+    ((BYTE*)(ntheader) +                                            \
+     FIELD_OFFSET( IMAGE_NT_HEADERS, OptionalHeader ) +                 \
+     ((ntheader))->FileHeader.SizeOfOptionalHeader   \
+    ))
+

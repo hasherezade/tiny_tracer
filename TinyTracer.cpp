@@ -1371,11 +1371,100 @@ VOID HookNtDelayExecution(const CHAR* name, UINT64* sleepTimePtr)
 
 /* ===================================================================== */
 
+size_t dumpModuleExports(std::ofstream& fileStream, IMG& img)
+{
+    ADDRINT base = IMG_LoadOffset(img);
+    if (base == 0) {
+        base = IMG_LowAddress(img);
+    }
+    size_t count = 0;
+    BYTE* mem = reinterpret_cast<BYTE*>(base);
+    std::stringstream ss;
+    IMAGE_DOS_HEADER* dos = reinterpret_cast<IMAGE_DOS_HEADER*>(mem);
+    if (dos->e_magic != IMAGE_DOS_SIGNATURE) {
+        return 0;
+    }
+    IMAGE_NT_HEADERS* nt = reinterpret_cast<IMAGE_NT_HEADERS*>(mem + dos->e_lfanew);
+    if (nt->Signature != IMAGE_NT_SIGNATURE) {
+        return 0;
+    }
+    IMAGE_DATA_DIRECTORY exportDirEntry = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+    if (exportDirEntry.VirtualAddress == 0) return 0;
+    fileStream << "\n" << "---In-memory IMPORTS---\n";
+    IMAGE_EXPORT_DIRECTORY* exportDir = reinterpret_cast<IMAGE_EXPORT_DIRECTORY*>(mem + exportDirEntry.VirtualAddress);
+    /*
+    DWORD* functions = reinterpret_cast<DWORD*>(mem + exportDir->AddressOfFunctions);
+    DWORD* names = reinterpret_cast<DWORD*>(mem + exportDir->AddressOfNames);
+    WORD* ordinals = reinterpret_cast<WORD*>(mem + exportDir->AddressOfNameOrdinals);
+    */
+    DWORD funcsListRVA = exportDir->AddressOfFunctions;
+    DWORD funcNamesListRVA = exportDir->AddressOfNames;
+    DWORD namesOrdsListRVA = exportDir->AddressOfNameOrdinals;
+    DWORD namesCount = exportDir->NumberOfNames;
+
+    for (DWORD i = 0; i < namesCount; i++) {
+        DWORD* nameRVA = (DWORD*)(base + funcNamesListRVA + i * sizeof(DWORD));
+        WORD* nameIndex = (WORD*)(base + namesOrdsListRVA + i * sizeof(WORD));
+        DWORD* funcRVA = (DWORD*)(base + funcsListRVA + (*nameIndex) * sizeof(DWORD));
+
+        //DWORD funcRVA = functions[ordinals[i]];
+        ADDRINT funcVA = base + (*funcRVA);
+        const char* name = reinterpret_cast<const char*>(mem + (*nameRVA));
+        fileStream << "\t" << std::hex << funcVA << " : " << (*funcRVA) << " : " << std::string(name) << "\n";
+        count++;
+    }
+    fileStream << "\n" << "---END In-memory IMPORTS---\n";
+    return count;
+}
+
+size_t dumpModuleSymbols(std::ofstream& fileStream, IMG& img)
+{
+    ADDRINT base = IMG_LoadOffset(img);
+    if (base == 0) {
+        base = IMG_LowAddress(img);
+    }
+    size_t count;
+    fileStream << "\n" << "---SYMBOLS---\n";
+    for (SYM sym = IMG_RegsymHead(img); SYM_Valid(sym); sym = SYM_Next(sym)) {
+        const std::string name = PIN_UndecorateSymbolName(SYM_Name(sym), UNDECORATION_NAME_ONLY);
+        const ADDRINT offset = SYM_Value(sym);
+        if (offset == UNKNOWN_ADDR) continue;
+        RTN rtn =  RTN_FindByAddress(base + offset);
+        if (!RTN_Valid(rtn)) continue;
+        fileStream << "\t" << std::hex << (base + offset) << " : " << offset << " : " << std::string(name) << "\n";
+        count++;
+    }
+    fileStream << "\n" << "---END SYMBOLS---\n";
+    return count;
+}
+
+inline void logLoadedModule(IMG Image)
+{
+    if (!IMG_Valid(Image)) {
+        return;
+    }
+    INT pid = PIN_GetPid();
+    // log loaded module:
+
+    std::stringstream ss;
+    ss << std::dec << "modules_" << pid << ".txt";
+    std::string filename = ss.str();
+    std::string name = IMG_Name(Image);
+    std::ofstream fileStream;
+    fileStream.open(filename.c_str(), std::fstream::app);
+    fileStream << name << std::endl;
+    fileStream.flush();
+
+    dumpModuleExports(fileStream, Image);
+    dumpModuleSymbols(fileStream, Image);
+    fileStream.close();
+}
 
 VOID ImageLoad(IMG Image, VOID *v)
 {
     PinLocker locker;
 
+    logLoadedModule(Image);
     pInfo.addModule(Image);
     for (size_t i = 0; i < m_Settings.funcWatch.funcs.size(); i++) {
         const std::string dllName = util::getDllName(IMG_Name(Image));
