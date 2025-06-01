@@ -99,12 +99,16 @@ std::string get_unmangled_name(RTN rtn)
 
 RTN find_by_unmangled_name(IMG img, const CHAR* fName)
 {
+    ADDRINT base = IMG_LoadOffset(img);
+    if (base == 0) {
+        base = IMG_LowAddress(img);
+    }
     for (SYM sym = IMG_RegsymHead(img); SYM_Valid(sym); sym = SYM_Next(sym)) {
         const std::string undFuncName = PIN_UndecorateSymbolName(SYM_Name(sym), UNDECORATION_NAME_ONLY);
         if (undFuncName == fName) {
             const ADDRINT offset = SYM_Value(sym);
             if (offset == UNKNOWN_ADDR) break;
-            return RTN_FindByAddress(IMG_LowAddress(img) + offset);
+            return RTN_FindByAddress(base + offset);
         }
     }
     return RTN_Invalid();
