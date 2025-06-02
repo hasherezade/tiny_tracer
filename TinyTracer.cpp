@@ -888,11 +888,27 @@ ADDRINT AlterRdtscValueEax(const CONTEXT* ctxt)
 // Instrument functions arguments
 /* ===================================================================== */
 
+BOOL isReadableMemory(VOID* addr)
+{
+    OS_MEMORY_AT_ADDR_INFORMATION memInfo;
+    OS_RETURN_CODE result = OS_QueryMemory(PIN_GetPid(), addr, &memInfo);
+
+    if (result.generic_err != OS_RETURN_CODE_NO_ERROR || !memInfo.MapSize) {
+        return FALSE;
+    }
+    if (memInfo.Protection == OS_PAGE_PROTECTION_TYPE_NOACCESS) {
+        return FALSE;
+    }
+    return (memInfo.Protection & OS_PAGE_PROTECTION_TYPE_READ) ? TRUE : FALSE;
+}
+
 BOOL isValidReadPtr(VOID* arg1)
 {
     const ADDRINT start = query_region_base((ADDRINT)arg1);
-    const BOOL isReadableAddr = (start != UNKNOWN_ADDR && start != 0) && PIN_CheckReadAccess(arg1);
-    return isReadableAddr;
+    if (start == UNKNOWN_ADDR || start == 0) {
+        return FALSE;
+    }
+    return isReadableMemory(arg1);
 }
 
 std::wstring paramToStr(VOID *arg1)
@@ -902,7 +918,7 @@ std::wstring paramToStr(VOID *arg1)
     }
     std::wstringstream ss;
 
-    if (!isValidReadPtr(arg1)) {
+    if (!isReadableMemory(arg1)) {
         // single value
         ss << std::hex << (arg1)
             << " = "
@@ -924,7 +940,7 @@ std::wstring paramToStr(VOID *arg1)
 
     const size_t kMaxStr = 300;
 
-    if (PIN_CheckReadAccess(&unicodeS->Buffer) 
+    if (isValidReadPtr(&unicodeS->Buffer)
         && (unicodeS->MaximumLength < kMaxStr) && (unicodeS->Length <= unicodeS->MaximumLength)// check if the length makes sense
         && isValidReadPtr(unicodeS->Buffer))
     {
