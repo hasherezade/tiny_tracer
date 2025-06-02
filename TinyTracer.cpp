@@ -21,7 +21,7 @@
 #include "TrackReturns.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.9.8"
+#define VERSION "2.9.9"
 
 #include "Util.h"
 #include "Settings.h"
@@ -42,6 +42,10 @@
 #ifdef USE_ANTIVM
 #include "AntiVm.h"
 #endif
+
+#ifdef _WIN32
+#include "ExportsInfo.h"
+#endif //_WIN32
 
 bool g_IsIndirectSyscall = false;
 
@@ -324,7 +328,7 @@ std::string resolve_func_name(const ADDRINT addrTo, const std::string& dll_name,
         && SyscallsTable::isSyscallFuncName(name)
         && SyscallsTable::isSyscallDll(util::getDllName(dll_name))
         )
-    { 
+    {
         //possibly a proxy to the indirect syscall
         g_IsIndirectSyscall = true;
         const ADDRINT eax = (ADDRINT)PIN_GetContextReg(ctx, REG_GAX);
@@ -341,7 +345,6 @@ std::string resolve_func_name(const ADDRINT addrTo, const std::string& dll_name,
     return sstr.str();
 }
 
-
 VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndirect, const CONTEXT* ctx = NULL)
 {
     const WatchedType fromWType = isWatchedAddress(addrFrom); // is the call from the traced area?
@@ -353,7 +356,6 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     IMG callerModule = IMG_FindByAddress(addrFrom);
     const bool isCallerPeModule = IMG_Valid(callerModule);
     const bool isTargetPeModule = IMG_Valid(targetModule);
-
 
     /**
     is it a transition from the traced module to a foreign module?
@@ -1305,6 +1307,11 @@ VOID ImageLoad(IMG Image, VOID *v)
     PinLocker locker;
 
     pInfo.addModule(Image);
+#ifdef _WIN32
+    if (m_Settings.parseExports) {
+        ExportsInfo::addFromFile(Image);
+    }
+#endif // _WIN32
     for (size_t i = 0; i < m_Settings.funcWatch.funcs.size(); i++) {
         const std::string dllName = util::getDllName(IMG_Name(Image));
         if (util::iequals(dllName, m_Settings.funcWatch.funcs[i].dllName)) {
@@ -1358,7 +1365,7 @@ static void OnCtxChange(THREADID threadIndex,
     _SaveTransitions(addrFrom, addrTo, FALSE);
 }
 
-BOOL FollowChild(CHILD_PROCESS childProcess, VOID * userData)
+BOOL FollowChild(CHILD_PROCESS childProcess, VOID* userData)
 {
     if (!m_Settings.followChildprocesses) {
 #ifdef _DEBUG
@@ -1401,11 +1408,9 @@ BOOL FollowChild(CHILD_PROCESS childProcess, VOID * userData)
     for (int i = 0; i < childArgc && pinArgc < pinArgcMax; i++) {
         pinArgv[pinArgc++] = childArgv[i];
     }
-
     CHILD_PROCESS_SetPinCommandLine(childProcess, pinArgc, pinArgv);
     return TRUE;
 }
-
 
 std::string addPidToFilename(const std::string& filename, int pid)
 {

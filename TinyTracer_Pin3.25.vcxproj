@@ -257,6 +257,7 @@
   <ItemGroup>
     <ClCompile Include="EvasionWatch.cpp" />
     <ClCompile Include="AntiVm.cpp" />
+    <ClCompile Include="ExportsInfo.cpp" />
     <ClCompile Include="ModuleInfo.cpp" />
     <ClCompile Include="ProcessInfo.cpp" />
     <ClCompile Include="AntiDebug.cpp" />
@@ -270,6 +271,7 @@
   <ItemGroup>
     <ClInclude Include="EvasionWatch.h" />
     <ClInclude Include="AntiVm.h" />
+    <ClInclude Include="ExportsInfo.h" />
     <ClInclude Include="ModuleInfo.h" />
     <ClInclude Include="ProcessInfo.h" />
     <ClInclude Include="AntiDebug.h" />

@@ -113,6 +113,7 @@ public:
         logIndirect(false),
         hexdumpSize(8),
         hookSleep(false),
+        parseExports(false),
         sleepTime(0),
         stopOffsetTime(30),
         antidebug(WATCH_DISABLED),
@@ -140,6 +141,7 @@ public:
     bool logIndirect;
     size_t hexdumpSize;
     bool hookSleep;
+    bool parseExports;
     size_t sleepTime; // Define the time that will be passed to the hooked sleep function (in miliseconds)
     size_t stopOffsetTime; // Sleep time at the stop offset (in seconds)
     t_watch_level antidebug; // Trace Anti-VM techniques, and bypasses some of them
