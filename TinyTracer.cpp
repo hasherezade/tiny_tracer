@@ -1412,6 +1412,14 @@ BOOL FollowChild(CHILD_PROCESS childProcess, VOID* userData)
     return TRUE;
 }
 
+std::string makeOutputPath(std::string outDir, const std::string &module_name, const std::string &ext)
+{
+    std::string filename = util::getFilename(module_name);
+    std::stringstream fnamestr;
+    fnamestr << outDir << PATH_SEPARATOR << filename << '.' << ext;
+    return fnamestr.str();
+}
+
 std::string addPidToFilename(const std::string& filename, int pid)
 {
     std::stringstream fnamestr;
@@ -1446,18 +1454,18 @@ int main(int argc, char *argv[])
     
     pinPath = argv[0];
 
-    std::string app_name = KnobModuleName.Value();
-    if (app_name.length() == 0) {
+    std::string targetModule = KnobModuleName.Value();
+    if (targetModule.length() == 0) {
         // init App Name:
         for (int i = 1; i < (argc - 1); i++) {
             if (strcmp(argv[i], "--") == 0) {
-                app_name = argv[i + 1];
+                targetModule = argv[i + 1];
                 break;
             }
         }
     }
 
-    pInfo.init(app_name);
+    pInfo.init(targetModule);
 
     const std::string iniFilename = KnobIniFile.ValueString();
     if (!m_Settings.loadINI(iniFilename)) {
@@ -1506,7 +1514,11 @@ int main(int argc, char *argv[])
     }
 
     // init output file:
-    std::string filename = KnobOutputFile.Value();
+    std::string outDir = util::getDirectory(targetModule);
+    if (KnobOutputFile.Enabled() && KnobOutputFile.Value().length()){
+        outDir = util::getDirectory(KnobOutputFile.Value());
+    }
+    std::string filename = makeOutputPath(outDir, targetModule, "tag");
     if (m_Settings.followChildprocesses) {
         filename = addPidToFilename(filename, PIN_GetPid());
     }
@@ -1535,7 +1547,7 @@ int main(int argc, char *argv[])
 
     std::cerr << "===============================================" << std::endl;
     std::cerr << "This application is instrumented by " << TOOL_NAME << " v." << VERSION << std::endl;
-    std::cerr << "Tracing module: " << app_name << std::endl;
+    std::cerr << "Tracing module: " << targetModule << std::endl;
     if (!KnobOutputFile.Value().empty())
     {
         std::cerr << "See file " << filename << " for analysis results" << std::endl;

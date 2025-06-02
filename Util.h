@@ -17,6 +17,13 @@
 #define PAGE_SIZE 0x1000
 #endif
 
+#if defined(WIN32) || defined(_WIN32) 
+#define PATH_SEPARATOR "\\" 
+#else 
+#define PATH_SEPARATOR "/" 
+#endif 
+
+
 namespace util {
     std::wstring hexdump(const uint8_t* in_buf, const size_t max_size);
 
@@ -46,5 +53,8 @@ namespace util {
             if (c[i] == '\0') break;
         }
     }
+
+    std::string getDirectory(const std::string& filepath);
+    std::string getFilename(const std::string& filepath);
 
 };

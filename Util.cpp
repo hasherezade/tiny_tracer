@@ -136,3 +136,21 @@ bool util::isStrEqualI(const std::string &str1, const std::string &str2)
     }
     return true;
 }
+
+std::string util::getDirectory(const std::string& filepath)
+{
+    size_t pos = filepath.find_last_of("/\\");
+    if (pos == std::string::npos || pos == filepath.length()) {
+        return filepath;
+    }
+    return filepath.substr(0, pos);
+}
+
+std::string util::getFilename(const std::string& filepath)
+{
+    size_t pos = filepath.find_last_of("/\\");
+    if (pos == std::string::npos || pos == filepath.length()) {
+        return filepath;
+    }
+    return filepath.substr(pos + 1, filepath.length());
+}

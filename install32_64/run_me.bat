@@ -33,7 +33,7 @@ set PINTOOL=%PINTOOL32%
 rem TRACED_MODULE - by default it is the main module, but it can be also a DLL within the traced process
 set TRACED_MODULE=%TARGET_APP%
 
-set TAG_FILE="%TRACED_MODULE%.tag"
+set OUT_PATH="%TRACED_MODULE%.tag"
 
 rem The ini file specifying the settings of the tracer
 set SETTINGS_FILE=%PIN_TOOLS_DIR%\TinyTracer.ini
@@ -90,15 +90,15 @@ rem The arguments that you want to pass to the run executable
 set EXE_ARGS=""
 
 echo Target module: "%TRACED_MODULE%"
-echo Tag file: %TAG_FILE%
+echo Out path: %OUT_PATH%
 if [%IS_ADMIN%] == [A] (
 	echo Elevation requested
 )
 
 set ADMIN_CMD=%PIN_TOOLS_DIR%\sudo.vbs
 
-set DLL_CMD=%PIN_DIR%\pin.exe -follow_execv -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -x "%EXCLUDED_FUNC%" -p "%STOP_OFFSETS%" -l "%SYSCALLS_TABLE%" -- "%DLL_LOAD%" "%TARGET_APP%" %DLL_EXPORTS%
-set EXE_CMD=%PIN_DIR%\pin.exe -follow_execv -t %PINTOOL% -m "%TRACED_MODULE%" -o %TAG_FILE% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -x "%EXCLUDED_FUNC%" -p "%STOP_OFFSETS%" -l "%SYSCALLS_TABLE%" -- "%TARGET_APP%" %EXE_ARGS%
+set DLL_CMD=%PIN_DIR%\pin.exe -follow_execv -t %PINTOOL% -m "%TRACED_MODULE%" -o %OUT_PATH% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -x "%EXCLUDED_FUNC%" -p "%STOP_OFFSETS%" -l "%SYSCALLS_TABLE%" -- "%DLL_LOAD%" "%TARGET_APP%" %DLL_EXPORTS%
+set EXE_CMD=%PIN_DIR%\pin.exe -follow_execv -t %PINTOOL% -m "%TRACED_MODULE%" -o %OUT_PATH% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -x "%EXCLUDED_FUNC%" -p "%STOP_OFFSETS%" -l "%SYSCALLS_TABLE%" -- "%TARGET_APP%" %EXE_ARGS%
 
 ;rem "Trace EXE"
 if [%PE_TYPE%] == [exe] (

@@ -47,7 +47,7 @@ echo "Traced Module Name: $TRACED_MODULE_BASENAME";
 #The arguments that you want to pass to the run executable
 EXE_ARGS=""
 
-TAG_FILE=$TRACED_MODULE".tag"
+OUT_PATH=$TRACED_MODULE".tag"
 
 # PIN_DIR is your root directory of Intel Pin
 PIN_DIR=$HOME"/pin/"
@@ -95,5 +95,5 @@ else
     exit
 fi
 
-$PIN_DIR/pin -t "$PINTOOL" -s "$SETTINGS_FILE" -b "$WATCH_BEFORE" -x "$EXCLUDED_FUNC" -p "$STOP_OFFSETS" -m "$TRACED_MODULE_BASENAME" -o "$TAG_FILE" -l "$SYSCALLS_TABLE" -- "$TARGET_APP" $EXE_ARGS
+$PIN_DIR/pin -t "$PINTOOL" -s "$SETTINGS_FILE" -b "$WATCH_BEFORE" -x "$EXCLUDED_FUNC" -p "$STOP_OFFSETS" -m "$TRACED_MODULE_BASENAME" -o "$OUT_PATH" -l "$SYSCALLS_TABLE" -- "$TARGET_APP" $EXE_ARGS
 
