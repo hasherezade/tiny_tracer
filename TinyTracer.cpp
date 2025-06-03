@@ -888,27 +888,34 @@ ADDRINT AlterRdtscValueEax(const CONTEXT* ctxt)
 // Instrument functions arguments
 /* ===================================================================== */
 
-BOOL isReadableMemory(VOID* addr)
+
+size_t getReadableMemSize(VOID* addr)
 {
+    const ADDRINT start = query_region_base((ADDRINT)addr);
+    if (start == UNKNOWN_ADDR || start == 0) {
+        return 0;
+    }
     OS_MEMORY_AT_ADDR_INFORMATION memInfo;
     OS_RETURN_CODE result = OS_QueryMemory(PIN_GetPid(), addr, &memInfo);
 
     if (result.generic_err != OS_RETURN_CODE_NO_ERROR || !memInfo.MapSize) {
-        return FALSE;
+        return 0;
     }
     if (memInfo.Protection == OS_PAGE_PROTECTION_TYPE_NOACCESS) {
-        return FALSE;
+        return 0;
     }
-    return (memInfo.Protection & OS_PAGE_PROTECTION_TYPE_READ) ? TRUE : FALSE;
+    size_t memSize = memInfo.MapSize;
+    const VOID* _base = memInfo.BaseAddress;
+    if (_base != 0 && _base < addr) {
+        size_t pos = (ADDRINT)addr - (ADDRINT)_base;
+        memSize -= pos;
+    }
+    return (memInfo.Protection & OS_PAGE_PROTECTION_TYPE_READ) ? memSize : 0;
 }
 
 BOOL isValidReadPtr(VOID* arg1)
 {
-    const ADDRINT start = query_region_base((ADDRINT)arg1);
-    if (start == UNKNOWN_ADDR || start == 0) {
-        return FALSE;
-    }
-    return isReadableMemory(arg1);
+    return getReadableMemSize(arg1) != 0 ? TRUE : FALSE;
 }
 
 std::wstring paramToStr(VOID *arg1)
@@ -917,8 +924,9 @@ std::wstring paramToStr(VOID *arg1)
         return L"0";
     }
     std::wstringstream ss;
+    const size_t rSize = getReadableMemSize(arg1);
 
-    if (!isReadableMemory(arg1)) {
+    if (!rSize) {
         // single value
         ss << std::hex << (arg1)
             << " = "
@@ -940,7 +948,7 @@ std::wstring paramToStr(VOID *arg1)
 
     const size_t kMaxStr = 300;
 
-    if (isValidReadPtr(&unicodeS->Buffer)
+    if ((rSize >= sizeof(T_UNICODE_STRING))
         && (unicodeS->MaximumLength < kMaxStr) && (unicodeS->Length <= unicodeS->MaximumLength)// check if the length makes sense
         && isValidReadPtr(unicodeS->Buffer))
     {
