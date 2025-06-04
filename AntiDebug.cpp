@@ -500,6 +500,39 @@ VOID AntiDbg_CloseHandle_after(ADDRINT Address, THREADID threadid, const CHAR* n
 
 }
 
+//* ==================================================================== */
+// "GetTickCount" instrumentation
+/* ===================================================================== */
+
+VOID AntiDbg_GetTickCount_after(ADDRINT Address, THREADID threadid, const CHAR* name, ADDRINT *result)
+{
+    PinLocker locker;
+    static ADDRINT emTick = 0;
+    static ADDRINT prevTick = 0;
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    std::stringstream ss;
+    ss << "^ kernel32!GetTickCount";
+    if (result) {
+        ADDRINT curr = (*result);
+        if (emTick) {
+            size_t diff = 1;
+            if (curr > prevTick) {
+                diff = ((curr - prevTick) / 10);
+            }
+            (*result) = emTick + diff;
+            ss << " -> NewTick: " << std::dec << (*result);
+        }
+        emTick = (*result);
+        prevTick = curr;
+    }
+
+    return LogAntiDbg(wType, Address, ss.str().c_str(),
+        "https://anti-debug.checkpoint.com/techniques/timing.html#gettickcount");
+}
+
+
 /* ==================================================================== */
 // Collect some infos at Thread start, to be used later in checks
 /* ==================================================================== */
@@ -616,7 +649,6 @@ BOOL AntiDbgWatch::Init()
     watchedFuncs.appendFunc(EvasionFuncInfo("user32", "BlockInput", 1, AntiDbg_BlockInput));
     watchedFuncs.appendFunc(EvasionFuncInfo("user32", "SwitchDesktop", 1, AntiDbgLogFuncOccurrence));
 
-
     ////////////////////////////////////
     // If AntiDebug level is Deep
     ////////////////////////////////////
@@ -632,9 +664,43 @@ BOOL AntiDbgWatch::Init()
     return isInit;
 }
 
+namespace AntiDbg {
+
+    VOID InstrumentTimeChecks(IMG Image)
+    {
+        if (!IMG_Valid(Image)) return;
+        const std::string dllName = util::getDllName(IMG_Name(Image));
+        if (!util::iequals(dllName, "kernel32") && !util::iequals(dllName, "kernelbase")) {
+            return;
+        }
+
+        const char* fName = "GetTickCount";
+        RTN funcRtn = find_by_unmangled_name(Image, fName);
+        if (RTN_Valid(funcRtn)) {
+            RTN_Open(funcRtn);
+
+            RTN_InsertCall(funcRtn, IPOINT_AFTER, (AFUNPTR)AntiDbg_GetTickCount_after,
+                IARG_RETURN_IP,
+                IARG_THREAD_ID,
+                IARG_ADDRINT, fName,
+                IARG_REG_REFERENCE,
+                REG_GAX,
+                IARG_END);
+
+            RTN_Close(funcRtn);
+        }
+    }
+
+};
+
 VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
 {
+    if (m_Settings.antidebug == WATCH_DISABLED) return;
+
     m_AntiDbg.installCallbacks(Image, AntiDbgLogFuncOccurrence, m_Settings.antidebug);
+    if (m_Settings.antidebug >= WATCH_DEEP) {
+        AntiDbg::InstrumentTimeChecks(Image);
+    }
 }
 
 VOID AntiDbg::MonitorSyscallEntry(const THREADID tid, const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
