@@ -944,27 +944,33 @@ std::wstring paramToStr(VOID *arg1)
         wchar_t* Buffer;
     } T_UNICODE_STRING;
 
-    T_UNICODE_STRING* unicodeS = reinterpret_cast<T_UNICODE_STRING*>(arg1);
-
     const size_t kMaxStr = 300;
 
-    if ((rSize >= sizeof(T_UNICODE_STRING))
-        && (unicodeS->MaximumLength < kMaxStr) && (unicodeS->Length <= unicodeS->MaximumLength)// check if the length makes sense
-        && isValidReadPtr(unicodeS->Buffer))
-    {
-        const size_t aLen = util::getAsciiLen(reinterpret_cast<char*>(unicodeS->Buffer), 2); // take minimal sample of ASCII string
-        if (aLen == 1) {
-            // Must be wide string
-            size_t wLen = util::getAsciiLenW(unicodeS->Buffer, unicodeS->MaximumLength);
-            if (wLen >= 1) {
-                if ((unicodeS->Length / sizeof(wchar_t)) == wLen && unicodeS->MaximumLength >= unicodeS->Length) { // An extra check, just to make sure
-                    ss << " -> ";
-                    ss << "U\"" << unicodeS->Buffer << "\""; // Just made the U up to denote a UNICODE_STRING
-                    return ss.str();
+    if (rSize >= sizeof(T_UNICODE_STRING)) {
+
+        T_UNICODE_STRING* unicodeS = reinterpret_cast<T_UNICODE_STRING*>(arg1);
+        const size_t bufSize = getReadableMemSize(unicodeS->Buffer);
+        const size_t bufSizeW = bufSize / sizeof(wchar_t);
+        if (bufSize != 0
+            && (unicodeS->MaximumLength < kMaxStr) && (unicodeS->MaximumLength < bufSizeW)
+            && (unicodeS->Length <= unicodeS->MaximumLength) // check if the length makes sense
+            )
+        {
+            const size_t aLen = util::getAsciiLen(reinterpret_cast<char*>(unicodeS->Buffer), 2); // take minimal sample of ASCII string
+            if (aLen == 1) {
+                // Must be wide string
+                size_t wLen = util::getAsciiLenW(unicodeS->Buffer, unicodeS->MaximumLength);
+                if (wLen >= 1) {
+                    if ((unicodeS->Length / sizeof(wchar_t)) == wLen && unicodeS->MaximumLength >= unicodeS->Length) { // An extra check, just to make sure
+                        ss << " -> ";
+                        ss << "U\"" << unicodeS->Buffer << "\""; // Just made the U up to denote a UNICODE_STRING
+                        return ss.str();
+                    }
                 }
             }
         }
     }
+
 
     bool isString = false;
     const char* val = reinterpret_cast<char*>(arg1);
