@@ -104,7 +104,7 @@ namespace RetTracker {
     void CheckAndLogChanges(CallInfo& callInfo)
     {
         std::wstringstream ss;
-        ss << callInfo.functionName.c_str() << " OUT:\n";
+        ss << callInfo.functionName.c_str() << " changed:\n";
         // Check argument changes
         bool isChanged = false;
         for (size_t i = 0; i < callInfo.argCount; i++) {
@@ -117,9 +117,7 @@ namespace RetTracker {
 
             if (!IsMemorySame((ADDRINT)callInfo.argPointers[i], callInfo.argSnapshots[i])) {
                 isChanged = true;
-                ss  << L"\tArg[" << i << L"] = " << std::hex << callInfo.argPointers[i] << L" changed:\n"
-                    << L"\tOld: " << callInfo.args[i] << L"\n"
-                    << L"\tNew: " << paramToStr(callInfo.argPointers[i]) << L"\n";
+                ss  << L"\tArg[" << i << L"] = " << paramToStr(callInfo.argPointers[i]) << L"\n";
             }
         }
         if (isChanged) {
@@ -186,8 +184,8 @@ VOID RetTracker::HandleFunctionReturn(const THREADID tid, const ADDRINT returnIp
     info.returnPtr   = rawRetVal;
 
     std::wstringstream ss;
-    ss << info.functionName.c_str() << L"\n";
-    ss << L"\treturned: " << retStr << L"\n";
+    ss << info.functionName.c_str() << L" returned:\n";
+    ss << L"\t" << retStr << L"\n";
 
     if (m_Settings.followArgReturn) {
         RetTracker::CheckAndLogChanges(info);
