@@ -1,5 +1,5 @@
 #include "TrackReturns.h"
-
+#include "Settings.h"
 #include "TinyTracer.h"
 #include "ModuleInfo.h"
 #include <stack>
@@ -8,7 +8,7 @@
 
 struct CallInfo
 {
-    ADDRINT returnAddress = UNKNOWN_ADDR;           // Return address of the call
+    ADDRINT returnAddress = UNKNOWN_ADDR;           // Return addr of the call / Addr of syscall 
     std::string functionName;                       // Name of the API
     size_t argCount = 0;                            // Number of arguments
     std::vector<std::wstring> args;                 // Stored arguments values (result of paramToStr)
@@ -29,14 +29,6 @@ void LogBuffer(const std::wstringstream& ss)
         traceLog.logLine(s);
     }
 }
-
-struct FunctionTracker
-{
-    std::map<THREADID, std::vector<CallInfo>> threadCalls;  // Stores all calls grouped by thread
-    std::map<THREADID, uint64_t> threadCallCounts;          // Per-thread sequential call counters
-
-}; //struct FunctionTracker
-
 //---
 
 namespace RetTracker {
@@ -100,6 +92,7 @@ namespace RetTracker {
 
     void CheckAndLogChanges(CallInfo& callInfo)
     {
+
         std::wstringstream ss;
 
         // Check argument changes
@@ -123,7 +116,6 @@ namespace RetTracker {
     }
 }; // namespace RetTracker
 
-// Log any change in logged args
 VOID RetTracker::LogCallDetails(const ADDRINT Address, const CHAR* name, uint32_t argCount,
     VOID* arg1, VOID* arg2, VOID* arg3, VOID* arg4,
     VOID* arg5, VOID* arg6, VOID* arg7, VOID* arg8,
@@ -165,46 +157,28 @@ VOID RetTracker::LogCallDetails(const ADDRINT Address, const CHAR* name, uint32_
     callStack->push(info);
 }
 
-VOID RetTracker::CheckIfFunctionReturned(const THREADID tid, const ADDRINT ip, const ADDRINT retVal)
+VOID RetTracker::HandleFunctionReturn(const THREADID tid, const ADDRINT returnIp, const ADDRINT rawRetVal) 
 {
     auto* callStack = GetCallStackForThread(tid);
     if (!callStack || callStack->empty()) return;
 
     CallInfo& topCall = callStack->top();
+    if (topCall.returnAddress != returnIp) return;
 
-    // Only proceed if the IP matches the expected return address
-    if (topCall.returnAddress != ip) return;
-
+    // Copy before popping so we can log after
     CallInfo info = topCall;
     callStack->pop();
 
-    std::wstring retStr = paramToStr(reinterpret_cast<VOID*>(retVal));
+    std::wstring retStr = paramToStr(reinterpret_cast<VOID*>(rawRetVal));
+    info.returnValue = retStr;
+    info.returnPtr   = rawRetVal;
 
     std::wstringstream ss;
     ss << info.functionName.c_str() << L"\n";
     ss << L"\treturned: " << retStr << L"\n";
 
-    // Check and log changes to arguments and return memory
-    RetTracker::CheckAndLogChanges(info);
-
-    LogBuffer(ss);
-}
-
-VOID RetTracker::SaveReturnValue(const THREADID tid, const ADDRINT address, const ADDRINT returnValue)
-{
-    auto* callStack = GetCallStackForThread(tid);
-    if (!callStack || callStack->empty()) return;
-
-    CallInfo& topCall = callStack->top();
-
-    // Validate the return address matches what we expect
-    if (topCall.returnAddress != address) return;
-
-    std::wstringstream ss;
-    topCall.returnValue = paramToStr(reinterpret_cast<VOID*>(returnValue));
-    ss << topCall.functionName.c_str() << L"\n";
-    ss << L"\treturned: " << topCall.returnValue << L"\n";
-
-
+    if (m_Settings.followArgReturn) {
+        RetTracker::CheckAndLogChanges(info);
+    }
     LogBuffer(ss);
 }

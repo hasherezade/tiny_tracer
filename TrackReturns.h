@@ -17,9 +17,5 @@ namespace RetTracker
         VOID* arg9, VOID* arg10, VOID* arg11
     );
 
-    VOID CheckIfFunctionReturned(const THREADID tid, const ADDRINT ip, const ADDRINT retVal);
-
-    VOID LogAllTrackedCalls();
-
-    VOID SaveReturnValue(const THREADID tid, const ADDRINT address, const ADDRINT returnValue);
+    VOID HandleFunctionReturn(const THREADID tid, const ADDRINT returnIp, const ADDRINT rawRetVal);
 };
