@@ -153,11 +153,6 @@ VOID ThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
     RetTracker::InitTrackerForThread(tid);
 }
 
-VOID Fini(INT32 code, VOID* v)
-{
-    PinLocker locker;
-}
-
 /* ===================================================================== */
 // Analysis routines
 /* ===================================================================== */
@@ -1588,10 +1583,6 @@ int main(int argc, char *argv[])
 
         // Register the ThreadStart callback
         PIN_AddThreadStartFunction(ThreadStart, NULL);
-//#ifdef _DEBUG
-        // Register the Fini function
-        PIN_AddFiniFunction(Fini, nullptr);
-//#endif
     }
 
     // Register the callback function for child processes
