@@ -2,6 +2,9 @@
 #include "Settings.h"
 #include "TinyTracer.h"
 #include "ModuleInfo.h"
+
+#include <string>
+#include <vector>
 #include <stack>
 
 #define MEM_SNAPSHOT_SIZE 8
@@ -58,16 +61,21 @@ namespace RetTracker {
     // Copy memory content into the snapshot
     bool MakeMemorySnapshot(const ADDRINT addr, std::vector<uint8_t>& vec, const size_t size)
     {
-        if (!addr || addr == UNKNOWN_ADDR) return false;
-
+        if (!addr || addr == UNKNOWN_ADDR || !size) return false;
         vec.clear();
-        uint8_t* ptr = (uint8_t*)addr;
-        for (size_t i = 0; i < size; i++) {
-            uint8_t* cPtr = ptr + i;
-            if (!isValidReadPtr(cPtr)) break;
-            vec.push_back(*cPtr);
+
+        uint8_t* inPtr = (uint8_t*)addr;
+        const size_t maxSize = getReadableMemSize(inPtr);
+        if (!maxSize) return false;
+
+        size_t snapSize = maxSize > size ? size : maxSize;
+        vec.resize(snapSize);
+        uint8_t* outPtr = (uint8_t*)&vec[0];
+        size_t res = PIN_SafeCopy(outPtr, inPtr, snapSize);
+        if (res != snapSize) {
+            vec.resize(res);
         }
-        return vec.size() ? true : false;
+        return res ? true : false;
     }
 
     // Compare the current memory with the stored snapshot
