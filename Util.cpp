@@ -23,32 +23,32 @@ std::wstring util::hexdump(const uint8_t* in_buf, const size_t max_size)
     return ss.str();
 }
 
+namespace util {
+
+    template <class CHAR_T>
+    size_t getStrLen(const CHAR_T* inp, size_t bytesMax)
+    {
+        const size_t maxInp = bytesMax / sizeof(CHAR_T);
+        for (size_t i = 0; i < maxInp; i++) {
+            if (!PIN_CheckReadAccess(const_cast<CHAR_T*>(inp) + i)) {
+                return 0;
+            }
+            const CHAR_T c = inp[i];
+            if (c == 0) return i; //end of string
+            if (!IS_PRINTABLE(c) && !IS_ENDLINE(c)) return 0;
+        }
+        return 0;
+    }
+};
+
 size_t util::getAsciiLen(const char *inp, size_t maxInp)
 {
-    size_t i = 0;
-    for (; i < maxInp; i++) {
-        if (!PIN_CheckReadAccess(const_cast<char*>(inp) + i)) {
-            return 0;
-        }
-        const char c = inp[i];
-        if (c == '\0') return i; //end of string
-        if (!IS_PRINTABLE(c) && !IS_ENDLINE(c)) return 0;
-    }
-    return 0;
+    return getStrLen<char>(inp, maxInp);
 }
 
 size_t util::getAsciiLenW(const wchar_t *inp, size_t maxInp)
 {
-    size_t i = 0;
-    for (; i < maxInp; i++) {
-        if (!PIN_CheckReadAccess(const_cast<wchar_t*>(inp) + i)) {
-            return 0;
-        }
-        const wchar_t w = inp[i];
-        if (w == 0) return i; //end of string
-        if (!IS_PRINTABLE(w) && !IS_ENDLINE(w)) return 0;
-    }
-    return 0;
+    return getStrLen<wchar_t>(inp, maxInp);
 }
 
 std::string util::getDllName(const std::string& str)

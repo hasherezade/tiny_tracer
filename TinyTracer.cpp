@@ -944,15 +944,13 @@ std::wstring paramToStr(VOID *arg1)
         wchar_t* Buffer;
     } T_UNICODE_STRING;
 
-    const size_t kMaxStr = 300;
-
     if (rSize >= sizeof(T_UNICODE_STRING)) {
 
         T_UNICODE_STRING* unicodeS = reinterpret_cast<T_UNICODE_STRING*>(arg1);
         const size_t bufSize = getReadableMemSize(unicodeS->Buffer);
         const size_t bufSizeW = bufSize / sizeof(wchar_t);
         if (bufSize != 0
-            && (unicodeS->MaximumLength < kMaxStr) && (unicodeS->MaximumLength < bufSizeW)
+            && (unicodeS->MaximumLength < bufSizeW)
             && (unicodeS->Length <= unicodeS->MaximumLength) // check if the length makes sense
             )
         {
@@ -971,14 +969,13 @@ std::wstring paramToStr(VOID *arg1)
         }
     }
 
-
     bool isString = false;
     const char* val = reinterpret_cast<char*>(arg1);
-    const size_t len = util::getAsciiLen(val, kMaxStr);
+    const size_t len = util::getAsciiLen(val, rSize);
 
     if (len == 1) { // Possible wideString
         wchar_t* val = reinterpret_cast<wchar_t*>(arg1);
-        size_t wLen = util::getAsciiLenW(val, kMaxStr);
+        size_t wLen = util::getAsciiLenW(val, rSize);
         if (wLen >= len) {
             ss << " -> ";
             ss << "L\"" << val << "\"";
@@ -992,7 +989,8 @@ std::wstring paramToStr(VOID *arg1)
     }
     if (!isString) {
         ss << " -> {";
-        ss << util::hexdump(reinterpret_cast<const uint8_t*>(val), m_Settings.hexdumpSize);
+        const size_t dumpSize = (rSize < m_Settings.hexdumpSize) ? rSize : m_Settings.hexdumpSize;
+        ss << util::hexdump(reinterpret_cast<const uint8_t*>(val), dumpSize);
         ss << "}";
     }
     return ss.str();
@@ -1483,7 +1481,6 @@ int main(int argc, char *argv[])
     }
     
     pinPath = argv[0];
-
     std::string targetModule = KnobModuleName.Value();
     if (targetModule.length() == 0) {
         // init App Name:
