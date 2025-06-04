@@ -156,7 +156,6 @@ VOID ThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
 VOID Fini(INT32 code, VOID* v)
 {
     PinLocker locker;
-    RetTracker::LogAllTrackedCalls();
 }
 
 /* ===================================================================== */
@@ -834,7 +833,7 @@ VOID SyscallCalledAfter(THREADID tid, CONTEXT* ctxt, SYSCALL_STANDARD std, VOID*
     const ADDRINT address = itr->second.addrFrom;
 
     // Retrieve the syscall return value
-    RetTracker::SaveReturnValue(tid, address, PIN_GetSyscallReturn(ctxt, std));
+    RetTracker::HandleFunctionReturn(tid, address, PIN_GetSyscallReturn(ctxt, std));
 
     itr->second.reset(); // sycall completed, erase the stored info
 
@@ -1122,17 +1121,17 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
 // Instrumentation callbacks
 /* ===================================================================== */
 
-VOID CheckIfFunctionReturned(const THREADID tid, const ADDRINT ip, const ADDRINT retVal)
+VOID HandleFunctionReturn(const THREADID tid, const ADDRINT ip, const ADDRINT retVal)
 {
     PinLocker locker;
-    return RetTracker::CheckIfFunctionReturned(tid, ip, retVal);
+    return RetTracker::HandleFunctionReturn(tid, ip, retVal);
 }
 
 VOID InstrumentInstruction(INS ins, VOID *v)
 {
     if (m_Settings.logReturn) {
         // Insert callback for function returns
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)CheckIfFunctionReturned,
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)HandleFunctionReturn,
             IARG_THREAD_ID,        // Thread ID for TLS
             IARG_INST_PTR,         // Instruction pointer
             IARG_REG_VALUE, REG_GAX, // Return value in EAX/RAX
