@@ -504,7 +504,7 @@ VOID AntiDbg_CloseHandle_after(ADDRINT Address, THREADID threadid, const CHAR* n
 // "GetTickCount" instrumentation
 /* ===================================================================== */
 
-VOID AntiDbg_GetTickCount_after(ADDRINT Address, THREADID threadid, const CHAR* name, ADDRINT *result)
+VOID AntiDbg_GetTickCount_after(ADDRINT Address, THREADID threadid, const CHAR* name, const BOOL modify, ADDRINT *result)
 {
     PinLocker locker;
     static ADDRINT emTick = 0;
@@ -514,7 +514,7 @@ VOID AntiDbg_GetTickCount_after(ADDRINT Address, THREADID threadid, const CHAR* 
 
     std::stringstream ss;
     ss << "^ kernel32!GetTickCount";
-    if (result) {
+    if (modify && result) {
         ADDRINT curr = (*result);
         if (emTick) {
             size_t diff = 1;
@@ -666,13 +666,16 @@ BOOL AntiDbgWatch::Init()
 
 namespace AntiDbg {
 
-    VOID InstrumentTimeChecks(IMG Image)
+    VOID InstrumentTimeChecks(IMG Image, t_watch_level maxLevel)
     {
         if (!IMG_Valid(Image)) return;
+
         const std::string dllName = util::getDllName(IMG_Name(Image));
         if (!util::iequals(dllName, "kernel32") && !util::iequals(dllName, "kernelbase")) {
             return;
         }
+
+        const bool modify = (maxLevel == t_watch_level::WATCH_DEEP) ? true : false;
 
         const char* fName = "GetTickCount";
         RTN funcRtn = find_by_unmangled_name(Image, fName);
@@ -683,6 +686,7 @@ namespace AntiDbg {
                 IARG_RETURN_IP,
                 IARG_THREAD_ID,
                 IARG_ADDRINT, fName,
+                IARG_BOOL, modify,
                 IARG_REG_REFERENCE,
                 REG_GAX,
                 IARG_END);
@@ -698,9 +702,7 @@ VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
     if (m_Settings.antidebug == WATCH_DISABLED) return;
 
     m_AntiDbg.installCallbacks(Image, AntiDbgLogFuncOccurrence, m_Settings.antidebug);
-    if (m_Settings.antidebug >= WATCH_DEEP) {
-        AntiDbg::InstrumentTimeChecks(Image);
-    }
+    AntiDbg::InstrumentTimeChecks(Image, m_Settings.antidebug);
 }
 
 VOID AntiDbg::MonitorSyscallEntry(const THREADID tid, const CHAR* name, const CONTEXT* ctxt, SYSCALL_STANDARD std, const ADDRINT Address)
