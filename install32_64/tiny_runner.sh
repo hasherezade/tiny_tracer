@@ -47,7 +47,7 @@ echo "Traced Module Name: $TRACED_MODULE_BASENAME";
 #The arguments that you want to pass to the run executable
 EXE_ARGS=""
 
-OUT_PATH=$TRACED_MODULE".tag"
+OUT_PATH=$TARGET_APP".tag"
 
 # PIN_DIR is your root directory of Intel Pin
 PIN_DIR=$HOME"/pin/"

@@ -33,7 +33,7 @@ set PINTOOL=%PINTOOL32%
 rem TRACED_MODULE - by default it is the main module, but it can be also a DLL within the traced process
 set TRACED_MODULE=%TARGET_APP%
 
-set OUT_PATH="%TRACED_MODULE%.tag"
+set OUT_PATH="%TARGET_APP%.tag"
 
 rem The ini file specifying the settings of the tracer
 set SETTINGS_FILE=%PIN_TOOLS_DIR%\TinyTracer.ini

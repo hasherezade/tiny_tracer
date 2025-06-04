@@ -1440,11 +1440,14 @@ BOOL FollowChild(CHILD_PROCESS childProcess, VOID* userData)
     return TRUE;
 }
 
-std::string makeOutputPath(std::string outDir, const std::string &module_name, const std::string &ext)
+std::string makeOutputPath(std::string outDir, const std::string& module_name, const std::string& ext)
 {
     std::string filename = util::getFilename(module_name);
     std::stringstream fnamestr;
-    fnamestr << outDir << PATH_SEPARATOR << filename << '.' << ext;
+    if (!outDir.empty()) {
+        fnamestr << outDir << PATH_SEPARATOR;
+    }
+    fnamestr << filename << '.' << ext;
     return fnamestr.str();
 }
 
@@ -1541,7 +1544,7 @@ int main(int argc, char *argv[])
     }
 
     // init output file:
-    std::string outDir = util::getDirectory(targetModule);
+    std::string outDir = "";
     if (KnobOutputFile.Enabled() && KnobOutputFile.Value().length()){
         outDir = util::getDirectory(KnobOutputFile.Value());
     }
