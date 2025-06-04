@@ -21,4 +21,4 @@ size_t getReadableMemSize(VOID* ptr);
 BOOL isValidReadPtr(VOID* arg1);
 BOOL fetchInterruptID(const ADDRINT Address, int& intID);
 
-VOID LogMsgAtAddress(const WatchedType wType, const ADDRINT Address, const char* label, const char* msg, const char* link);
+VOID LogMsgAtAddress(const WatchedType wType, const ADDRINT Address, const char* label, const char* msg, const char* link=nullptr);

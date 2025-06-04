@@ -21,7 +21,7 @@
 #include "TrackReturns.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.9.9"
+#define VERSION "2.9.9.1"
 
 #include "Util.h"
 #include "Settings.h"
@@ -1321,6 +1321,99 @@ VOID HookNtDelayExecution(const CHAR* name, UINT64* sleepTimePtr)
     }
 }
 
+VOID InstrumentSleep(IMG Image)
+{
+    const std::string dllName = util::getDllName(IMG_Name(Image));
+    if (util::iequals(dllName, "ntdll")) {
+        const CHAR* funcName = "NtDelayExecution";
+        RTN sleepRtn = find_by_unmangled_name(Image, funcName);
+        if (RTN_Valid(sleepRtn)) {
+            RTN_Open(sleepRtn);
+            RTN_InsertCall(sleepRtn, IPOINT_BEFORE, (AFUNPTR)HookNtDelayExecution,
+                IARG_PTR, funcName,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+                IARG_END);
+            RTN_Close(sleepRtn);
+        }
+    }
+}
+
+/* ===================================================================== */
+std::map<THREADID, VOID*> volumeSerialPtrs;
+
+VOID Mod_GetVolumeInformation_before(const ADDRINT Address, const THREADID tid, const CHAR* name, VOID* volumeSerialPtr)
+{
+    PinLocker locker;
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    if (!volumeSerialPtr) return;
+    volumeSerialPtrs[tid] = volumeSerialPtr;
+}
+
+VOID Mod_GetVolumeInformation_after(const ADDRINT Address, const THREADID tid, const CHAR* name, UINT32 volumeID, ADDRINT status)
+{
+    PinLocker locker;
+    const WatchedType wType = isWatchedAddress(Address);
+    if (wType == WatchedType::NOT_WATCHED) return;
+
+    auto itr = volumeSerialPtrs.find(tid);
+    if (itr == volumeSerialPtrs.end()) {
+        return;
+    }
+    VOID* ptr = itr->second;
+
+    if (status && ptr) {
+        PIN_SafeCopy(ptr, &volumeID, sizeof(volumeID));
+    }
+    volumeSerialPtrs.erase(itr);
+
+    std::stringstream ss;
+    ss << "Volume ID replaced: " << std::hex << volumeID;
+    LogMsgAtAddress(wType, Address, "[MOD] --> ", ss.str().c_str());
+}
+
+VOID InstrumentVolumeInfo(IMG Image, uint32_t volumeID)
+{
+    if (!volumeID) return;
+    if (!IMG_Valid(Image)) return;
+
+    const std::string dllName = util::getDllName(IMG_Name(Image));
+    if (!util::iequals(dllName, "kernel32") && !util::iequals(dllName, "kernelbase")) {
+        return;
+    }
+    const size_t functionsCount = 2;
+    char* functions[functionsCount] = {
+        "GetVolumeInformationA",
+        "GetVolumeInformationW"
+    };
+    for (size_t i = 0; i < functionsCount; i++)
+    {
+        const char* fName = functions[i];
+        RTN funcRtn = find_by_unmangled_name(Image, fName);
+        if (RTN_Valid(funcRtn)) {
+            RTN_Open(funcRtn);
+
+            RTN_InsertCall(funcRtn, IPOINT_BEFORE, AFUNPTR(Mod_GetVolumeInformation_before),
+                IARG_RETURN_IP,
+                IARG_THREAD_ID,
+                IARG_ADDRINT, fName,
+                IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
+                IARG_END
+            );
+
+            RTN_InsertCall(funcRtn, IPOINT_AFTER, AFUNPTR(Mod_GetVolumeInformation_after),
+                IARG_RETURN_IP,
+                IARG_THREAD_ID,
+                IARG_ADDRINT, fName,
+                IARG_UINT32, volumeID,
+                IARG_FUNCRET_EXITPOINT_VALUE,
+                IARG_END);
+
+            RTN_Close(funcRtn);
+        }
+    }
+}
 /* ===================================================================== */
 
 
@@ -1340,21 +1433,15 @@ VOID ImageLoad(IMG Image, VOID *v)
             MonitorFunctionArgs(Image, m_Settings.funcWatch.funcs[i]);
         }
     }
+#ifdef _WIN32
     if (m_Settings.hookSleep) {
-        const std::string dllName = util::getDllName(IMG_Name(Image));
-        if (util::iequals(dllName, "ntdll")) {
-            const CHAR *SLEEP = "NtDelayExecution";
-            RTN sleepRtn = find_by_unmangled_name(Image, SLEEP);
-            if (RTN_Valid(sleepRtn)) {
-                RTN_Open(sleepRtn);
-                RTN_InsertCall(sleepRtn, IPOINT_BEFORE, (AFUNPTR)HookNtDelayExecution,
-                    IARG_PTR, SLEEP,
-                    IARG_FUNCARG_ENTRYPOINT_VALUE, 1, 
-                    IARG_END);
-                RTN_Close(sleepRtn);
-            }
-        }
+        InstrumentSleep(Image);
     }
+    if (m_Settings.volumeID) {
+        InstrumentVolumeInfo(Image, m_Settings.volumeID);
+    }
+
+#endif // _WIN32
 #ifdef USE_ANTIDEBUG
     // ANTIDEBUG: Register Function instrumentation needed for AntiDebug
     if (m_Settings.antidebug != WATCH_DISABLED) {

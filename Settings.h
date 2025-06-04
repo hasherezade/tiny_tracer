@@ -122,7 +122,8 @@ public:
         isHyperVSet(false),
         emulateSingleStep(true),
         disasmStart(0), disasmStop(0), disasmCtx(false),
-        logReturn(false), followArgReturn(false)
+        logReturn(false), followArgReturn(false),
+        volumeID(0)
     {
     }
 
@@ -154,6 +155,7 @@ public:
     bool disasmCtx; // show context in a disasm mode
     bool logReturn; // Log return value
     bool followArgReturn; // Log changes of args and returns ptr
+    uint32_t volumeID;
 
     SyscallsTable syscallsTable; //Syscalls table: mapping the syscall ID to the function name
     FuncWatchList funcWatch; //List of functions, arguments of which are going to be logged

@@ -31,7 +31,7 @@
 #define KEY_LOG_RETURN_VALUE            "LOG_RETURN_VALUE"
 #define KEY_FOLLOW_ARGS_RETURN          "FOLLOW_ARGS_RETURN"
 #define KEY_PARSE_EXPORTS               "PARSE_EXPORTS"
-
+#define KEY_VOLUME_ID                   "VOLUME_ID"
 
 t_shellc_options ConvertShcOption(int value)
 {
@@ -230,6 +230,10 @@ bool fillSettings(Settings &s, const std::string &line)
         s.parseExports = loadBoolean(valStr);
         isFilled = true;
     }
+    if (util::iequals(valName, KEY_VOLUME_ID)) {
+        s.volumeID = util::loadInt(valStr, true);
+        isFilled = true;
+    }
     return isFilled;
 }
 
@@ -294,6 +298,7 @@ bool Settings::saveINI(const std::string &filename)
     myfile << KEY_LOG_RETURN_VALUE << DELIM << std::dec << booleanToStr(this->logReturn) << "\r\n";
     myfile << KEY_FOLLOW_ARGS_RETURN << DELIM << std::dec << booleanToStr(this->followArgReturn) << "\r\n";
     myfile << KEY_PARSE_EXPORTS << DELIM << std::dec << booleanToStr(this->parseExports) << "\r\n";
+    myfile << KEY_VOLUME_ID << DELIM << std::hex << this->volumeID << "\r\n";
     myfile.close();
     return true;
 }

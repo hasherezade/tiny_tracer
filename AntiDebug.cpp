@@ -532,7 +532,6 @@ VOID AntiDbg_GetTickCount_after(ADDRINT Address, THREADID threadid, const CHAR* 
         "https://anti-debug.checkpoint.com/techniques/timing.html#gettickcount");
 }
 
-
 /* ==================================================================== */
 // Collect some infos at Thread start, to be used later in checks
 /* ==================================================================== */
