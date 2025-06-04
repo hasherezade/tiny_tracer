@@ -907,9 +907,9 @@ size_t getReadableMemSize(VOID* addr)
     return (memInfo.Protection & OS_PAGE_PROTECTION_TYPE_READ) ? memSize : 0;
 }
 
-BOOL isValidReadPtr(VOID* arg1)
+BOOL isValidReadPtr(VOID* ptr)
 {
-    return getReadableMemSize(arg1) != 0 ? TRUE : FALSE;
+    return getReadableMemSize(ptr) != 0 ? TRUE : FALSE;
 }
 
 std::wstring paramToStr(VOID *arg1)

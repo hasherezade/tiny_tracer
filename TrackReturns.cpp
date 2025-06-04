@@ -68,7 +68,7 @@ namespace RetTracker {
         const size_t maxSize = getReadableMemSize(inPtr);
         if (!maxSize) return false;
 
-        size_t snapSize = maxSize > size ? size : maxSize;
+        size_t snapSize = (maxSize > size) ? size : maxSize;
         vec.resize(snapSize);
         uint8_t* outPtr = (uint8_t*)&vec[0];
         size_t res = PIN_SafeCopy(outPtr, inPtr, snapSize);
@@ -85,13 +85,16 @@ namespace RetTracker {
             if (snapshot.empty()) return true;
             return false;
         }
-        uint8_t* ptr = (uint8_t*)addr;
-        for (size_t i = 0; i < snapshot.size(); i++) {
-            uint8_t* cPtr = ptr + i;
-            if (!isValidReadPtr(cPtr)) {
-                return false;
-            }
-            if (snapshot.at(i) != (*cPtr)) {
+        const size_t snapSize = snapshot.size();
+        std::vector<uint8_t> snap2;
+        if (!MakeMemorySnapshot(addr, snap2, snapshot.size())) {
+            return false;
+        }
+        if (snap2.size() != snapSize) {
+            return false;
+        }
+        for (size_t i = 0; i < snapSize; i++) {
+            if (snap2.at(i) != snapshot.at(i)) {
                 return false;
             }
         }
@@ -100,10 +103,10 @@ namespace RetTracker {
 
     void CheckAndLogChanges(CallInfo& callInfo)
     {
-
         std::wstringstream ss;
-
+        ss << callInfo.functionName.c_str() << " OUT:\n";
         // Check argument changes
+        bool isChanged = false;
         for (size_t i = 0; i < callInfo.argCount; i++) {
 
             if (callInfo.argSnapshots[i].empty()) continue;
@@ -113,14 +116,15 @@ namespace RetTracker {
             if (callInfo.argPointers[i] == nullptr) continue;
 
             if (!IsMemorySame((ADDRINT)callInfo.argPointers[i], callInfo.argSnapshots[i])) {
-                ss << callInfo.functionName.c_str()
-                    << L", Arg[" << i << L"] = " << std::hex << callInfo.argPointers[i] << L" changed:\n"
+                isChanged = true;
+                ss  << L"\tArg[" << i << L"] = " << std::hex << callInfo.argPointers[i] << L" changed:\n"
                     << L"\tOld: " << callInfo.args[i] << L"\n"
-                    << L"\tNew: " << paramToStr(callInfo.argPointers[i])
-                    << L"\n";
+                    << L"\tNew: " << paramToStr(callInfo.argPointers[i]) << L"\n";
             }
         }
-        LogBuffer(ss);
+        if (isChanged) {
+            LogBuffer(ss);
+        }  
     }
 }; // namespace RetTracker
 

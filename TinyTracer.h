@@ -17,6 +17,7 @@ enum class WatchedType {
 
 WatchedType isWatchedAddress(const ADDRINT Address);
 std::wstring paramToStr(VOID* arg1);
+size_t getReadableMemSize(VOID* ptr);
 BOOL isValidReadPtr(VOID* arg1);
 BOOL fetchInterruptID(const ADDRINT Address, int& intID);
 
