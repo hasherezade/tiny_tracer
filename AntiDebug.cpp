@@ -320,7 +320,7 @@ VOID AntiDbg_LoadLibrary(const ADDRINT Address, const THREADID tid, const CHAR* 
 
     PinLocker locker;
     if (isWatchedAddress(Address) == WatchedType::NOT_WATCHED) return;
-    if (!arg1 || !PIN_CheckReadAccess(arg1)) return;
+    if (!arg1 || !isValidReadPtr(arg1)) return;
 
     // Track LoadLibraryX to detect access to LOAD_DLL_DEBUG_INFO
     // Get the library name from argument
@@ -458,7 +458,7 @@ VOID AntiDbg_CreateFile(const ADDRINT Address, const THREADID tid, const CHAR* n
     if (int((size_t)arg3) == 0) {
         IMG img = IMG_FindByAddress(Address);
         if (!IMG_Valid(img)) return;
-        if (!arg1 || !PIN_CheckReadAccess(arg1)) return;
+        if (!arg1 || !isValidReadPtr(arg1)) return;
 
         // Get the module name from image
         std::string moduleName = IMG_Name(img);

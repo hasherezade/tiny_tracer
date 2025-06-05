@@ -1427,12 +1427,14 @@ VOID ImageLoad(IMG Image, VOID *v)
         ExportsInfo::addFromFile(Image);
     }
 #endif // _WIN32
+
     for (size_t i = 0; i < m_Settings.funcWatch.funcs.size(); i++) {
         const std::string dllName = util::getDllName(IMG_Name(Image));
         if (util::iequals(dllName, m_Settings.funcWatch.funcs[i].dllName)) {
             MonitorFunctionArgs(Image, m_Settings.funcWatch.funcs[i]);
         }
     }
+
 #ifdef _WIN32
     if (m_Settings.hookSleep) {
         InstrumentSleep(Image);
@@ -1440,8 +1442,8 @@ VOID ImageLoad(IMG Image, VOID *v)
     if (m_Settings.volumeID) {
         InstrumentVolumeInfo(Image, m_Settings.volumeID);
     }
-
 #endif // _WIN32
+
 #ifdef USE_ANTIDEBUG
     // ANTIDEBUG: Register Function instrumentation needed for AntiDebug
     if (m_Settings.antidebug != WATCH_DISABLED) {
