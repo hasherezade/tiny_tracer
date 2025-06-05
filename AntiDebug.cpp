@@ -623,6 +623,7 @@ BOOL AntiDbgWatch::Init()
     funcToLink["OutputDebugStringA"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#outputdebugstring";
     funcToLink["OutputDebugStringW"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#outputdebugstring";
     funcToLink["GetSystemTime"] = "https://anti-debug.checkpoint.com/techniques/timing.html#getsystemtime";
+    funcToLink["GetLocalTime"] = "https://anti-debug.checkpoint.com/techniques/timing.html#getlocaltime";
 
     watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "CsrGetProcessId", 0));
     watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "RtlQueryProcessHeapInformation", 1));
@@ -648,6 +649,7 @@ BOOL AntiDbgWatch::Init()
     watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "DebugActiveProcess", 5));
     watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "GenerateConsoleCtrlEvent", 5));
     watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "GetSystemTime", 1));
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "GetLocalTime", 1));
 
     watchedFuncs.appendFunc(EvasionFuncInfo("user32", "BlockInput", 1, AntiDbg_BlockInput));
     watchedFuncs.appendFunc(EvasionFuncInfo("user32", "SwitchDesktop", 1, AntiDbgLogFuncOccurrence));
