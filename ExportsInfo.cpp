@@ -9,15 +9,50 @@
 
 namespace ExportsInfo {
 
-    inline void manual_map(BYTE* image, BYTE* rawPE, PIMAGE_NT_HEADERS nt)
+    inline bool validate_ptr(const void* buffer_bgn, size_t buffer_size, const void* field_bgn, size_t field_size)
     {
-        ::memcpy(image, rawPE, nt->OptionalHeader.SizeOfHeaders);
+        if (buffer_bgn == nullptr || field_bgn == nullptr) {
+            return false;
+        }
+        BYTE* _start = (BYTE*)buffer_bgn;
+        BYTE* _field_start = (BYTE*)field_bgn;
+        if (_field_start < _start) {
+            return false;
+        }
+        size_t start_delta = (BYTE*)_field_start - (BYTE*)_start;
+        size_t area_size = start_delta + field_size;
+        if (area_size > buffer_size) {
+            return false;
+        }
+        if (area_size < field_size || area_size < start_delta) {
+            return false;
+        }
+        return true;
+    }
 
+    inline bool manual_map(BYTE* image, size_t imgSize, BYTE* rawPE, size_t rawSize, PIMAGE_NT_HEADERS nt)
+    {
+        if (imgSize < nt->OptionalHeader.SizeOfHeaders || rawSize < nt->OptionalHeader.SizeOfHeaders) {
+            return false;
+        }
+        ::memcpy(image, rawPE, nt->OptionalHeader.SizeOfHeaders);
         // map sections
         PIMAGE_SECTION_HEADER section = (PIMAGE_SECTION_HEADER)IMAGE_FIRST_SECTION(nt);
         for (WORD i = 0; i < nt->FileHeader.NumberOfSections; i++) {
-            ::memcpy((BYTE*)(image)+section[i].VirtualAddress, (BYTE*)(rawPE)+section[i].PointerToRawData, section[i].SizeOfRawData);
+            if (!validate_ptr(rawPE, rawSize, &section[i], sizeof(IMAGE_SECTION_HEADER))) {
+                return false;
+            }
+            BYTE* vPtr = (BYTE*)(image)+section[i].VirtualAddress;
+            BYTE* rPtr = (BYTE*)(rawPE)+section[i].PointerToRawData;
+            const size_t secSize = section[i].SizeOfRawData;
+            if (!validate_ptr(image, imgSize, vPtr, secSize) ||
+                !validate_ptr(rawPE, rawSize, rPtr, secSize))
+            {
+                return false;
+            }
+            ::memcpy(vPtr, rPtr, secSize);
         }
+        return true;
     }
 
     size_t loadPE(std::vector<char>& buffer, std::vector<char>& mapped)
@@ -35,15 +70,15 @@ namespace ExportsInfo {
         size_t imgSize = nt->OptionalHeader.SizeOfImage;
         mapped.resize(imgSize);
         BYTE* image = (BYTE*)&mapped[0];
-        manual_map(image, raw, nt);
+        if (!manual_map(image, mapped.size(), raw, buffer.size(), nt)) {
+            return 0;
+        }
         return imgSize;
     }
 
-    size_t fillExports(IMG& img, const ADDRINT base, const void* mod)
-    {
-        if (!mod) return 0;
 
-        BYTE* mem = (BYTE*)mod;
+    size_t fillExports(IMG& img, const ADDRINT base, BYTE* mem, size_t mem_size)
+    {
         size_t count = 0;
         IMAGE_DOS_HEADER* dos = reinterpret_cast<IMAGE_DOS_HEADER*>(mem);
         if (dos->e_magic != IMAGE_DOS_SIGNATURE) {
@@ -67,10 +102,17 @@ namespace ExportsInfo {
             WORD* nameIndex = (WORD*)((ADDRINT)mem + namesOrdsListRVA + i * sizeof(WORD));
             DWORD* funcRVA = (DWORD*)((ADDRINT)mem + funcsListRVA + (*nameIndex) * sizeof(DWORD));
 
+            if (!validate_ptr(mem, mem_size, nameRVA, sizeof(DWORD)) || 
+                !validate_ptr(mem, mem_size, nameIndex, sizeof(WORD)) || 
+                !validate_ptr(mem, mem_size, funcRVA, sizeof(DWORD)))
+            {
+                break;
+            }
             ADDRINT funcVA = base + (*funcRVA);
             const char* name = reinterpret_cast<const char*>(mem + (*nameRVA));
-            if (!name) continue;
-
+            if (!name || !validate_ptr(mem, mem_size, name, sizeof(char))) {
+                continue;
+            }
             RTN rtn = RTN_FindByAddress(funcVA);
             if (RTN_Address(rtn) != funcVA) {
                 RTN_CreateAt(funcVA, name);
@@ -109,5 +151,5 @@ size_t ExportsInfo::addFromFile(IMG& img)
     if (!loadPE(buffer, mapped)) return 0;
 
     BYTE* mem = (BYTE*)&mapped[0];
-    return fillExports(img, base, mem);
+    return fillExports(img, base, mem, mapped.size());
 }
