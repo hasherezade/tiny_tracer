@@ -504,18 +504,19 @@ VOID AntiDbg_CloseHandle_after(ADDRINT Address, THREADID threadid, const CHAR* n
 // "GetTickCount" instrumentation
 /* ===================================================================== */
 
-VOID AntiDbg_GetTickCount_after(ADDRINT Address, THREADID threadid, const CHAR* name, const BOOL modify, ADDRINT *result)
+template <class TICK_T>
+VOID AntiDbg_GetTickCount_after(ADDRINT Address, THREADID threadid, const CHAR* name, const BOOL modify, TICK_T* result)
 {
     PinLocker locker;
-    static ADDRINT emTick = 0;
-    static ADDRINT prevTick = 0;
+    static TICK_T emTick = 0;
+    static TICK_T prevTick = 0;
     const WatchedType wType = isWatchedAddress(Address);
     if (wType == WatchedType::NOT_WATCHED) return;
 
     std::stringstream ss;
-    ss << "^ kernel32!GetTickCount";
+    ss << "^ kernel32!" << name;
     if (modify && result) {
-        ADDRINT curr = (*result);
+        TICK_T curr = (*result);
         if (emTick) {
             size_t diff = 1;
             if (curr > prevTick) {
@@ -665,23 +666,14 @@ BOOL AntiDbgWatch::Init()
 
 namespace AntiDbg {
 
-    VOID InstrumentTimeChecks(IMG Image, t_watch_level maxLevel)
+    template <class TICK_T>
+    VOID _InstrumentGetTickCount(IMG Image, const char* fName, bool modify)
     {
-        if (!IMG_Valid(Image)) return;
-
-        const std::string dllName = util::getDllName(IMG_Name(Image));
-        if (!util::iequals(dllName, "kernel32") && !util::iequals(dllName, "kernelbase")) {
-            return;
-        }
-
-        const bool modify = (maxLevel == t_watch_level::WATCH_DEEP) ? true : false;
-
-        const char* fName = "GetTickCount";
         RTN funcRtn = find_by_unmangled_name(Image, fName);
         if (RTN_Valid(funcRtn)) {
             RTN_Open(funcRtn);
 
-            RTN_InsertCall(funcRtn, IPOINT_AFTER, (AFUNPTR)AntiDbg_GetTickCount_after,
+            RTN_InsertCall(funcRtn, IPOINT_AFTER, (AFUNPTR)AntiDbg_GetTickCount_after<TICK_T>,
                 IARG_RETURN_IP,
                 IARG_THREAD_ID,
                 IARG_ADDRINT, fName,
@@ -694,6 +686,20 @@ namespace AntiDbg {
         }
     }
 
+    VOID InstrumentTimeChecks(IMG Image, t_watch_level maxLevel)
+    {
+        if (!IMG_Valid(Image)) return;
+
+        const std::string dllName = util::getDllName(IMG_Name(Image));
+        if (!util::iequals(dllName, "kernel32") && !util::iequals(dllName, "kernelbase")) {
+            return;
+        }
+
+        const bool modify = (maxLevel == t_watch_level::WATCH_DEEP) ? true : false;
+        
+        _InstrumentGetTickCount<UINT32>(Image, "GetTickCount", modify);
+        _InstrumentGetTickCount<UINT64>(Image, "GetTickCount64", modify);
+    }
 };
 
 VOID AntiDbg::MonitorAntiDbgFunctions(IMG Image)
