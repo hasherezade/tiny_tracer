@@ -21,7 +21,7 @@
 #include "TrackReturns.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "2.9.9.1"
+#define VERSION "3.0"
 
 #include "Util.h"
 #include "Settings.h"
@@ -448,7 +448,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     }
 
     /**
-    trace transitions between the sections of the traced module:
+    trace transitions within the traced module:
     */
     if (isTargetMy) {
         ADDRINT rva = addr_to_rva(addrTo); // convert to RVA
@@ -466,6 +466,11 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
                 }
                 traceLog.logSectionChange(rva, curr_name);
             }
+        }
+        // is it a call to the custom function?
+        const auto found = m_Settings.customDefs.find(rva);
+        if (found != m_Settings.customDefs.end()) {
+            traceLog.logInstruction(0, rva, found->second);
         }
     }
 }
@@ -1416,6 +1421,29 @@ VOID InstrumentVolumeInfo(IMG Image, uint32_t volumeID)
 }
 /* ===================================================================== */
 
+VOID AddCustomFunctions(IMG img, std::map<ADDRINT, std::string> &customDefs)
+{
+    size_t loaded = 0;
+    if (!pInfo.isMyImg(img)) {
+        return;
+    }
+    ADDRINT base = IMG_LoadOffset(img);
+    if (base == 0) {
+        base = IMG_LowAddress(img);
+    }
+    for (auto itr = customDefs.begin(); itr != customDefs.end(); ++itr) {
+        ADDRINT funcVA = base + itr->first;
+        RTN rtn = RTN_FindByAddress(funcVA);
+
+        if (RTN_Address(rtn) != funcVA) {
+
+            RTN_CreateAt(funcVA, itr->second);
+#ifdef _DEBUG
+            std::cerr << "Created named routine at: " << std::hex << funcVA  << " : " << itr->second << std::endl;
+#endif //_DEBUG
+        }
+    }
+}
 
 VOID ImageLoad(IMG Image, VOID *v)
 {
@@ -1427,6 +1455,8 @@ VOID ImageLoad(IMG Image, VOID *v)
         ExportsInfo::addFromFile(Image);
     }
 #endif // _WIN32
+    
+    AddCustomFunctions(Image, m_Settings.customDefs);
 
     for (size_t i = 0; i < m_Settings.funcWatch.funcs.size(); i++) {
         const std::string dllName = util::getDllName(IMG_Name(Image));
@@ -1523,7 +1553,7 @@ BOOL FollowChild(CHILD_PROCESS childProcess, VOID* userData)
     return TRUE;
 }
 
-std::string makeOutputPath(std::string outDir, const std::string& module_name, const std::string& ext)
+std::string makePath(std::string outDir, const std::string& module_name, const std::string& ext)
 {
     std::string filename = util::getFilename(module_name);
     std::stringstream fnamestr;
@@ -1631,10 +1661,17 @@ int main(int argc, char *argv[])
     if (KnobOutputFile.Enabled() && KnobOutputFile.Value().length()){
         outDir = util::getDirectory(KnobOutputFile.Value());
     }
-    std::string filename = makeOutputPath(outDir, targetModule, "tag");
+    std::string filename = makePath(outDir, targetModule, "tag");
     if (m_Settings.followChildprocesses) {
         filename = addPidToFilename(filename, PIN_GetPid());
     }
+    
+    std::string customDefsPath = makePath(outDir, targetModule, "csv");
+    Settings::loadCustomDefs(customDefsPath.c_str(), m_Settings.customDefs);
+    if (m_Settings.customDefs.size()) {
+        std::cout << "Custom definitions: " << m_Settings.customDefs.size() << std::endl;
+    }
+
     traceLog.init(filename, m_Settings.shortLogging);
     
     // Register function to be called for every loaded module

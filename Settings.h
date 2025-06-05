@@ -100,6 +100,7 @@ class Settings {
 public:
     static void stripComments(std::string& str);
     static size_t loadOffsetsList(const char* filename, std::set<StopOffset>& offsetsList);
+    static size_t loadCustomDefs(const char* filename, std::map<ADDRINT, std::string> &customDefs);
 
     Settings() 
         : followShellcode(SHELLC_FOLLOW_FIRST),
@@ -161,4 +162,5 @@ public:
     FuncWatchList funcWatch; //List of functions, arguments of which are going to be logged
     FuncList<WFuncInfo> excludedFuncs; //List of functions that will NOT be logged
     std::set<StopOffset> stopOffsets; //List of offsets at which the execution should pause
+    std::map<ADDRINT, std::string> customDefs;
 };

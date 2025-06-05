@@ -268,6 +268,33 @@ size_t Settings::loadOffsetsList(const char* filename, std::set<StopOffset>& off
     return offsetsList.size();
 }
 
+size_t Settings::loadCustomDefs(const char* filename, std::map<ADDRINT, std::string>& customDefs)
+{
+    std::ifstream myfile(filename);
+    if (!myfile.is_open()) {
+        return 0;
+    }
+    const size_t MAX_LINE = 300;
+    char line[MAX_LINE] = { 0 };
+    while (!myfile.eof()) {
+        myfile.getline(line, MAX_LINE);
+        std::string sline = line;
+        util::trim(sline);
+        if (!sline.size() || sline[0] == '#') { // skip empty lines and comments
+            continue;
+        }
+
+        std::vector<std::string> args;
+        util::splitList(sline, ',', args);
+        if (args.size() < 2) break;
+
+        ADDRINT rva = util::loadInt(args[0], true);
+        std::string name = args[1];
+        customDefs[rva] = name;
+    }
+    return customDefs.size();
+}
+
 bool Settings::saveINI(const std::string &filename)
 {
     std::ofstream myfile(filename.c_str());

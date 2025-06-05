@@ -100,7 +100,7 @@ static inline void rtrim(std::string &s)
     }).base(), s.end());
 }
 
- void util::trim(std::string &s)
+void util::trim(std::string &s)
 {
     ltrim(s);
     rtrim(s);
