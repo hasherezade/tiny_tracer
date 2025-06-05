@@ -533,6 +533,7 @@ VOID AntiDbg_GetTickCount_after(ADDRINT Address, THREADID threadid, const CHAR* 
         "https://anti-debug.checkpoint.com/techniques/timing.html#gettickcount");
 }
 
+
 /* ==================================================================== */
 // Collect some infos at Thread start, to be used later in checks
 /* ==================================================================== */
@@ -621,6 +622,7 @@ BOOL AntiDbgWatch::Init()
     funcToLink["SwitchDesktop"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#switchdesktop";
     funcToLink["OutputDebugStringA"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#outputdebugstring";
     funcToLink["OutputDebugStringW"] = "https://anti-debug.checkpoint.com/techniques/interactive.html#outputdebugstring";
+    funcToLink["GetSystemTime"] = "https://anti-debug.checkpoint.com/techniques/timing.html#getsystemtime";
 
     watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "CsrGetProcessId", 0));
     watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "RtlQueryProcessHeapInformation", 1));
@@ -645,6 +647,7 @@ BOOL AntiDbgWatch::Init()
     watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "RaiseException", 5));
     watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "DebugActiveProcess", 5));
     watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "GenerateConsoleCtrlEvent", 5));
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "GetSystemTime", 1));
 
     watchedFuncs.appendFunc(EvasionFuncInfo("user32", "BlockInput", 1, AntiDbg_BlockInput));
     watchedFuncs.appendFunc(EvasionFuncInfo("user32", "SwitchDesktop", 1, AntiDbgLogFuncOccurrence));
