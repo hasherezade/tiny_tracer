@@ -1424,7 +1424,7 @@ VOID InstrumentVolumeInfo(IMG Image, uint32_t volumeID)
 }
 /* ===================================================================== */
 
-VOID AddCustomFunctions(IMG img, std::map<ADDRINT, std::string> &customDefs)
+VOID AddCustomFunctions(IMG img, const std::map<ADDRINT, std::string> &customDefs)
 {
     if (!pInfo.isMyImg(img)) {
         return;
@@ -1438,7 +1438,6 @@ VOID AddCustomFunctions(IMG img, std::map<ADDRINT, std::string> &customDefs)
         RTN rtn = RTN_FindByAddress(funcVA);
 
         if (RTN_Address(rtn) != funcVA) {
-
             RTN_CreateAt(funcVA, itr->second);
 #ifdef _DEBUG
             std::cerr << "Created named routine at: " << std::hex << funcVA  << " : " << itr->second << std::endl;
@@ -1649,7 +1648,7 @@ int main(int argc, char *argv[])
 
     // init output file:
     std::string outDir = "";
-    if (KnobOutputFile.Enabled() && KnobOutputFile.Value().length()){
+    if (KnobOutputFile.Enabled() && !KnobOutputFile.Value().empty()){
         outDir = util::getDirectory(KnobOutputFile.Value());
     }
     std::string filename = util::makePath(outDir, targetModule, "tag");
@@ -1689,7 +1688,7 @@ int main(int argc, char *argv[])
     std::cerr << "===============================================" << std::endl;
     std::cerr << "This application is instrumented by " << TOOL_NAME << " v." << VERSION << std::endl;
     std::cerr << "Tracing module: " << targetModule << std::endl;
-    if (!KnobOutputFile.Value().empty())
+    if (!filename.empty())
     {
         std::cerr << "See file " << filename << " for analysis results" << std::endl;
     }
