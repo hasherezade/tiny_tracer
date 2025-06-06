@@ -39,7 +39,7 @@ set OUT_PATH="%TARGET_APP%.tag"
 rem The ini file specifying the settings of the tracer
 set SETTINGS_FILE=%PIN_TOOLS_DIR%\TinyTracer.ini
 
-rem WATCH_PARAMS - a file with a list of functions which's parameters will be logged
+rem WATCH_ARGS - a file with a list of functions which's parameters will be logged
 rem The file must be a list of records in a format: [dll_name];[func_name];[parameters_count]
 rem or, in case of tracing syscalls: <SYSCALL>;[syscallID:hex];[parameters_count] (where "<SYSCALL>" is a constant keyword)
 set WATCH_ARGS=%PIN_TOOLS_DIR%\params.txt
