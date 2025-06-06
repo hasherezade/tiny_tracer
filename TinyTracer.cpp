@@ -1555,17 +1555,6 @@ BOOL FollowChild(CHILD_PROCESS childProcess, VOID* userData)
     return TRUE;
 }
 
-std::string makePath(std::string outDir, const std::string& module_name, const std::string& ext)
-{
-    std::string filename = util::getFilename(module_name);
-    std::stringstream fnamestr;
-    if (!outDir.empty()) {
-        fnamestr << outDir << PATH_SEPARATOR;
-    }
-    fnamestr << filename << '.' << ext;
-    return fnamestr.str();
-}
-
 std::string addPidToFilename(const std::string& filename, int pid)
 {
     std::stringstream fnamestr;
@@ -1663,12 +1652,12 @@ int main(int argc, char *argv[])
     if (KnobOutputFile.Enabled() && KnobOutputFile.Value().length()){
         outDir = util::getDirectory(KnobOutputFile.Value());
     }
-    std::string filename = makePath(outDir, targetModule, "tag");
+    std::string filename = util::makePath(outDir, targetModule, "tag");
     if (m_Settings.followChildprocesses) {
         filename = addPidToFilename(filename, PIN_GetPid());
     }
     
-    std::string customDefsPath = makePath(outDir, targetModule, "csv");
+    std::string customDefsPath = util::makePath(outDir, targetModule, "csv");
     Settings::loadCustomDefs(customDefsPath.c_str(), m_Settings.customDefs);
     if (m_Settings.customDefs.size()) {
         std::cout << "Custom definitions: " << m_Settings.customDefs.size() << std::endl;

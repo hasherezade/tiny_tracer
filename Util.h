@@ -56,5 +56,5 @@ namespace util {
 
     std::string getDirectory(const std::string& filepath);
     std::string getFilename(const std::string& filepath);
-
+    std::string makePath(const std::string& outDir, const std::string& module_name, const std::string& ext);
 };

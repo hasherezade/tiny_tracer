@@ -154,3 +154,14 @@ std::string util::getFilename(const std::string& filepath)
     }
     return filepath.substr(pos + 1, filepath.length());
 }
+
+std::string util::makePath(const std::string& outDir, const std::string& module_name, const std::string& ext)
+{
+    std::string filename = util::getFilename(module_name);
+    std::stringstream fnamestr;
+    if (!outDir.empty()) {
+        fnamestr << outDir << PATH_SEPARATOR;
+    }
+    fnamestr << filename << '.' << ext;
+    return fnamestr.str();
+}
