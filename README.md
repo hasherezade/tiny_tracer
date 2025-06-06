@@ -10,6 +10,7 @@
 
 A Pin Tool for tracing:
 +  API calls, including [input and output of selected functions](https://github.com/hasherezade/tiny_tracer/wiki/Tracing-function-input-and-output)
++  [defined local functions](https://github.com/hasherezade/tiny_tracer/wiki/Tracing-defined-local-functions)
 +  selected instructions: [RDTSC](https://c9x.me/x86/html/file_module_x86_id_278.html), [CPUID](https://c9x.me/x86/html/file_module_x86_id_45.html), [INT](https://c9x.me/x86/html/file_module_x86_id_142.html)
 +  [inline system calls, including parameters of selected syscalls](https://github.com/hasherezade/tiny_tracer/wiki/Tracing-syscalls)
 +  transition between sections of the traced module (helpful in finding OEP of the packed module)
