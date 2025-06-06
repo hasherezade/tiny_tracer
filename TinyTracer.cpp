@@ -1391,7 +1391,7 @@ VOID InstrumentVolumeInfo(IMG Image, uint32_t volumeID)
         return;
     }
     const size_t functionsCount = 2;
-    char* functions[functionsCount] = {
+    const char* functions[functionsCount] = {
         "GetVolumeInformationA",
         "GetVolumeInformationW"
     };
