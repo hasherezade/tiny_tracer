@@ -904,9 +904,12 @@ size_t getReadableMemSize(VOID* addr)
         return 0;
     }
     size_t memSize = memInfo.MapSize;
-    const VOID* _base = memInfo.BaseAddress;
-    if (_base != 0 && _base < addr) {
-        size_t pos = (ADDRINT)addr - (ADDRINT)_base;
+    const VOID* base = memInfo.BaseAddress;
+    if ((ADDRINT)addr < (ADDRINT)base || (ADDRINT)addr >= ((ADDRINT)base + memSize)) {
+        return 0; // failed boundary check
+    }
+    if (base != 0 && base < addr) {
+        size_t pos = (ADDRINT)addr - (ADDRINT)base;
         memSize -= pos;
     }
     return (memInfo.Protection & OS_PAGE_PROTECTION_TYPE_READ) ? memSize : 0;
@@ -1388,7 +1391,7 @@ VOID InstrumentVolumeInfo(IMG Image, uint32_t volumeID)
         return;
     }
     const size_t functionsCount = 2;
-    const char* functions[functionsCount] = {
+    char* functions[functionsCount] = {
         "GetVolumeInformationA",
         "GetVolumeInformationW"
     };
