@@ -31,17 +31,18 @@ set PINTOOL64=%PIN_TOOLS_DIR%\TinyTracer64.dll
 set PINTOOL=%PINTOOL32%
 
 rem TRACED_MODULE - by default it is the main module, but it can be also a DLL within the traced process
-set TRACED_MODULE=%TARGET_APP%
+set TRACED_MODULE=CiscoSparkLauncher.dll
+rem %TARGET_APP%
 
 set OUT_PATH="%TARGET_APP%.tag"
 
 rem The ini file specifying the settings of the tracer
 set SETTINGS_FILE=%PIN_TOOLS_DIR%\TinyTracer.ini
 
-rem WATCH_BEFORE - a file with a list of functions which's parameters will be logged before execution
+rem WATCH_PARAMS - a file with a list of functions which's parameters will be logged
 rem The file must be a list of records in a format: [dll_name];[func_name];[parameters_count]
 rem or, in case of tracing syscalls: <SYSCALL>;[syscallID:hex];[parameters_count] (where "<SYSCALL>" is a constant keyword)
-set WATCH_BEFORE=%PIN_TOOLS_DIR%\params.txt
+set WATCH_ARGS=%PIN_TOOLS_DIR%\params.txt
 
 rem List of functions that will be excluded from logging
 rem The file must be a list of records in a format: [dll_name];[func_name]
@@ -84,7 +85,7 @@ if %errorlevel% == 64 (
 )
 
 rem The exports that you want to call from a dll, in format: [name1];[name2] or [#ordinal1];[#ordinal2]
-set DLL_EXPORTS=""
+set DLL_EXPORTS="#1"
 
 rem The arguments that you want to pass to the run executable
 set EXE_ARGS=""
@@ -97,8 +98,8 @@ if [%IS_ADMIN%] == [A] (
 
 set ADMIN_CMD=%PIN_TOOLS_DIR%\sudo.vbs
 
-set DLL_CMD=%PIN_DIR%\pin.exe -follow_execv -t %PINTOOL% -m "%TRACED_MODULE%" -o %OUT_PATH% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -x "%EXCLUDED_FUNC%" -p "%STOP_OFFSETS%" -l "%SYSCALLS_TABLE%" -- "%DLL_LOAD%" "%TARGET_APP%" %DLL_EXPORTS%
-set EXE_CMD=%PIN_DIR%\pin.exe -follow_execv -t %PINTOOL% -m "%TRACED_MODULE%" -o %OUT_PATH% -s %SETTINGS_FILE% -b "%WATCH_BEFORE%" -x "%EXCLUDED_FUNC%" -p "%STOP_OFFSETS%" -l "%SYSCALLS_TABLE%" -- "%TARGET_APP%" %EXE_ARGS%
+set DLL_CMD=%PIN_DIR%\pin.exe -follow_execv -t %PINTOOL% -m "%TRACED_MODULE%" -o %OUT_PATH% -s %SETTINGS_FILE% -b "%WATCH_ARGS%" -x "%EXCLUDED_FUNC%" -p "%STOP_OFFSETS%" -l "%SYSCALLS_TABLE%" -- "%DLL_LOAD%" "%TARGET_APP%" %DLL_EXPORTS%
+set EXE_CMD=%PIN_DIR%\pin.exe -follow_execv -t %PINTOOL% -m "%TRACED_MODULE%" -o %OUT_PATH% -s %SETTINGS_FILE% -b "%WATCH_ARGS%" -x "%EXCLUDED_FUNC%" -p "%STOP_OFFSETS%" -l "%SYSCALLS_TABLE%" -- "%TARGET_APP%" %EXE_ARGS%
 
 ;rem "Trace EXE"
 if [%PE_TYPE%] == [exe] (
