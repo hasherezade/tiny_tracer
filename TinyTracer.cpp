@@ -1657,7 +1657,7 @@ int main(int argc, char *argv[])
         filename = addPidToFilename(filename, PIN_GetPid());
     }
     
-    std::string customDefsPath = util::makePath(outDir, targetModule, "csv");
+    std::string customDefsPath = util::makePath(outDir, targetModule, "func.csv");
     Settings::loadCustomDefs(customDefsPath.c_str(), m_Settings.customDefs);
     if (m_Settings.customDefs.size()) {
         std::cout << "Custom definitions: " << m_Settings.customDefs.size() << std::endl;
