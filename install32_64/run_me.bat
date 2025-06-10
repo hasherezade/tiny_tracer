@@ -31,8 +31,7 @@ set PINTOOL64=%PIN_TOOLS_DIR%\TinyTracer64.dll
 set PINTOOL=%PINTOOL32%
 
 rem TRACED_MODULE - by default it is the main module, but it can be also a DLL within the traced process
-set TRACED_MODULE=CiscoSparkLauncher.dll
-rem %TARGET_APP%
+set TRACED_MODULE=%TARGET_APP%
 
 set OUT_PATH="%TARGET_APP%.tag"
 
