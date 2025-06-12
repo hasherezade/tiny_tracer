@@ -1575,7 +1575,6 @@ std::string addPidToFilename(const std::string& filename, int pid)
 * @param[in]   argv            array of command line arguments,
 *                              including pin -t <toolname> -- ...
 */
-
 int main(int argc, char *argv[])
 {
     // Initialize PIN library. Print help message if -h(elp) is specified
@@ -1655,15 +1654,14 @@ int main(int argc, char *argv[])
     if (m_Settings.followChildprocesses) {
         filename = addPidToFilename(filename, PIN_GetPid());
     }
-    
+    traceLog.init(filename, m_Settings.shortLogging);
+
     std::string customDefsPath = util::makePath(outDir, targetModule, "func.csv");
     Settings::loadCustomDefs(customDefsPath.c_str(), m_Settings.customDefs);
     if (m_Settings.customDefs.size()) {
         std::cout << "Custom definitions: " << m_Settings.customDefs.size() << std::endl;
     }
 
-    traceLog.init(filename, m_Settings.shortLogging);
-    
     // Register function to be called for every loaded module
     IMG_AddInstrumentFunction(ImageLoad, NULL);
 
@@ -1685,15 +1683,6 @@ int main(int argc, char *argv[])
     // Register context changes
     PIN_AddContextChangeFunction(OnCtxChange, NULL);
 
-    std::cerr << "===============================================" << std::endl;
-    std::cerr << "This application is instrumented by " << TOOL_NAME << " v." << VERSION << std::endl;
-    std::cerr << "Tracing module: " << targetModule << std::endl;
-    if (!filename.empty())
-    {
-        std::cerr << "See file " << filename << " for analysis results" << std::endl;
-    }
-    std::cerr << "===============================================" << std::endl;
-    
     if (m_Settings.logReturn) {
         RetTracker::InitTracker();
 
@@ -1703,6 +1692,15 @@ int main(int argc, char *argv[])
 
     // Register the callback function for child processes
     PIN_AddFollowChildProcessFunction(FollowChild, 0);
+
+    std::cerr << "===============================================" << std::endl;
+    std::cerr << "This application is instrumented by " << TOOL_NAME << " v." << VERSION << std::endl;
+    std::cerr << "Tracing module: " << targetModule << std::endl;
+    if (!filename.empty())
+    {
+        std::cerr << "See file " << filename << " for analysis results" << std::endl;
+    }
+    std::cerr << "===============================================" << std::endl;
 
     // Start the program, never returns
     PIN_StartProgram();
