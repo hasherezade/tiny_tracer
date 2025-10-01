@@ -339,6 +339,18 @@ std::string resolve_func_name(const ADDRINT addrTo, const std::string& dll_name,
     return sstr.str();
 }
 
+bool isExcludedDll(const std::string &dll_name)
+{
+    const std::string shortDll = util::getDllName(dll_name);
+    for (auto itr = m_Settings.excludedDll.begin(); itr != m_Settings.excludedDll.end(); ++itr) {
+        const std::string excludedDLL = *itr;
+        if (util::iequals(excludedDLL, shortDll)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndirect, const CONTEXT* ctx = NULL)
 {
     const WatchedType fromWType = isWatchedAddress(addrFrom); // is the call from the traced area?
@@ -360,6 +372,9 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
         ADDRINT RvaFrom = addr_to_rva(addrFrom);
         if (isTargetPeModule) {
             const std::string dll_name = IMG_Name(targetModule);
+            if (isExcludedDll(dll_name)) {
+                return;
+            }
             const std::string func = resolve_func_name(addrTo, dll_name, ctx);
             if (m_Settings.excludedFuncs.contains(dll_name, func)) {
                 return;
@@ -1623,8 +1638,9 @@ int main(int argc, char *argv[])
     if (KnobExcludedListFile.Enabled()) {
         std::string excludedList = KnobExcludedListFile.ValueString();
         if (excludedList.length()) {
-            m_Settings.excludedFuncs.loadList(excludedList.c_str());
+            m_Settings.loadExcluded(excludedList.c_str());
             std::cout << "Excluded " << m_Settings.excludedFuncs.funcs.size() << " functions\n";
+            std::cout << "Excluded " << m_Settings.excludedDll.size() << " DLLs\n";
         }
     }
 

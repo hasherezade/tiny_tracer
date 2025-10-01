@@ -1,6 +1,8 @@
 #include "Settings.h"
 #include "Util.h"
 
+#include "FuncWatch.h"
+
 #include <vector>
 #include <fstream>
 #include <sstream>
@@ -352,3 +354,27 @@ bool Settings::loadINI(const std::string &filename)
     myfile.close();
     return filledAny;
 }
+
+size_t Settings::loadExcluded(const char* excludedList)
+{
+    this->excludedFuncs.loadList(excludedList);
+
+    std::ifstream myfile(excludedList);
+    if (!myfile.is_open()) {
+        return 0;
+    }
+    size_t dllsCount = 0;
+    const size_t MAX_LINE = 300;
+    char line[MAX_LINE] = { 0 };
+    while (!myfile.eof()) {
+        myfile.getline(line, MAX_LINE);
+
+        if (strchr(line, LIST_DELIMITER) != nullptr) {
+            continue;
+        }
+        this->excludedDll.insert(line);
+        dllsCount++;
+
+    }
+}
+

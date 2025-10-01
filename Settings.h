@@ -131,6 +131,8 @@ public:
     bool loadINI(const std::string &filename);
     bool saveINI(const std::string &filename);
 
+    size_t loadExcluded(const char* excludedList);
+
     t_shellc_options followShellcode;
 
     bool followChildprocesses; // Follow Child Processes
@@ -161,6 +163,7 @@ public:
     SyscallsTable syscallsTable; //Syscalls table: mapping the syscall ID to the function name
     FuncWatchList funcWatch; //List of functions, arguments of which are going to be logged
     FuncList<WFuncInfo> excludedFuncs; //List of functions that will NOT be logged
+    std::set<std::string> excludedDll; //List of DLLs calls from which will NOT be logged
     std::set<StopOffset> stopOffsets; //List of offsets at which the execution should pause
     std::map<ADDRINT, std::string> customDefs;
 };
