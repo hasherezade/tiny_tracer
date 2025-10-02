@@ -122,10 +122,9 @@ void parseRanges(const std::string &input, std::set<DisasmRange> &disasmRanges)
 {
     std::stringstream ss(input);
     std::string token;
-    while (std::getline(ss, token, ';')) {
+    while (std::getline(ss, token, ']')) {
         // token is something like "[16B00,16B04]"
         if (token.front() == '[') token.erase(0, 1);
-        if (token.back() == ']') token.pop_back();
 
         std::stringstream pairStream(token);
         std::string startHex, endHex;
