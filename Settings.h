@@ -172,10 +172,13 @@ public:
 
     t_shellc_options followShellcode;
 
-    const t_disasm_status findInDisasmRange(ADDRINT& addr)
+    const t_disasm_status findInDisasmRange(ADDRINT& addr, std::string* rangeLabel = nullptr)
     {
         for (auto itr = this->disasmRanges.begin(); itr != disasmRanges.end(); ++itr) {
             if (itr->isInRange(addr)) {
+                if (rangeLabel) {
+                    (*rangeLabel) = itr->label;
+                }
                 if (itr->start == addr) {
                     return DISASM_START;
                 }

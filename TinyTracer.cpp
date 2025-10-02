@@ -1115,12 +1115,13 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
         std::stringstream ss;
         ss << "[" << std::dec << tid << "] ";
         ss << disasm;
-        const t_disasm_status dStat = m_Settings.findInDisasmRange(rva);
+        std::string rangeLabel;
+        const t_disasm_status dStat = m_Settings.findInDisasmRange(rva, &rangeLabel);
         if (!base && dStat == DISASM_START) {
-            ss << " # disasm start";
+            ss << " # disasm start: " << rangeLabel;
         }
         if (!base && dStat == DISASM_STOP) {
-            ss << " # disasm end";
+            ss << " # disasm end: " << rangeLabel;
         }
         if (m_Settings.disasmCtx) {
             const std::string ctxStr = dumpContext(disasm, ctxt);

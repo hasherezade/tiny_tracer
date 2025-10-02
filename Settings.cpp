@@ -122,19 +122,27 @@ void parseRanges(const std::string &input, std::set<DisasmRange> &disasmRanges)
 {
     std::stringstream ss(input);
     std::string token;
+    size_t rangeCount = 0;
+    const char delim = ',';
     while (std::getline(ss, token, ']')) {
-        // token is something like "[16B00,16B04]"
+        // token is something like "[16B00,16B04]" or "[16B00,16B04,range_name]"
         if (token.front() == '[') token.erase(0, 1);
 
         std::stringstream pairStream(token);
         std::string startHex, endHex;
-        if (std::getline(pairStream, startHex, ',') && std::getline(pairStream, endHex)) {
-
+        std::string rangeName;
+        if (std::getline(pairStream, startHex, delim) && (std::getline(pairStream, endHex, delim) || std::getline(pairStream, endHex))) {
+            rangeCount++;
+            if (!std::getline(pairStream, rangeName)) {
+                std::stringstream ss;
+                ss << "Range_" << std::dec << rangeCount;
+                rangeName = ss.str();
+            }
             int start = util::loadInt(startHex, true);
+            if (start == 0) continue;
             int stop = util::loadInt(endHex, true);
-            std::stringstream ss;
-            ss << "Range_" << std::hex << start << "_" << stop;
-            DisasmRange r(start, stop, ss.str());
+
+            DisasmRange r(start, stop, rangeName);
             disasmRanges.insert(r);
         }
     }
