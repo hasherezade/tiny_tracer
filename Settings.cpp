@@ -27,8 +27,7 @@
 #define KEY_HYPREV_SET                  "EMULATE_HYPERV"
 #define KEY_STOP_OFFSET_TIME            "STOP_OFFSET_TIME"
 #define KEY_EMULATE_SINGLE_STEP         "EMULATE_SINGLE_STEP"
-#define KEY_DISASM_START                "DISASM_START"
-#define KEY_DISASM_STOP                 "DISASM_STOP"
+#define KEY_DISASM_RANGES               "DISASM_RANGES"
 #define KEY_DISASM_CTX                  "DISASM_CTX"
 #define KEY_LOG_RETURN_VALUE            "LOG_RETURN_VALUE"
 #define KEY_FOLLOW_ARGS_RETURN          "FOLLOW_ARGS_RETURN"
@@ -117,6 +116,38 @@ bool loadBoolean(const std::string &str)
 std::string booleanToStr(const bool &val)
 {
     return (val) ? "True" : "False";
+}
+
+void parseRanges(const std::string &input, std::set<DisasmRange> &disasmRanges)
+{
+    std::stringstream ss(input);
+    std::string token;
+    while (std::getline(ss, token, ';')) {
+        // token is something like "[16B00,16B04]"
+        if (token.front() == '[') token.erase(0, 1);
+        if (token.back() == ']') token.pop_back();
+
+        std::stringstream pairStream(token);
+        std::string startHex, endHex;
+        if (std::getline(pairStream, startHex, ',') && std::getline(pairStream, endHex)) {
+
+            int start = util::loadInt(startHex, true);
+            int stop = util::loadInt(endHex, true);
+            std::stringstream ss;
+            ss << "Range_" << std::hex << start << "_" << stop;
+            DisasmRange r(start, stop, ss.str());
+            disasmRanges.insert(r);
+        }
+    }
+}
+
+std::string rangesToStr(const std::set<DisasmRange>& disasmRanges)
+{
+    std::stringstream ss;
+    for (auto itr = disasmRanges.begin(); itr != disasmRanges.end(); ++itr) {
+        ss << "[" << std::hex << itr->start << "," << itr->stop << "];";
+    }
+    return ss.str();
 }
 
 bool fillSettings(Settings &s, const std::string &line)
@@ -208,12 +239,8 @@ bool fillSettings(Settings &s, const std::string &line)
         s.emulateSingleStep = loadBoolean(valStr);
         isFilled = true;
     }
-    if (util::iequals(valName, KEY_DISASM_START)) {
-        s.disasmStart = util::loadInt(valStr, true);
-        isFilled = true;
-    }
-    if (util::iequals(valName, KEY_DISASM_STOP)) {
-        s.disasmStop = util::loadInt(valStr, true);
+    if (util::iequals(valName, KEY_DISASM_RANGES)) {
+        parseRanges(valStr, s.disasmRanges);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_DISASM_CTX)) {
@@ -321,8 +348,7 @@ bool Settings::saveINI(const std::string &filename)
     myfile << KEY_HYPREV_SET << DELIM << booleanToStr(this->isHyperVSet) << "\r\n";
     myfile << KEY_STOP_OFFSET_TIME << DELIM << std::dec << this->stopOffsetTime << "\r\n";
     myfile << KEY_EMULATE_SINGLE_STEP << DELIM << std::dec << booleanToStr(this->emulateSingleStep) << "\r\n";
-    myfile << KEY_DISASM_START << DELIM << std::hex << this->disasmStart << "\r\n";
-    myfile << KEY_DISASM_STOP << DELIM << std::hex << this->disasmStop << "\r\n";
+    myfile << KEY_DISASM_RANGES << DELIM << std::hex << rangesToStr(this->disasmRanges)<< "\r\n";
     myfile << KEY_DISASM_CTX << DELIM << std::dec << booleanToStr(this->disasmCtx) << "\r\n";
     myfile << KEY_LOG_RETURN_VALUE << DELIM << std::dec << booleanToStr(this->logReturn) << "\r\n";
     myfile << KEY_FOLLOW_ARGS_RETURN << DELIM << std::dec << booleanToStr(this->followArgReturn) << "\r\n";

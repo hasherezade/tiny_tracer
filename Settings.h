@@ -95,6 +95,43 @@ struct StopOffset
 };
 //---
 
+struct DisasmRange
+{
+    ADDRINT start;
+    ADDRINT stop;
+    std::string label;
+
+    DisasmRange(ADDRINT _start, ADDRINT _stop, const std::string& _label="")
+        : start(_start), stop(_stop), label(_label)
+    {
+    }
+
+    bool isInRange(const ADDRINT& addr) const 
+    {
+        return (addr >= start && addr <= stop) ? true : false;
+    }
+
+    bool operator=(const DisasmRange& n)
+    {
+        this->start = n.start;
+        this->stop = n.stop;
+        this->label = n.label;
+    }
+
+    bool operator<(const DisasmRange& n) const
+    {
+        return start < n.start;
+    }
+};
+
+typedef enum disasm_status {
+    DISASM_NONE = 0,
+    DISASM_START = 1,
+    DISASM_IN_RANGE = 2,
+    DISASM_STOP = 3,
+    COUNT_DISASM_STATUS
+} t_disasm_status;
+
 class Settings {
 
 public:
@@ -122,7 +159,7 @@ public:
         useDebugSym(false),
         isHyperVSet(false),
         emulateSingleStep(true),
-        disasmStart(0), disasmStop(0), disasmCtx(false),
+        disasmCtx(false),
         logReturn(false), followArgReturn(false),
         volumeID(0)
     {
@@ -134,6 +171,22 @@ public:
     size_t loadExcluded(const char* excludedList);
 
     t_shellc_options followShellcode;
+
+    const t_disasm_status findInDisasmRange(ADDRINT& addr)
+    {
+        for (auto itr = this->disasmRanges.begin(); itr != disasmRanges.end(); ++itr) {
+            if (itr->isInRange(addr)) {
+                if (itr->start == addr) {
+                    return DISASM_START;
+                }
+                if (itr->stop == addr) {
+                    return DISASM_STOP;
+                }
+                return DISASM_IN_RANGE;
+            }
+        }
+        return DISASM_NONE;
+    }
 
     bool followChildprocesses; // Follow Child Processes
     bool traceRDTSC; // Trace RDTSC
@@ -153,8 +206,6 @@ public:
     bool useDebugSym;
     bool isHyperVSet; // emulate HyperV via CPUID (it changes execution path of some protectors, i.e. VMProtect). Works when antivm is enabled. 
     bool emulateSingleStep; // If the Trap Flag is set, throw a SINGLE_STEP exception emulating the typical behavior. Works when antidebug is enabled. 
-    int disasmStart;
-    int disasmStop;
     bool disasmCtx; // show context in a disasm mode
     bool logReturn; // Log return value
     bool followArgReturn; // Log changes of args and returns ptr
@@ -166,4 +217,5 @@ public:
     std::set<std::string> excludedDll; //List of DLLs calls from which will NOT be logged
     std::set<StopOffset> stopOffsets; //List of offsets at which the execution should pause
     std::map<ADDRINT, std::string> customDefs;
+    std::set<DisasmRange> disasmRanges;
 };

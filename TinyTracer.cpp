@@ -21,7 +21,7 @@
 #include "TrackReturns.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "3.0"
+#define VERSION "3.1"
 
 #include "Util.h"
 #include "Settings.h"
@@ -1099,7 +1099,8 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
     if (wType == WatchedType::WATCHED_MY_MODULE) {
         rva = addr_to_rva(Address); // convert to RVA
         base = 0;
-        if (rva == (ADDRINT)m_Settings.disasmStart) {
+        const t_disasm_status dStat = m_Settings.findInDisasmRange(rva);
+        if (dStat == DISASM_START) {
             traceStarted = TRUE;
         }
     }
@@ -1114,10 +1115,11 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
         std::stringstream ss;
         ss << "[" << std::dec << tid << "] ";
         ss << disasm;
-        if (!base && rva == (ADDRINT)m_Settings.disasmStart) {
+        const t_disasm_status dStat = m_Settings.findInDisasmRange(rva);
+        if (!base && dStat == DISASM_START) {
             ss << " # disasm start";
         }
-        if (!base && rva == (ADDRINT)m_Settings.disasmStop) {
+        if (!base && dStat == DISASM_STOP) {
             ss << " # disasm end";
         }
         if (m_Settings.disasmCtx) {
@@ -1128,8 +1130,8 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
         }
         traceLog.logInstruction(base, rva, ss.str());
     }
-
-    if (wType == WatchedType::WATCHED_MY_MODULE && rva == (ADDRINT)m_Settings.disasmStop) {
+    const t_disasm_status dStat = m_Settings.findInDisasmRange(rva);
+    if (wType == WatchedType::WATCHED_MY_MODULE && dStat == DISASM_STOP) {
         traceStarted = FALSE;
     }
 }
@@ -1164,7 +1166,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
         inWatchedModule = TRUE;
     }
     // only the main module or shellcodes:
-    if (inWatchedModule && m_Settings.disasmStart) {
+    if (inWatchedModule && m_Settings.disasmRanges.size()) {
         const char* disasm = m_disasmCache.put(INS_Disassemble(ins));
         if (disasm) {
             INS_InsertCall(
@@ -1676,6 +1678,10 @@ int main(int argc, char *argv[])
     Settings::loadCustomDefs(customDefsPath.c_str(), m_Settings.customDefs);
     if (m_Settings.customDefs.size()) {
         std::cout << "Custom definitions: " << m_Settings.customDefs.size() << std::endl;
+    }
+
+    if (m_Settings.disasmRanges.size()) {
+        std::cout << "Disasm ranges: " << m_Settings.disasmRanges.size() << std::endl;
     }
 
     // Register function to be called for every loaded module
