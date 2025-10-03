@@ -27,8 +27,6 @@
 #define KEY_HYPREV_SET                  "EMULATE_HYPERV"
 #define KEY_STOP_OFFSET_TIME            "STOP_OFFSET_TIME"
 #define KEY_EMULATE_SINGLE_STEP         "EMULATE_SINGLE_STEP"
-#define KEY_DISASM_START                "DISASM_START"
-#define KEY_DISASM_STOP                 "DISASM_STOP"
 #define KEY_DISASM_CTX                  "DISASM_CTX"
 #define KEY_LOG_RETURN_VALUE            "LOG_RETURN_VALUE"
 #define KEY_FOLLOW_ARGS_RETURN          "FOLLOW_ARGS_RETURN"
@@ -117,6 +115,42 @@ bool loadBoolean(const std::string &str)
 std::string booleanToStr(const bool &val)
 {
     return (val) ? "True" : "False";
+}
+
+bool parseRange(const std::string &token, std::set<DisasmRange>& disasmRanges)
+{
+    const char delim = ',';
+
+    size_t rangeCount = 0;
+    std::stringstream pairStream(token);
+    std::string startHex, endHex;
+    std::string rangeName;
+
+    if (std::getline(pairStream, startHex, delim) && (std::getline(pairStream, endHex, delim) || std::getline(pairStream, endHex))) {
+        rangeCount++;
+        if (!std::getline(pairStream, rangeName)) {
+            std::stringstream ss;
+            ss << "Range_" << std::dec << rangeCount;
+            rangeName = ss.str();
+        }
+        int start = util::loadInt(startHex, true);
+        if (start == 0) return false;
+        int stop = util::loadInt(endHex, true);
+
+        DisasmRange r(start, stop, rangeName);
+        disasmRanges.insert(r);
+        return true;
+    }
+    return false;
+}
+
+std::string rangesToStr(const std::set<DisasmRange>& disasmRanges)
+{
+    std::stringstream ss;
+    for (auto itr = disasmRanges.begin(); itr != disasmRanges.end(); ++itr) {
+        ss << "[" << std::hex << itr->start << "," << itr->stop << "]";
+    }
+    return ss.str();
 }
 
 bool fillSettings(Settings &s, const std::string &line)
@@ -208,14 +242,6 @@ bool fillSettings(Settings &s, const std::string &line)
         s.emulateSingleStep = loadBoolean(valStr);
         isFilled = true;
     }
-    if (util::iequals(valName, KEY_DISASM_START)) {
-        s.disasmStart = util::loadInt(valStr, true);
-        isFilled = true;
-    }
-    if (util::iequals(valName, KEY_DISASM_STOP)) {
-        s.disasmStop = util::loadInt(valStr, true);
-        isFilled = true;
-    }
     if (util::iequals(valName, KEY_DISASM_CTX)) {
         s.disasmCtx = loadBoolean(valStr);
         isFilled = true;
@@ -270,6 +296,7 @@ size_t Settings::loadOffsetsList(const char* filename, std::set<StopOffset>& off
     return offsetsList.size();
 }
 
+
 size_t Settings::loadCustomDefs(const char* filename, std::map<ADDRINT, std::string>& customDefs)
 {
     std::ifstream myfile(filename);
@@ -297,6 +324,26 @@ size_t Settings::loadCustomDefs(const char* filename, std::map<ADDRINT, std::str
     return customDefs.size();
 }
 
+size_t Settings::loadDisasmRanges(const char* filename, std::set<DisasmRange>& disasmRanges)
+{
+    std::ifstream myfile(filename);
+    if (!myfile.is_open()) {
+        return 0;
+    }
+    const size_t MAX_LINE = 300;
+    char line[MAX_LINE] = { 0 };
+    while (!myfile.eof()) {
+        myfile.getline(line, MAX_LINE);
+        std::string sline = line;
+        util::trim(sline);
+        if (!sline.size() || sline[0] == '#') { // skip empty lines and comments
+            continue;
+        }
+        parseRange(sline, disasmRanges);
+    }
+    return disasmRanges.size();
+}
+
 bool Settings::saveINI(const std::string &filename)
 {
     std::ofstream myfile(filename.c_str());
@@ -321,8 +368,6 @@ bool Settings::saveINI(const std::string &filename)
     myfile << KEY_HYPREV_SET << DELIM << booleanToStr(this->isHyperVSet) << "\r\n";
     myfile << KEY_STOP_OFFSET_TIME << DELIM << std::dec << this->stopOffsetTime << "\r\n";
     myfile << KEY_EMULATE_SINGLE_STEP << DELIM << std::dec << booleanToStr(this->emulateSingleStep) << "\r\n";
-    myfile << KEY_DISASM_START << DELIM << std::hex << this->disasmStart << "\r\n";
-    myfile << KEY_DISASM_STOP << DELIM << std::hex << this->disasmStop << "\r\n";
     myfile << KEY_DISASM_CTX << DELIM << std::dec << booleanToStr(this->disasmCtx) << "\r\n";
     myfile << KEY_LOG_RETURN_VALUE << DELIM << std::dec << booleanToStr(this->logReturn) << "\r\n";
     myfile << KEY_FOLLOW_ARGS_RETURN << DELIM << std::dec << booleanToStr(this->followArgReturn) << "\r\n";
@@ -374,7 +419,6 @@ size_t Settings::loadExcluded(const char* excludedList)
         }
         this->excludedDll.insert(line);
         dllsCount++;
-
     }
 }
 

@@ -21,7 +21,7 @@
 #include "TrackReturns.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "3.0"
+#define VERSION "3.1"
 
 #include "Util.h"
 #include "Settings.h"
@@ -46,6 +46,9 @@
 #ifdef _WIN32
 #include "ExportsInfo.h"
 #endif //_WIN32
+
+#define LOCAL_FUNC_FILE_SUFFIX "func.csv"
+#define DISASM_RANGE_FILE_SUFFIX "disasm_range.csv"
 
 bool g_IsIndirectSyscall = false;
 
@@ -1099,7 +1102,8 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
     if (wType == WatchedType::WATCHED_MY_MODULE) {
         rva = addr_to_rva(Address); // convert to RVA
         base = 0;
-        if (rva == (ADDRINT)m_Settings.disasmStart) {
+        const t_disasm_status dStat = m_Settings.findInDisasmRange(rva);
+        if (dStat == DISASM_START) {
             traceStarted = TRUE;
         }
     }
@@ -1114,11 +1118,13 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
         std::stringstream ss;
         ss << "[" << std::dec << tid << "] ";
         ss << disasm;
-        if (!base && rva == (ADDRINT)m_Settings.disasmStart) {
-            ss << " # disasm start";
+        std::string rangeLabel;
+        const t_disasm_status dStat = m_Settings.findInDisasmRange(rva, &rangeLabel);
+        if (!base && dStat == DISASM_START) {
+            ss << " # disasm start: " << rangeLabel;
         }
-        if (!base && rva == (ADDRINT)m_Settings.disasmStop) {
-            ss << " # disasm end";
+        if (!base && dStat == DISASM_STOP) {
+            ss << " # disasm end: " << rangeLabel;
         }
         if (m_Settings.disasmCtx) {
             const std::string ctxStr = dumpContext(disasm, ctxt);
@@ -1128,8 +1134,8 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
         }
         traceLog.logInstruction(base, rva, ss.str());
     }
-
-    if (wType == WatchedType::WATCHED_MY_MODULE && rva == (ADDRINT)m_Settings.disasmStop) {
+    const t_disasm_status dStat = m_Settings.findInDisasmRange(rva);
+    if (wType == WatchedType::WATCHED_MY_MODULE && dStat == DISASM_STOP) {
         traceStarted = FALSE;
     }
 }
@@ -1164,7 +1170,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
         inWatchedModule = TRUE;
     }
     // only the main module or shellcodes:
-    if (inWatchedModule && m_Settings.disasmStart) {
+    if (inWatchedModule && m_Settings.disasmRanges.size()) {
         const char* disasm = m_disasmCache.put(INS_Disassemble(ins));
         if (disasm) {
             INS_InsertCall(
@@ -1672,10 +1678,15 @@ int main(int argc, char *argv[])
     }
     traceLog.init(filename, m_Settings.shortLogging);
 
-    std::string customDefsPath = util::makePath(outDir, targetModule, "func.csv");
+    std::string customDefsPath = util::makePath(outDir, targetModule, LOCAL_FUNC_FILE_SUFFIX);
     Settings::loadCustomDefs(customDefsPath.c_str(), m_Settings.customDefs);
     if (m_Settings.customDefs.size()) {
         std::cout << "Custom definitions: " << m_Settings.customDefs.size() << std::endl;
+    }
+    std::string disasmRangeFile = util::makePath(outDir, targetModule, DISASM_RANGE_FILE_SUFFIX);
+    Settings::loadDisasmRanges(disasmRangeFile.c_str(), m_Settings.disasmRanges);
+    if (m_Settings.disasmRanges.size()) {
+        std::cout << "Disasm ranges: " << m_Settings.disasmRanges.size() << std::endl;
     }
 
     // Register function to be called for every loaded module
