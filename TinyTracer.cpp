@@ -47,6 +47,9 @@
 #include "ExportsInfo.h"
 #endif //_WIN32
 
+#define LOCAL_FUNC_FILE_SUFFIX "func.csv"
+#define DISASM_RANGE_FILE_SUFFIX "disasm_range.csv"
+
 bool g_IsIndirectSyscall = false;
 
 /* ================================================================== */
@@ -1675,12 +1678,13 @@ int main(int argc, char *argv[])
     }
     traceLog.init(filename, m_Settings.shortLogging);
 
-    std::string customDefsPath = util::makePath(outDir, targetModule, "func.csv");
+    std::string customDefsPath = util::makePath(outDir, targetModule, LOCAL_FUNC_FILE_SUFFIX);
     Settings::loadCustomDefs(customDefsPath.c_str(), m_Settings.customDefs);
     if (m_Settings.customDefs.size()) {
         std::cout << "Custom definitions: " << m_Settings.customDefs.size() << std::endl;
     }
-
+    std::string disasmRangeFile = util::makePath(outDir, targetModule, DISASM_RANGE_FILE_SUFFIX);
+    Settings::loadDisasmRanges(disasmRangeFile.c_str(), m_Settings.disasmRanges);
     if (m_Settings.disasmRanges.size()) {
         std::cout << "Disasm ranges: " << m_Settings.disasmRanges.size() << std::endl;
     }

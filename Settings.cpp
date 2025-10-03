@@ -27,7 +27,6 @@
 #define KEY_HYPREV_SET                  "EMULATE_HYPERV"
 #define KEY_STOP_OFFSET_TIME            "STOP_OFFSET_TIME"
 #define KEY_EMULATE_SINGLE_STEP         "EMULATE_SINGLE_STEP"
-#define KEY_DISASM_RANGES               "DISASM_RANGES"
 #define KEY_DISASM_CTX                  "DISASM_CTX"
 #define KEY_LOG_RETURN_VALUE            "LOG_RETURN_VALUE"
 #define KEY_FOLLOW_ARGS_RETURN          "FOLLOW_ARGS_RETURN"
@@ -118,41 +117,38 @@ std::string booleanToStr(const bool &val)
     return (val) ? "True" : "False";
 }
 
-void parseRanges(const std::string &input, std::set<DisasmRange> &disasmRanges)
+bool parseRange(const std::string &token, std::set<DisasmRange>& disasmRanges)
 {
-    std::stringstream ss(input);
-    std::string token;
-    size_t rangeCount = 0;
     const char delim = ',';
-    while (std::getline(ss, token, ']')) {
-        // token is something like "[16B00,16B04]" or "[16B00,16B04,range_name]"
-        if (token.front() == '[') token.erase(0, 1);
 
-        std::stringstream pairStream(token);
-        std::string startHex, endHex;
-        std::string rangeName;
-        if (std::getline(pairStream, startHex, delim) && (std::getline(pairStream, endHex, delim) || std::getline(pairStream, endHex))) {
-            rangeCount++;
-            if (!std::getline(pairStream, rangeName)) {
-                std::stringstream ss;
-                ss << "Range_" << std::dec << rangeCount;
-                rangeName = ss.str();
-            }
-            int start = util::loadInt(startHex, true);
-            if (start == 0) continue;
-            int stop = util::loadInt(endHex, true);
+    size_t rangeCount = 0;
+    std::stringstream pairStream(token);
+    std::string startHex, endHex;
+    std::string rangeName;
 
-            DisasmRange r(start, stop, rangeName);
-            disasmRanges.insert(r);
+    if (std::getline(pairStream, startHex, delim) && (std::getline(pairStream, endHex, delim) || std::getline(pairStream, endHex))) {
+        rangeCount++;
+        if (!std::getline(pairStream, rangeName)) {
+            std::stringstream ss;
+            ss << "Range_" << std::dec << rangeCount;
+            rangeName = ss.str();
         }
+        int start = util::loadInt(startHex, true);
+        if (start == 0) return false;
+        int stop = util::loadInt(endHex, true);
+
+        DisasmRange r(start, stop, rangeName);
+        disasmRanges.insert(r);
+        return true;
     }
+    return false;
 }
 
 std::string rangesToStr(const std::set<DisasmRange>& disasmRanges)
 {
     std::stringstream ss;
     for (auto itr = disasmRanges.begin(); itr != disasmRanges.end(); ++itr) {
-        ss << "[" << std::hex << itr->start << "," << itr->stop << "];";
+        ss << "[" << std::hex << itr->start << "," << itr->stop << "]";
     }
     return ss.str();
 }
@@ -246,10 +242,6 @@ bool fillSettings(Settings &s, const std::string &line)
         s.emulateSingleStep = loadBoolean(valStr);
         isFilled = true;
     }
-    if (util::iequals(valName, KEY_DISASM_RANGES)) {
-        parseRanges(valStr, s.disasmRanges);
-        isFilled = true;
-    }
     if (util::iequals(valName, KEY_DISASM_CTX)) {
         s.disasmCtx = loadBoolean(valStr);
         isFilled = true;
@@ -304,6 +296,7 @@ size_t Settings::loadOffsetsList(const char* filename, std::set<StopOffset>& off
     return offsetsList.size();
 }
 
+
 size_t Settings::loadCustomDefs(const char* filename, std::map<ADDRINT, std::string>& customDefs)
 {
     std::ifstream myfile(filename);
@@ -331,6 +324,26 @@ size_t Settings::loadCustomDefs(const char* filename, std::map<ADDRINT, std::str
     return customDefs.size();
 }
 
+size_t Settings::loadDisasmRanges(const char* filename, std::set<DisasmRange>& disasmRanges)
+{
+    std::ifstream myfile(filename);
+    if (!myfile.is_open()) {
+        return 0;
+    }
+    const size_t MAX_LINE = 300;
+    char line[MAX_LINE] = { 0 };
+    while (!myfile.eof()) {
+        myfile.getline(line, MAX_LINE);
+        std::string sline = line;
+        util::trim(sline);
+        if (!sline.size() || sline[0] == '#') { // skip empty lines and comments
+            continue;
+        }
+        parseRange(sline, disasmRanges);
+    }
+    return disasmRanges.size();
+}
+
 bool Settings::saveINI(const std::string &filename)
 {
     std::ofstream myfile(filename.c_str());
@@ -355,7 +368,6 @@ bool Settings::saveINI(const std::string &filename)
     myfile << KEY_HYPREV_SET << DELIM << booleanToStr(this->isHyperVSet) << "\r\n";
     myfile << KEY_STOP_OFFSET_TIME << DELIM << std::dec << this->stopOffsetTime << "\r\n";
     myfile << KEY_EMULATE_SINGLE_STEP << DELIM << std::dec << booleanToStr(this->emulateSingleStep) << "\r\n";
-    myfile << KEY_DISASM_RANGES << DELIM << std::hex << rangesToStr(this->disasmRanges)<< "\r\n";
     myfile << KEY_DISASM_CTX << DELIM << std::dec << booleanToStr(this->disasmCtx) << "\r\n";
     myfile << KEY_LOG_RETURN_VALUE << DELIM << std::dec << booleanToStr(this->logReturn) << "\r\n";
     myfile << KEY_FOLLOW_ARGS_RETURN << DELIM << std::dec << booleanToStr(this->followArgReturn) << "\r\n";
@@ -407,7 +419,6 @@ size_t Settings::loadExcluded(const char* excludedList)
         }
         this->excludedDll.insert(line);
         dllsCount++;
-
     }
 }
 

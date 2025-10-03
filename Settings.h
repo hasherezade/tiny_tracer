@@ -138,6 +138,7 @@ public:
     static void stripComments(std::string& str);
     static size_t loadOffsetsList(const char* filename, std::set<StopOffset>& offsetsList);
     static size_t loadCustomDefs(const char* filename, std::map<ADDRINT, std::string> &customDefs);
+    static size_t loadDisasmRanges(const char* filename, std::set<DisasmRange> &disasmRanges);
 
     Settings() 
         : followShellcode(SHELLC_FOLLOW_FIRST),
