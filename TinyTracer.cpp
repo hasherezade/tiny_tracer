@@ -1120,6 +1120,9 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
         ss << disasm;
         std::string rangeLabel;
         const t_disasm_status dStat = m_Settings.findInDisasmRange(rva, &rangeLabel);
+        if (m_Settings.disasmOuter && dStat == DISASM_NONE) {
+            return;
+        }
         if (!base && dStat == DISASM_START) {
             ss << " # disasm start: " << rangeLabel;
         }

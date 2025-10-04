@@ -160,7 +160,7 @@ public:
         useDebugSym(false),
         isHyperVSet(false),
         emulateSingleStep(true),
-        disasmCtx(false),
+        disasmCtx(false), disasmOuter(false),
         logReturn(false), followArgReturn(false),
         volumeID(0)
     {
@@ -211,6 +211,7 @@ public:
     bool isHyperVSet; // emulate HyperV via CPUID (it changes execution path of some protectors, i.e. VMProtect). Works when antivm is enabled. 
     bool emulateSingleStep; // If the Trap Flag is set, throw a SINGLE_STEP exception emulating the typical behavior. Works when antidebug is enabled. 
     bool disasmCtx; // show context in a disasm mode
+    bool disasmOuter; //in disasm mode: only instructions within the linear range
     bool logReturn; // Log return value
     bool followArgReturn; // Log changes of args and returns ptr
     uint32_t volumeID;

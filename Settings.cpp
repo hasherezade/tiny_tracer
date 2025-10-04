@@ -28,6 +28,7 @@
 #define KEY_STOP_OFFSET_TIME            "STOP_OFFSET_TIME"
 #define KEY_EMULATE_SINGLE_STEP         "EMULATE_SINGLE_STEP"
 #define KEY_DISASM_CTX                  "DISASM_CTX"
+#define KEY_DISASM_OUTER                "DISASM_OUTER"
 #define KEY_LOG_RETURN_VALUE            "LOG_RETURN_VALUE"
 #define KEY_FOLLOW_ARGS_RETURN          "FOLLOW_ARGS_RETURN"
 #define KEY_PARSE_EXPORTS               "PARSE_EXPORTS"
@@ -246,6 +247,10 @@ bool fillSettings(Settings &s, const std::string &line)
         s.disasmCtx = loadBoolean(valStr);
         isFilled = true;
     }
+    if (util::iequals(valName, KEY_DISASM_OUTER)) {
+        s.disasmOuter = loadBoolean(valStr);
+        isFilled = true;
+    }
     if (util::iequals(valName, KEY_LOG_RETURN_VALUE)) {
         s.logReturn = loadBoolean(valStr);
         isFilled = true;
@@ -369,6 +374,7 @@ bool Settings::saveINI(const std::string &filename)
     myfile << KEY_STOP_OFFSET_TIME << DELIM << std::dec << this->stopOffsetTime << "\r\n";
     myfile << KEY_EMULATE_SINGLE_STEP << DELIM << std::dec << booleanToStr(this->emulateSingleStep) << "\r\n";
     myfile << KEY_DISASM_CTX << DELIM << std::dec << booleanToStr(this->disasmCtx) << "\r\n";
+    myfile << KEY_DISASM_OUTER << DELIM << std::dec << booleanToStr(this->disasmOuter) << "\r\n";
     myfile << KEY_LOG_RETURN_VALUE << DELIM << std::dec << booleanToStr(this->logReturn) << "\r\n";
     myfile << KEY_FOLLOW_ARGS_RETURN << DELIM << std::dec << booleanToStr(this->followArgReturn) << "\r\n";
     myfile << KEY_PARSE_EXPORTS << DELIM << std::dec << booleanToStr(this->parseExports) << "\r\n";
