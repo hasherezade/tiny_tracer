@@ -426,5 +426,6 @@ size_t Settings::loadExcluded(const char* excludedList)
         this->excludedDll.insert(line);
         dllsCount++;
     }
+    return dllsCount;
 }
 
