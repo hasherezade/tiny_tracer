@@ -518,7 +518,7 @@ VOID AntiDbg_GetTickCount_after(ADDRINT Address, THREADID threadid, const CHAR* 
     if (modify && result) {
         TICK_T curr = (*result);
         if (emTick) {
-            size_t diff = 1;
+            TICK_T diff = 1;
             if (curr > prevTick) {
                 diff = ((curr - prevTick) / 10);
             }

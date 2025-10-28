@@ -50,7 +50,7 @@ namespace util {
         size_t i;
         for (i = 0; i < bufSize; i++) {
             buf[i] = c[i];
-            if (c[i] == '\0') break;
+            if (c[i] == 0) break;
         }
     }
 
