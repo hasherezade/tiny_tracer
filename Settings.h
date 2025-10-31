@@ -111,11 +111,12 @@ struct DisasmRange
         return (addr >= start && addr <= stop) ? true : false;
     }
 
-    bool operator=(const DisasmRange& n)
+    DisasmRange& operator=(const DisasmRange& n)
     {
         this->start = n.start;
         this->stop = n.stop;
         this->label = n.label;
+        return *this;
     }
 
     bool operator<(const DisasmRange& n) const
