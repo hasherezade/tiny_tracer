@@ -28,13 +28,13 @@
 #define KEY_STOP_OFFSET_TIME            "STOP_OFFSET_TIME"
 #define KEY_EMULATE_SINGLE_STEP         "EMULATE_SINGLE_STEP"
 #define KEY_DISASM_CTX                  "DISASM_CTX"
-#define KEY_DISASM_OUTER                "DISASM_OUTER"
+#define KEY_DISASM_DEPTH                "DISASM_DEPTH"
 #define KEY_LOG_RETURN_VALUE            "LOG_RETURN_VALUE"
 #define KEY_FOLLOW_ARGS_RETURN          "FOLLOW_ARGS_RETURN"
 #define KEY_PARSE_EXPORTS               "PARSE_EXPORTS"
 #define KEY_VOLUME_ID                   "VOLUME_ID"
 
-t_shellc_options ConvertShcOption(int value)
+t_shellc_options ConvertShcOption(unsigned int value)
 {
     if (value >= SHELLC_OPTIONS_COUNT) {
         // choose the last option:
@@ -43,6 +43,14 @@ t_shellc_options ConvertShcOption(int value)
     return (t_shellc_options)value;
 }
 
+t_disasm_level ConvertDisasmLevel(unsigned int value)
+{
+    if (value >= DISASM_OPTIONS_COUNT) {
+        // choose the last option:
+        return t_disasm_level(DISASM_OPTIONS_COUNT - 1);
+    }
+    return (t_disasm_level)value;
+}
 //----
 
 std::string SyscallsTable::getName(int syscallID)
@@ -247,8 +255,9 @@ bool fillSettings(Settings &s, const std::string &line)
         s.disasmCtx = loadBoolean(valStr);
         isFilled = true;
     }
-    if (util::iequals(valName, KEY_DISASM_OUTER)) {
-        s.disasmOuter = loadBoolean(valStr);
+    if (util::iequals(valName, KEY_DISASM_DEPTH)) {
+        const int val = util::loadInt(valStr);
+        s.disasmDepth = ConvertDisasmLevel(val);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_LOG_RETURN_VALUE)) {
@@ -322,7 +331,7 @@ size_t Settings::loadCustomDefs(const char* filename, std::map<ADDRINT, std::str
         util::splitList(sline, ',', args);
         if (args.size() < 2) break;
 
-        ADDRINT rva = util::loadInt(args[0], true);
+        const ADDRINT rva = util::loadInt(args[0], true);
         std::string name = args[1];
         customDefs[rva] = name;
     }
@@ -374,7 +383,7 @@ bool Settings::saveINI(const std::string &filename)
     myfile << KEY_STOP_OFFSET_TIME << DELIM << std::dec << this->stopOffsetTime << "\r\n";
     myfile << KEY_EMULATE_SINGLE_STEP << DELIM << std::dec << booleanToStr(this->emulateSingleStep) << "\r\n";
     myfile << KEY_DISASM_CTX << DELIM << std::dec << booleanToStr(this->disasmCtx) << "\r\n";
-    myfile << KEY_DISASM_OUTER << DELIM << std::dec << booleanToStr(this->disasmOuter) << "\r\n";
+    myfile << KEY_DISASM_DEPTH << DELIM << std::dec << this->disasmDepth << "\r\n";
     myfile << KEY_LOG_RETURN_VALUE << DELIM << std::dec << booleanToStr(this->logReturn) << "\r\n";
     myfile << KEY_FOLLOW_ARGS_RETURN << DELIM << std::dec << booleanToStr(this->followArgReturn) << "\r\n";
     myfile << KEY_PARSE_EXPORTS << DELIM << std::dec << booleanToStr(this->parseExports) << "\r\n";

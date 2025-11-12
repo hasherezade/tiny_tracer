@@ -267,6 +267,7 @@
     <ClCompile Include="TrackReturns.cpp" />
     <ClCompile Include="Util.cpp" />
     <ClCompile Include="Settings.cpp" />
+    <ClCompile Include="ThreadMapper.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EvasionWatch.h" />
@@ -281,6 +282,7 @@
     <ClInclude Include="TrackReturns.h" />
     <ClInclude Include="Util.h" />
     <ClInclude Include="Settings.h" />
+    <ClInclude Include="ThreadMapper.h" />
     <ClInclude Include="DisasmCache.h" />
     <ClInclude Include="Crc.h" />
   </ItemGroup>

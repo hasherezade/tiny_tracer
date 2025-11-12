@@ -16,7 +16,7 @@ typedef enum {
     SHELLC_OPTIONS_COUNT
 } t_shellc_options;
 
-t_shellc_options ConvertShcOption(int value);
+t_shellc_options ConvertShcOption(unsigned int value);
 
 //---
 
@@ -108,6 +108,7 @@ struct DisasmRange
 
     bool isInRange(const ADDRINT& addr) const 
     {
+        if (addr == start || addr == stop) return true;
         return (addr >= start && addr <= stop) ? true : false;
     }
 
@@ -132,6 +133,14 @@ typedef enum disasm_status {
     DISASM_STOP = 3,
     COUNT_DISASM_STATUS
 } t_disasm_status;
+
+typedef enum {
+    DISASM_DISABLED = 0,
+    DISASM_OUTER = 1,
+    DISASM_INNER = 2,
+    DISASM_FOLLOW_THREADS = 3,
+    DISASM_OPTIONS_COUNT
+} t_disasm_level;
 
 class Settings {
 
@@ -161,7 +170,7 @@ public:
         useDebugSym(false),
         isHyperVSet(false),
         emulateSingleStep(true),
-        disasmCtx(false), disasmOuter(false),
+        disasmCtx(false), disasmDepth(DISASM_INNER),
         logReturn(false), followArgReturn(false),
         volumeID(0)
     {
@@ -174,7 +183,7 @@ public:
 
     t_shellc_options followShellcode;
 
-    const t_disasm_status findInDisasmRange(ADDRINT& addr, std::string* rangeLabel = nullptr)
+    const t_disasm_status findInDisasmRange(const ADDRINT& addr, std::string* rangeLabel = nullptr)
     {
         for (auto itr = this->disasmRanges.begin(); itr != disasmRanges.end(); ++itr) {
             if (itr->isInRange(addr)) {
@@ -212,7 +221,7 @@ public:
     bool isHyperVSet; // emulate HyperV via CPUID (it changes execution path of some protectors, i.e. VMProtect). Works when antivm is enabled. 
     bool emulateSingleStep; // If the Trap Flag is set, throw a SINGLE_STEP exception emulating the typical behavior. Works when antidebug is enabled. 
     bool disasmCtx; // show context in a disasm mode
-    bool disasmOuter; //in disasm mode: only instructions within the linear range
+    t_disasm_level disasmDepth; //in disasm mode: define how to follow the disasm range
     bool logReturn; // Log return value
     bool followArgReturn; // Log changes of args and returns ptr
     uint32_t volumeID;

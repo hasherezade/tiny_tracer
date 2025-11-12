@@ -19,9 +19,10 @@
 #include "PinLocker.h"
 #include "DisasmCache.h"
 #include "TrackReturns.h"
+#include "ThreadMapper.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "3.1"
+#define VERSION "3.2"
 
 #include "Util.h"
 #include "Settings.h"
@@ -65,6 +66,61 @@ std::set<ADDRINT> m_tracedShellc;
 
 // Full pin path
 std::string pinPath;
+
+class DisasmTraceTracker
+{
+public:
+    DisasmTraceTracker(const Settings &settings)
+        : m_Settings(settings)
+    {
+        PIN_InitLock(&m_Lock);
+    }
+
+    bool followChildThread(const THREADID parentTID, const THREADID childTID)
+    {
+        PinDataLock dLocker(&m_Lock);
+        if (m_Settings.disasmDepth < t_disasm_level::DISASM_FOLLOW_THREADS) {
+            return false;
+        }
+        if (parentTID == INVALID_THREADID) {
+            return false;
+        }
+        if (m_tidDisasmTrace.find(parentTID) == m_tidDisasmTrace.end()) {
+            return false;
+        }
+        // follow child thread:
+        m_tidDisasmTrace.insert(childTID);
+#ifdef _DEBUG
+        std::cout << "Child thread followed: " << std::dec << parentTID << " -> " << childTID << " \n";
+#endif //_DEBUG
+        return true;
+    }
+
+    void erase(const THREADID tid)
+    {
+        PinDataLock dLocker(&m_Lock);
+        m_tidDisasmTrace.erase(tid);
+    }
+
+    bool contains(const THREADID tid)
+    {
+        PinDataLock dLocker(&m_Lock);
+        return (m_tidDisasmTrace.find(tid) != m_tidDisasmTrace.end());
+    }
+
+    void insert(const THREADID tid)
+    {
+        PinDataLock dLocker(&m_Lock);
+        m_tidDisasmTrace.insert(tid);
+    }
+
+protected:
+    PIN_LOCK m_Lock;
+    const Settings& m_Settings;
+    std::set<THREADID> m_tidDisasmTrace;
+};
+
+DisasmTraceTracker g_DisasmTracker(m_Settings);
 
 /* ===================================================================== */
 // Command line switches
@@ -149,12 +205,6 @@ WatchedType isWatchedAddress(const ADDRINT Address)
     return WatchedType::NOT_WATCHED;
 }
 
-
-VOID ThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
-{
-    PinLocker locker;
-    RetTracker::InitTrackerForThread(tid);
-}
 
 /* ===================================================================== */
 // Analysis routines
@@ -1084,11 +1134,9 @@ DisasmCache m_disasmCache;
 
 VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
 {
-    if (!disasm) return;
+    if (!disasm || m_Settings.disasmDepth == DISASM_DISABLED) return;
 
     PinLocker locker;
-
-    static BOOL traceStarted = FALSE;
 
     const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
     const WatchedType wType = isWatchedAddress(Address);
@@ -1104,12 +1152,13 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
         base = 0;
         const t_disasm_status dStat = m_Settings.findInDisasmRange(rva);
         if (dStat == DISASM_START) {
-            traceStarted = TRUE;
+            g_DisasmTracker.insert(tid);
         }
     }
-    if (!traceStarted) {
+    if (!g_DisasmTracker.contains(tid)) {
         return;
     }
+
     if (wType == WatchedType::WATCHED_SHELLCODE) {
         base = query_region_base(Address);
         rva = Address - base;
@@ -1120,7 +1169,7 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
         ss << disasm;
         std::string rangeLabel;
         const t_disasm_status dStat = m_Settings.findInDisasmRange(rva, &rangeLabel);
-        if (m_Settings.disasmOuter && dStat == DISASM_NONE) {
+        if ((m_Settings.disasmDepth < t_disasm_level::DISASM_INNER) && dStat == DISASM_NONE) {
             return;
         }
         if (!base && dStat == DISASM_START) {
@@ -1139,7 +1188,7 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
     }
     const t_disasm_status dStat = m_Settings.findInDisasmRange(rva);
     if (wType == WatchedType::WATCHED_MY_MODULE && dStat == DISASM_STOP) {
-        traceStarted = FALSE;
+        g_DisasmTracker.erase(tid);
     }
 }
 
@@ -1389,7 +1438,7 @@ VOID Mod_GetVolumeInformation_after(const ADDRINT Address, const THREADID tid, c
     const WatchedType wType = isWatchedAddress(Address);
     if (wType == WatchedType::NOT_WATCHED) return;
 
-    auto itr = volumeSerialPtrs.find(tid);
+    const auto itr = volumeSerialPtrs.find(tid);
     if (itr == volumeSerialPtrs.end()) {
         return;
     }
@@ -1422,7 +1471,7 @@ VOID InstrumentVolumeInfo(IMG Image, uint32_t volumeID)
     for (size_t i = 0; i < functionsCount; i++)
     {
         const char* fName = functions[i];
-        RTN funcRtn = find_by_unmangled_name(Image, fName);
+        const RTN funcRtn = find_by_unmangled_name(Image, fName);
         if (RTN_Valid(funcRtn)) {
             RTN_Open(funcRtn);
 
@@ -1446,6 +1495,7 @@ VOID InstrumentVolumeInfo(IMG Image, uint32_t volumeID)
         }
     }
 }
+
 /* ===================================================================== */
 
 VOID AddCustomFunctions(IMG img, const std::map<ADDRINT, std::string> &customDefs)
@@ -1491,6 +1541,8 @@ VOID ImageLoad(IMG Image, VOID *v)
     }
 
 #ifdef _WIN32
+    TrackThreads::InstrumentCreateThreadRoutines(Image);
+
     if (m_Settings.hookSleep) {
         InstrumentSleep(Image);
     }
@@ -1581,7 +1633,7 @@ BOOL FollowChild(CHILD_PROCESS childProcess, VOID* userData)
 std::string addPidToFilename(const std::string& filename, int pid)
 {
     std::stringstream fnamestr;
-    size_t pos = filename.find_last_of('.');
+    const size_t pos = filename.find_last_of('.');
     if (pos == std::string::npos || pos >= filename.length()) {
         fnamestr << filename << "." << pid;
     }
@@ -1590,6 +1642,29 @@ std::string addPidToFilename(const std::string& filename, int pid)
     }
     return fnamestr.str();
 }
+
+//---
+
+VOID ThreadStart(THREADID tid, CONTEXT* ctxt, INT32 flags, VOID* v)
+{
+    PinLocker locker;
+
+    if (m_Settings.logReturn) {
+        RetTracker::InitTrackerForThread(tid);
+    }
+    TrackThreads::OnThreadStarted(tid);
+    g_DisasmTracker.followChildThread(TrackThreads::GetParentTID(tid), tid);
+}
+
+VOID ThreadEnd(THREADID tid, const CONTEXT* ctxt, INT32 code, VOID* v)
+{
+    PinLocker locker;
+
+    g_DisasmTracker.erase(tid);
+    TrackThreads::OnThreadFinished(tid);
+}
+
+//---
 
 
 /*!
@@ -1608,7 +1683,7 @@ int main(int argc, char *argv[])
     {
         return Usage();
     }
-    
+
     pinPath = argv[0];
     std::string targetModule = KnobModuleName.Value();
     if (targetModule.length() == 0) {
@@ -1691,12 +1766,16 @@ int main(int argc, char *argv[])
     if (m_Settings.disasmRanges.size()) {
         std::cout << "Disasm ranges: " << m_Settings.disasmRanges.size() << std::endl;
     }
+#ifdef _WIN32
+    TrackThreads::InstrumentCreateThreadSyscalls();
+#endif //_WIN32
 
     // Register function to be called for every loaded module
     IMG_AddInstrumentFunction(ImageLoad, NULL);
 
     // Register function to be called before every instruction
     INS_AddInstrumentFunction(InstrumentInstruction, NULL);
+
 #ifdef USE_ANTIDEBUG
     // ANTIDEBUG: collect some info on thread start
     if (m_Settings.antidebug != WATCH_DISABLED) {
@@ -1715,10 +1794,10 @@ int main(int argc, char *argv[])
 
     if (m_Settings.logReturn) {
         RetTracker::InitTracker();
-
-        // Register the ThreadStart callback
-        PIN_AddThreadStartFunction(ThreadStart, NULL);
     }
+    // Register the ThreadStart callback
+    PIN_AddThreadStartFunction(ThreadStart, NULL);
+    PIN_AddThreadFiniFunction(ThreadEnd, NULL);
 
     // Register the callback function for child processes
     PIN_AddFollowChildProcessFunction(FollowChild, 0);
