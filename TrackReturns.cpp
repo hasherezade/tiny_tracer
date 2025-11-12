@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <stack>
+#include <iostream>
 
 #define MEM_SNAPSHOT_SIZE 8
 
@@ -20,6 +21,18 @@ struct CallInfo
     std::wstring returnValue;                       // Stored return value (ret of paramToStr)
     ADDRINT returnPtr = UNKNOWN_ADDR;               // Stored return Ptr if return value is ptr
 };
+
+struct CallStack
+{
+public:
+    std::stack<CallInfo> callStack;
+};
+
+static void deleteCallstack(void* arg) noexcept
+{
+    auto* threadStack = static_cast<CallStack*>(arg);
+    delete threadStack;
+}
 
 //---
 
@@ -36,26 +49,30 @@ void LogBuffer(const std::wstringstream& ss)
 
 namespace RetTracker {
 
-    PIN_LOCK globalLock;
-    static TLS_KEY tlsKey;
+    static TLS_KEY tlsKey = static_cast<TLS_KEY>(-1); // INVALID by convention
 
     VOID InitTracker()
     {
         // Create the TLS key 
-        RetTracker::tlsKey = PIN_CreateThreadDataKey(NULL);
+        RetTracker::tlsKey = PIN_CreateThreadDataKey(deleteCallstack);
+        if (tlsKey == static_cast<TLS_KEY>(-1)) {
+            // handle error -> you’ve exhausted TLS keys
+            std::cerr << "Exhausted TLS keys!\n";
+            PIN_ExitProcess(1);
+        }
     }
 
     // Init the thread-local call stack
     VOID InitTrackerForThread(THREADID tid)
     {
-        const std::stack<CallInfo>* newStack = new std::stack<CallInfo>();
+        const CallStack* newStack = new CallStack();
         PIN_SetThreadData(RetTracker::tlsKey, newStack, tid);
     }
 
     // Retrieve the thread-local call stack
-    std::stack<CallInfo>* GetCallStackForThread(const THREADID tid)
+    CallStack* GetCallStackForThread(const THREADID tid)
     {
-        return static_cast<std::stack<CallInfo>*>(PIN_GetThreadData(RetTracker::tlsKey, tid));
+        return static_cast<CallStack*>(PIN_GetThreadData(RetTracker::tlsKey, tid));
     }
 
     // Copy memory content into the snapshot
@@ -134,8 +151,8 @@ VOID RetTracker::LogCallDetails(const ADDRINT Address, const CHAR* name, uint32_
     const THREADID tid = PIN_ThreadId();
 
     // Retrieve the thread-local call stack
-    auto* callStack = GetCallStackForThread(tid);
-    if (!callStack) return;
+    auto* c = GetCallStackForThread(tid);
+    if (!c) return;
 
     // Initialize CallInfo
     CallInfo info;
@@ -164,20 +181,20 @@ VOID RetTracker::LogCallDetails(const ADDRINT Address, const CHAR* name, uint32_
     }
 
     // Store function call info in call stack
-    callStack->push(info);
+    c->callStack.push(info);
 }
 
 VOID RetTracker::HandleFunctionReturn(const THREADID tid, const ADDRINT returnIp, const ADDRINT rawRetVal) 
 {
-    auto* callStack = GetCallStackForThread(tid);
-    if (!callStack || callStack->empty()) return;
+    auto* c = GetCallStackForThread(tid);
+    if (!c || c->callStack.empty()) return;
 
-    CallInfo& topCall = callStack->top();
+    CallInfo& topCall = c->callStack.top();
     if (topCall.returnAddress != returnIp) return;
 
     // Copy before popping so we can log after
     CallInfo info = topCall;
-    callStack->pop();
+    c->callStack.pop();
 
     std::wstring retStr = paramToStr(reinterpret_cast<VOID*>(rawRetVal));
     info.returnValue = retStr;
