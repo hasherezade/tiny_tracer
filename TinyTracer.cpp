@@ -404,7 +404,7 @@ bool isExcludedDll(const std::string &dll_name)
     return false;
 }
 
-VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndirect, const CONTEXT* ctx = NULL)
+VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndirect, const CONTEXT* ctx = nullptr, const char* disasm = nullptr)
 {
     const WatchedType fromWType = isWatchedAddress(addrFrom); // is the call from the traced area?
 
@@ -511,7 +511,7 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
         if (base != UNKNOWN_ADDR && baseTo != UNKNOWN_ADDR) {
             const ADDRINT RvaFrom = addrFrom - base;
             const ADDRINT calledRVA = addrTo - baseTo;
-            traceLog.logIndirectCall(0, RvaFrom, true, baseTo, calledRVA);
+            traceLog.logIndirectCall(0, RvaFrom, true, baseTo, calledRVA, disasm);
         }
     }
 
@@ -543,10 +543,10 @@ VOID _SaveTransitions(const ADDRINT addrFrom, const ADDRINT addrTo, BOOL isIndir
     }
 }
 
-VOID SaveTransitions(const ADDRINT prevVA, const ADDRINT Address, BOOL isIndirect, const CONTEXT* ctx)
+VOID SaveTransitions(const ADDRINT prevVA, const ADDRINT Address, BOOL isIndirect, const CONTEXT* ctx, const char* disasm)
 {
     PinLocker locker;
-    _SaveTransitions(prevVA, Address, isIndirect, ctx);
+    _SaveTransitions(prevVA, Address, isIndirect, ctx, disasm);
 }
 
 VOID LogMsgAtAddress(const WatchedType wType, const ADDRINT Address, const char* label, const char* msg, const char* link)
@@ -1265,6 +1265,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
             IARG_BRANCH_TARGET_ADDR,
             IARG_BOOL, isIndirect,
             IARG_CONTEXT,
+            IARG_PTR, isIndirect ? m_disasmCache.put(INS_Disassemble(ins)) : nullptr,
             IARG_END
         );
     }

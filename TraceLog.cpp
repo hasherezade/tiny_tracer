@@ -77,7 +77,7 @@ void TraceLog::logSectionChange(const ADDRINT prevAddr, std::string &name)
     m_traceFile.flush();
 }
 
-void TraceLog::logIndirectCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, bool isRVA, const ADDRINT calledBase, const ADDRINT calledRVA)
+void TraceLog::logIndirectCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, bool isRVA, const ADDRINT calledBase, const ADDRINT calledRVA, const char* disasm)
 {
     if (!createFile()) return;
     ADDRINT rva = (isRVA) ? prevAddr : prevAddr - prevModuleBase;
@@ -87,7 +87,9 @@ void TraceLog::logIndirectCall(const ADDRINT prevModuleBase, const ADDRINT prevA
     m_traceFile <<
         std::hex << rva
         << DELIMITER;
-
+    if (disasm) {
+        m_traceFile << "[" << disasm << "] ";
+    }
     m_traceFile
         << "to: " << (calledBase + calledRVA) << " [" << calledBase << " + " << calledRVA << "]"
         << std::endl;

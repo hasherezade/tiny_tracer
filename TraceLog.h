@@ -34,7 +34,7 @@ public:
     void logCallRet(const ADDRINT prevBase, const ADDRINT prevAddr, const ADDRINT retPageBase, const ADDRINT retAddr, const std::string &module, const std::string &func);
     void logSectionChange(const ADDRINT addr, std::string &sectionName);
     void logNewSectionCalled(const ADDRINT addFrom, const std::string &prevSection, const std::string &currSection);
-    void logIndirectCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, bool isRVA, const ADDRINT calledBase, const ADDRINT callRVA);
+    void logIndirectCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, bool isRVA, const ADDRINT calledBase, const ADDRINT callRVA, const char* disasm);
     void logInstruction(const ADDRINT base, const ADDRINT rva, const std::string& mnem, const ADDRINT param);
     void logInstruction(const ADDRINT base, const ADDRINT rva, const std::string& mnem);
     void logSyscall(const ADDRINT base, const ADDRINT rva, const ADDRINT param, const std::string &funcName);
