@@ -11,6 +11,10 @@
 4. Now you can trace any EXE by clicking "Run with PIN" from the context menu.
 5. Whenever you want to uninstall it, just run "delete_menu.reg"
 
+## Utils
+
+The source code of all the included Windows utilities is available in a separate repository: [pe_utils](https://github.com/hasherezade/pe_utils/)
+
 # Installation on Linux
 
 Read the instructions inside `tiny_runner.sh`
