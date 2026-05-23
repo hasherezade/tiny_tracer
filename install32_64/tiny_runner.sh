@@ -71,7 +71,7 @@ EXCLUDED_FUNC=$PIN_TOOLS_DIR"/excluded.txt"
 STOP_OFFSETS=$PIN_TOOLS_DIR"/stop_offsets.txt"
 
 # SYSCALLS_TABLE - a CSV file, mapping syscall ID to a function name. Format: [syscallID:hex],[functionName]
-SYSCALLS_TABLE=$PIN_TOOLS_DIR"/linux_syscalls.txt"
+SYSCALLS_TABLE=$PIN_TOOLS_DIR"/syscalls.txt"
 
 PINTOOL32=$PIN_TOOLS_DIR"/TinyTracer32.so"
 PINTOOL64=$PIN_TOOLS_DIR"/TinyTracer64.so"
@@ -93,6 +93,12 @@ then
 else
     echo "ERROR: Not supported file type."
     exit
+fi
+
+if [ ! -f "$SYSCALLS_TABLE" ]; then
+    if [ -x "$PIN_TOOLS_DIR/gen_linux_syscalls.sh" ]; then
+        "$PIN_TOOLS_DIR/gen_linux_syscalls.sh" > "$SYSCALLS_TABLE"
+    fi
 fi
 
 $PIN_DIR/pin -t "$PINTOOL" -s "$SETTINGS_FILE" -b "$WATCH_ARGS" -x "$EXCLUDED_FUNC" -p "$STOP_OFFSETS" -m "$TRACED_MODULE_BASENAME" -o "$OUT_PATH" -l "$SYSCALLS_TABLE" -- "$TARGET_APP" $EXE_ARGS
