@@ -93,6 +93,7 @@ void TraceLog::logIndirectCall(const ADDRINT prevModuleBase, const ADDRINT prevA
     m_traceFile
         << "to: " << (calledBase + calledRVA) << " [" << calledBase << " + " << calledRVA << "]"
         << std::endl;
+    m_traceFile.flush();
 }
 
 void TraceLog::logInstruction(const ADDRINT base, const ADDRINT rva, const std::string& mnem, const ADDRINT param)

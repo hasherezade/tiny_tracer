@@ -48,7 +48,7 @@ protected:
         if (m_traceFile.is_open()) {
             return true;
         }
-        m_traceFile.open(m_logFileName.c_str());
+        m_traceFile.open(m_logFileName.c_str(), std::ios::out);
         if (m_traceFile.is_open()) {
             return true;
         }

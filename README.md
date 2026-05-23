@@ -40,11 +40,49 @@ i.e.
 
 ## 🚧 How to build
 
-### On Windows 
+It was tested with [Intel Pin 4.2](https://software.intel.com/en-us/articles/pin-a-binary-instrumentation-tool-downloads).
 
-To compile the prepared project you need to use [Visual Studio >= 2012](https://visualstudio.microsoft.com/downloads/). It was tested with [Intel Pin 3.31](https://software.intel.com/en-us/articles/pin-a-binary-instrumentation-tool-downloads).<br/>
-Clone this repo into `\source\tools` that is inside your Pin root directory. Open the project in Visual Studio and build. Detailed description available [here](https://github.com/hasherezade/tiny_tracer/wiki/Installation#on-windows).<br/>
-To build with Intel Pin < 3.26 on Windows, use the appropriate legacy Visual Studio project.
+### On Windows
+
+To compile you need [MSYS2](https://www.msys2.org/) and `clang-cl`.
+
+You can get `clang-cl` in one of two ways:
+- **With Visual Studio 2022**: Install the **C++ Clang tools for Windows** component via the Visual Studio Installer. The compiler will be at:
+  `C:\Program Files\Microsoft Visual Studio\2022\<edition>\VC\Tools\Llvm\x64\bin\clang-cl.exe`
+- **Without Visual Studio**: Download and install the standalone LLVM package from [LLVM GitHub releases](https://github.com/llvm/llvm-project/releases) (look for `LLVM-<version>-win64.exe`). The compiler will be at:
+  `C:\Program Files\LLVM\bin\clang-cl.exe`
+
+**Steps:**
+
+1. Install the `mingw-w64-x86_64-make` package in MSYS2:
+   ```
+   pacman -S mingw-w64-x86_64-make
+   ```
+
+2. Clone this repo into `\source\tools` inside your Pin root directory.
+
+3. Open the **MSYS2 MINGW64** shell and navigate to the project:
+   ```
+   cd /c/pin/source/tools/tiny_tracer
+   ```
+
+4. Make sure `clang-cl` is on your PATH:
+   ```
+   # If installed via Visual Studio:
+   export PATH="/c/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/Llvm/x64/bin:$PATH"
+
+   # If installed standalone:
+   export PATH="/c/Program Files/LLVM/bin:$PATH"
+   ```
+
+5. Build:
+   ```
+   bash make_mingw.sh
+   ```
+
+**Using Visual Studio as IDE (optional):** Open the `tiny_tracer` folder via **File -> Open -> Folder**. The included `CppProperties.json` and `.vs/tasks.vs.json` provide IntelliSense and build integration. The build still goes through the makefile - Visual Studio is used only as an editor.
+
+To build with Intel Pin < 4.0 on Windows, use the older versions of TinyTracer that can be found in the releases.
 
 ### On Linux
 

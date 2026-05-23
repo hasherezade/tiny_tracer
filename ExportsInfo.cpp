@@ -143,7 +143,8 @@ size_t ExportsInfo::addFromFile(IMG& img)
     file.seekg(0, std::ios::beg);
 
     std::vector<char> buffer(fileSize);
-    bool isOk = file.read(&buffer[0], fileSize);
+    file.read(&buffer[0], fileSize);
+    bool isOk = !file.fail();
     file.close();
     if (!isOk) return 0;
 

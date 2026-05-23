@@ -1,45 +1,51 @@
-os:
-  - Visual Studio 2022
+os: Visual Studio 2022
 
 platform:
   - x64
   - x86
-  
+
 branches:
   only:
     - master
 
 configuration:
   - Release
-  
+
 build:
   verbosity: detailed
-  
+
 environment:
   projName: $(APPVEYOR_PROJECT_SLUG)
-  buildPlatform: $(PLATFORM)
   artifactName: $(APPVEYOR_PROJECT_NAME)-$(APPVEYOR_REPO_COMMIT)-$(PLATFORM)
-  
+  PIN_URL: https://software.intel.com/sites/landingpage/pintool/downloads/pin-external-4.2-99776-g21d818fa2-clang-windows.zip
+  PIN_DIR: pin-external-4.2-99776-g21d818fa2-clang-windows
+
 install:
   - cd ..
-  - curl -fsS -o pin.zip https://software.intel.com/sites/landingpage/pintool/downloads/pin-external-3.31-98869-gfa6f126a8-msvc-windows.zip
+  # Download and extract PIN 4.2
+  - curl -fsS -o pin.zip %PIN_URL%
   - 7z x pin.zip
-  - cd pin-external-3.31-98869-gfa6f126a8-msvc-windows
-  - cd source
-  - cd tools
-  - cp -r ../../../%projName% ./
+  # Copy project into PIN tools directory
+  - cd %PIN_DIR%\source\tools
+  - cp -r ..\..\..\%projName% .\
   - cd %projName%
- 
+  # Install MSYS2 mingw-w64-x86_64-make
+  - C:\msys64\usr\bin\bash -lc "pacman -S --noconfirm mingw-w64-x86_64-make"
+
 build_script:
-  - ps: $PlatformToolset = "v143"
-  - ps: (Get-Content TinyTracer.vcxproj) | %{$_ -replace "v110", $PlatformToolset} | Set-Content TinyTracer.vcxproj
-  - ps: msbuild TinyTracer.vcxproj "/p:platform=$env:platform;configuration=$env:configuration"
-  
+  # Set up PATH: MSYS2 tools + clang-cl from Visual Studio
+  - set "PATH=C:\msys64\usr\bin;C:\msys64\mingw64\bin;%PATH%"
+  - for /f "delims=" %%i in ('dir /s /b "C:\Program Files\Microsoft Visual Studio\2022\*clang-cl.exe" ^| findstr "x64\\bin"') do set "CLANG_DIR=%%~dpi"
+  - set "PATH=%CLANG_DIR%;%PATH%"
+  - clang-cl --version
+  # Build
+  - if "%PLATFORM%"=="x64" ( mingw32-make all TARGET=intel64 )
+  - if "%PLATFORM%"=="x86" ( mingw32-make all TARGET=ia32 )
+
 after_build:
   - mkdir C:\projects\%projName%\install32_64\%artifactName%
-  - if [%buildPlatform%]==[x64] ( cp x64\Release\TinyTracer.dll C:\projects\%projName%\install32_64\%artifactName%\TinyTracer64.dll )
-  - if [%buildPlatform%]==[x86] ( cp Release\TinyTracer.dll C:\projects\%projName%\install32_64\%artifactName%\TinyTracer32.dll )
- 
+  - if "%PLATFORM%"=="x64" ( copy obj-intel64\TinyTracer64.dll C:\projects\%projName%\install32_64\%artifactName%\TinyTracer64.dll )
+  - if "%PLATFORM%"=="x86" ( copy obj-ia32\TinyTracer32.dll C:\projects\%projName%\install32_64\%artifactName%\TinyTracer32.dll )
+
 artifacts:
   - path: install32_64\%artifactName%
-  

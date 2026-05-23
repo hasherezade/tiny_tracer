@@ -73,17 +73,23 @@ std::wstring paramToStrSplit(VOID* arg1)
 // System information
 /* ==================================================================== */
 
+// Add these declarations alongside the VirtualQuery ones:
+extern "C" {
+    __declspec(dllimport) int __stdcall IsWow64Process(void* hProcess, int* Wow64Process);
+    __declspec(dllimport) void* __stdcall GetCurrentProcess(void);
+}
+
 BOOL WinIsNativeOs32(void)
 {
     BOOL isNativeOs32 = FALSE;
 #ifndef _WIN64
-    OS_HOST_CPU_ARCH_TYPE arch = OS_HOST_CPU_ARCH_TYPE_INVALID;
-    OS_RETURN_CODE code = OS_GetHostCPUArch(&arch);
-    if (code.generic_err != OS_RETURN_CODE_NO_ERROR) {
-        return TRUE; // assume 32 bit
+    int isWow64 = 0;
+    if (IsWow64Process(GetCurrentProcess(), &isWow64)) {
+        // If WOW64, then OS is 64-bit; if not, native 32-bit
+        isNativeOs32 = isWow64 ? FALSE : TRUE;
     }
-    if (arch == OS_HOST_CPU_ARCH_TYPE_IA32) {
-        isNativeOs32 = TRUE;
+    else {
+        isNativeOs32 = TRUE; // assume 32-bit if check fails
     }
 #endif
     return isNativeOs32;
@@ -91,21 +97,8 @@ BOOL WinIsNativeOs32(void)
 
 BOOL WinIsWindowsVistaOrGreater(void)
 {
-    const USIZE buf_size = 300;
-    CHAR buf[buf_size] = { 0 };
-    OS_RETURN_CODE code = OS_GetKernelRelease(buf, buf_size);
-    if (code.generic_err != OS_RETURN_CODE_NO_ERROR) {
-        return TRUE; // assume greater than Vista
-    }
-    std::vector<std::string> args;
-    util::splitList(buf, '.', args);
-    if (args.size() >= 2) {
-        int dwMajorVersion = util::loadInt(args[0], false);
-        if (dwMajorVersion >= 6) {
-            return TRUE;
-        }
-    }
-    return FALSE;
+    // PIN 4.x requires Windows 10+, which is always >= Vista
+    return TRUE;
 }
 
 /* ==================================================================== */

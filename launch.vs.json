@@ -1,0 +1,16 @@
+{
+  "version": "0.2.1",
+  "configurations": [
+    {
+      "name": "Run TinyTracer x64",
+      "type": "default",
+      "project": "",
+      "exe": "${workspaceRoot}\\..\\..\\..\\pin.exe",
+      "args": [
+        "-t", "${workspaceRoot}\\obj-intel64\\TinyTracer64.dll",
+        "--", "TARGET_APP.exe"
+      ],
+      "currentDir": "${workspaceRoot}"
+    }
+  ]
+}

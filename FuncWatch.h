@@ -114,7 +114,7 @@ public:
         return false;
     }
 
-    bool appendFunc(WFuncInfo_T& func_info)
+    bool appendFunc(const WFuncInfo_T& func_info)
     {
         if (!func_info.isValid()) {
             return false;

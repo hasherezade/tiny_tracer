@@ -12,6 +12,9 @@
 #include <sstream>
 #include <bitset>
 
+#include <thread>
+#include <chrono>
+
 #include "TinyTracer.h"
 
 #include "ProcessInfo.h"
@@ -20,9 +23,10 @@
 #include "DisasmCache.h"
 #include "TrackReturns.h"
 #include "ThreadMapper.h"
+#include "SysUtil.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "3.2"
+#define VERSION "4.0-rc1"
 
 #include "Util.h"
 #include "Settings.h"
@@ -215,7 +219,7 @@ inline ADDRINT getReturnFromTheStack(const CONTEXT* ctx)
     if (!ctx) return UNKNOWN_ADDR;
 
     ADDRINT retAddr = UNKNOWN_ADDR;
-    const ADDRINT* stackPtr = reinterpret_cast<ADDRINT*>(PIN_GetContextReg(ctx, REG_STACK_PTR));
+    const ADDRINT* stackPtr = reinterpret_cast<ADDRINT*>(PIN_GetContextReg(ctx, LEVEL_BASE::REG_STACK_PTR));
     size_t copiedSize = PIN_SafeCopy(&retAddr, stackPtr, sizeof(retAddr));
     if (copiedSize != sizeof(retAddr)) {
         return UNKNOWN_ADDR;
@@ -254,7 +258,7 @@ std::string flagsToStr(ADDRINT oldFlags, ADDRINT flags)
 
 std::string dumpContext(const std::string& disasm, const CONTEXT* ctx)
 {
-    const char* reg_names[] = {
+    const char* REG_names[] = {
         "rdi",
         "rsi",
         "rbp",
@@ -275,25 +279,25 @@ std::string dumpContext(const std::string& disasm, const CONTEXT* ctx)
     };
     const REG regs[] =
     {
-        REG_GDI,
-        REG_GSI,
-        REG_GBP,
-        REG_STACK_PTR,
-        REG_GBX,
-        REG_GDX,
-        REG_GCX,
-        REG_GAX,
+        LEVEL_BASE::REG_GDI,
+        LEVEL_BASE::REG_GSI,
+        LEVEL_BASE::REG_GBP,
+        LEVEL_BASE::REG_STACK_PTR,
+        LEVEL_BASE::REG_GBX,
+        LEVEL_BASE::REG_GDX,
+        LEVEL_BASE::REG_GCX,
+        LEVEL_BASE::REG_GAX,
 #ifdef _WIN64
-        REG_R8,
-        REG_R9,
-        REG_R10,
-        REG_R11,
-        REG_R12,
-        REG_R13,
-        REG_R14,
-        REG_R15,
+        LEVEL_BASE::REG_R8,
+        LEVEL_BASE::REG_R9,
+        LEVEL_BASE::REG_R10,
+        LEVEL_BASE::REG_R11,
+        LEVEL_BASE::REG_R12,
+        LEVEL_BASE::REG_R13,
+        LEVEL_BASE::REG_R14,
+        LEVEL_BASE::REG_R15,
 #endif
-        REG_GFLAGS
+        LEVEL_BASE::REG_GFLAGS
     };
     const size_t regsCount = sizeof(regs) / sizeof(regs[0]);
     static ADDRINT values[regsCount] = { 0 };
@@ -317,8 +321,8 @@ std::string dumpContext(const std::string& disasm, const CONTEXT* ctx)
         prev = values[i];
         values[i] = Address;
 
-        ss << reg_names[i] << " = 0x" << std::hex << Address;
-        if (reg == REG_GFLAGS) {
+        ss << REG_names[i] << " = 0x" << std::hex << Address;
+        if (reg == LEVEL_BASE::REG_GFLAGS) {
             ss << " " << flagsToStr(prev, Address);
         }
         ss << "; ";
@@ -378,7 +382,7 @@ std::string resolve_func_name(const ADDRINT addrTo, const std::string& dll_name,
     {
         //possibly a proxy to the indirect syscall
         g_IsIndirectSyscall = true;
-        const ADDRINT eax = (ADDRINT)PIN_GetContextReg(ctx, REG_GAX);
+        const ADDRINT eax = (ADDRINT)PIN_GetContextReg(ctx, LEVEL_BASE::REG_GAX);
         const std::string realName = m_Settings.syscallsTable.getName(eax);
         sstr << " -> ";
         if (realName.length()) {
@@ -582,7 +586,7 @@ VOID RdtscCalled(const CONTEXT* ctxt)
 {
     PinLocker locker;
 
-    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, LEVEL_BASE::REG_INST_PTR);
 
     const WatchedType wType = isWatchedAddress(Address);
     if (wType == WatchedType::NOT_WATCHED) return;
@@ -590,48 +594,60 @@ VOID RdtscCalled(const CONTEXT* ctxt)
     LogMsgAtAddress(wType, Address, nullptr, "RDTSC", nullptr);
 }
 
+VOID PauseTracedApp(const int sleepMs)
+{
+    PIN_StopApplicationThreads(PIN_ThreadId());
+    std::this_thread::sleep_for(std::chrono::milliseconds(sleepMs));
+    PIN_ResumeApplicationThreads(PIN_ThreadId());
+}
+
 VOID PauseAtOffset(const CONTEXT* ctxt)
 {
-    PinLocker locker;
-    if (!m_Settings.stopOffsets.size()) return;
+    { //scope0
+        PinLocker locker;
+        if (!m_Settings.stopOffsets.size()) return;
 
-    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
-    const WatchedType wType = isWatchedAddress(Address);
-    if (wType != WatchedType::WATCHED_MY_MODULE) return;
+        const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, LEVEL_BASE::REG_INST_PTR);
+        const WatchedType wType = isWatchedAddress(Address);
+        if (wType != WatchedType::WATCHED_MY_MODULE) return;
 
-    const ADDRINT rva = addr_to_rva(Address); // convert to RVA
+        const ADDRINT rva = addr_to_rva(Address); // convert to RVA
 
-    auto itr = m_Settings.stopOffsets.find(StopOffset(rva));
-    if (itr == m_Settings.stopOffsets.end()) {
-        return;
-    }
-    {//log info
-        std::stringstream ss;
-        ss << "# Stop offset reached: RVA = 0x" << std::hex << rva << ". Sleeping " << std::dec << m_Settings.stopOffsetTime << " s.";
-        if (itr->times) {
-            ss << " Hits remaining: " << (itr->times - 1);
+        auto itr = m_Settings.stopOffsets.find(StopOffset(rva));
+        if (itr == m_Settings.stopOffsets.end()) {
+            return;
         }
-        traceLog.logLine(ss.str());
-        std::cerr << ss.str() << std::endl;
-    }
-
-    StopOffset &so = const_cast<StopOffset &>(*itr);
-    if (so.times != 0) { // if the StopOffset with times 0 is on the list, it means it should be executed infinite number of times
-        so.times--;
-        if (so.times == 0) {
-            m_Settings.stopOffsets.erase(itr); //erase
+        {//log info
+            std::stringstream ss;
+            ss << "# Stop offset reached: RVA = 0x" << std::hex << rva << ". Sleeping " << std::dec << m_Settings.stopOffsetTime << " s.";
+            if (itr->times) {
+                ss << " Hits remaining: " << (itr->times - 1);
+            }
+            traceLog.logLine(ss.str());
+            std::cerr << ss.str() << std::endl;
         }
-    }
+
+        StopOffset &so = const_cast<StopOffset &>(*itr);
+        if (so.times != 0) { // if the StopOffset with times 0 is on the list, it means it should be executed infinite number of times
+            so.times--;
+            if (so.times == 0) {
+                m_Settings.stopOffsets.erase(itr); //erase
+            }
+        }   
+    } //!scope0
+
     const int sleepMs = m_Settings.stopOffsetTime * 1000;
-    PIN_Sleep(sleepMs);
+    PauseTracedApp(sleepMs);
 
-    {//log info
+    { //scope1
+        //log info
+        PinLocker locker;
         std::stringstream ss;
         ss.clear();
         ss << "# Resuming execution";
         traceLog.logLine(ss.str());
         std::cerr << ss.str() << std::endl;
-    }
+    } //!scope1
 }
 
 VOID CpuidCalled(const CONTEXT* ctxt)
@@ -639,12 +655,12 @@ VOID CpuidCalled(const CONTEXT* ctxt)
     PinLocker locker;
     const std::string mnem = "CPUID";
 
-    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, LEVEL_BASE::REG_INST_PTR);
 
     const WatchedType wType = isWatchedAddress(Address);
     if (wType == WatchedType::NOT_WATCHED) return;
 
-    ADDRINT Param = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
+    ADDRINT Param = (ADDRINT)PIN_GetContextReg(ctxt, LEVEL_BASE::REG_GAX);
     if (wType == WatchedType::WATCHED_MY_MODULE) {
         ADDRINT rva = addr_to_rva(Address); // convert to RVA
         traceLog.logInstruction(0, rva, mnem, Param);
@@ -663,11 +679,11 @@ BOOL fetchInterruptID(const ADDRINT Address, int &intID)
     unsigned char copyBuf[2] = { 0 };
     int fetchedSize = 1;
     std::string mnem;
-    if (!PIN_FetchCode(copyBuf, (const void*)Address, fetchedSize, NULL)) return FALSE;
+    if (!PIN_FetchCode(copyBuf, (const void*)Address, fetchedSize, (LEVEL_BASE::EXCEPTION_INFO*)NULL)) return FALSE;
 
     if (copyBuf[0] == 0xCD) { // INT
         fetchedSize = 2;
-        if (!PIN_FetchCode(copyBuf, (const void*)Address, fetchedSize, NULL)) return FALSE;
+        if (!PIN_FetchCode(copyBuf, (const void*)Address, fetchedSize, (LEVEL_BASE::EXCEPTION_INFO*)NULL)) return FALSE;
     }
     switch (copyBuf[0]) {
         case 0xCC:
@@ -688,7 +704,7 @@ BOOL fetchInterruptID(const ADDRINT Address, int &intID)
 VOID InterruptCalled(const CONTEXT* ctxt)
 {
     PinLocker locker;
-    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, LEVEL_BASE::REG_INST_PTR);
     const WatchedType wType = isWatchedAddress(Address);
     if (wType == WatchedType::NOT_WATCHED) {
         return;
@@ -758,7 +774,7 @@ BOOL _fetchSyscallData(CONTEXT* ctxt, SYSCALL_STANDARD &std, ADDRINT &address)
     // now be performed with the SYSCALL instruction, and with the INT 2E
     // instruction. The ABI is the same in both cases.
     if (std == SYSCALL_STANDARD_WINDOWS_INT) {
-        const auto* insPtr = reinterpret_cast<ADDRINT*>(PIN_GetContextReg(ctxt, REG_INST_PTR));
+        const auto* insPtr = reinterpret_cast<ADDRINT*>(PIN_GetContextReg(ctxt, LEVEL_BASE::REG_INST_PTR));
         uint16_t instruction = 0;
         PIN_SafeCopy(&instruction, insPtr, sizeof(instruction));
         if (instruction != 0x2ECD) { // INT 2E
@@ -776,7 +792,7 @@ BOOL _fetchSyscallData(CONTEXT* ctxt, SYSCALL_STANDARD &std, ADDRINT &address)
             // address, which is in a 32-bit code portion.
             return getReturnFromTheStack(ctxt);
         }
-        return PIN_GetContextReg(ctxt, REG_INST_PTR);
+        return PIN_GetContextReg(ctxt, LEVEL_BASE::REG_INST_PTR);
     }();
 
     if (_address == UNKNOWN_ADDR) return FALSE; //invalid
@@ -922,8 +938,8 @@ ADDRINT _setTimer(const CONTEXT* ctxt, bool isEax)
     UINT64 result = 0;
 
     if (Timer == 0) {
-        ADDRINT edx = (ADDRINT)PIN_GetContextReg(ctxt, REG_GDX);
-        ADDRINT eax = (ADDRINT)PIN_GetContextReg(ctxt, REG_GAX);
+        ADDRINT edx = (ADDRINT)PIN_GetContextReg(ctxt, LEVEL_BASE::REG_GDX);
+        ADDRINT eax = (ADDRINT)PIN_GetContextReg(ctxt, LEVEL_BASE::REG_GAX);
         Timer = (UINT64(edx) << 32) | eax;
     }
     else {
@@ -955,33 +971,6 @@ ADDRINT AlterRdtscValueEax(const CONTEXT* ctxt)
 // Instrument functions arguments
 /* ===================================================================== */
 
-
-size_t getReadableMemSize(VOID* addr)
-{
-    const ADDRINT start = query_region_base((ADDRINT)addr);
-    if (start == UNKNOWN_ADDR || start == 0) {
-        return 0;
-    }
-    OS_MEMORY_AT_ADDR_INFORMATION memInfo;
-    OS_RETURN_CODE result = OS_QueryMemory(PIN_GetPid(), addr, &memInfo);
-
-    if (result.generic_err != OS_RETURN_CODE_NO_ERROR || !memInfo.MapSize) {
-        return 0;
-    }
-    if (memInfo.Protection == OS_PAGE_PROTECTION_TYPE_NOACCESS) {
-        return 0;
-    }
-    size_t memSize = memInfo.MapSize;
-    const VOID* base = memInfo.BaseAddress;
-    if ((ADDRINT)addr < (ADDRINT)base || (ADDRINT)addr >= ((ADDRINT)base + memSize)) {
-        return 0; // failed boundary check
-    }
-    if (base != 0 && base < addr) {
-        size_t pos = (ADDRINT)addr - (ADDRINT)base;
-        memSize -= pos;
-    }
-    return (memInfo.Protection & OS_PAGE_PROTECTION_TYPE_READ) ? memSize : 0;
-}
 
 BOOL isValidReadPtr(VOID* ptr)
 {
@@ -1138,7 +1127,7 @@ VOID LogInstruction(const CONTEXT* ctxt, THREADID tid, const char* disasm)
 
     PinLocker locker;
 
-    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, REG_INST_PTR);
+    const ADDRINT Address = (ADDRINT)PIN_GetContextReg(ctxt, LEVEL_BASE::REG_INST_PTR);
     const WatchedType wType = isWatchedAddress(Address);
 
     if (wType == WatchedType::NOT_WATCHED) {
@@ -1210,7 +1199,7 @@ VOID InstrumentInstruction(INS ins, VOID *v)
         INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)HandleFunctionReturn,
             IARG_THREAD_ID,        // Thread ID for TLS
             IARG_INST_PTR,         // Instruction pointer
-            IARG_REG_VALUE, REG_GAX, // Return value in EAX/RAX
+            IARG_REG_VALUE, LEVEL_BASE::REG_GAX, // Return value in EAX/RAX
             IARG_END);
     }
     const IMG pImg = IMG_FindByAddress(INS_Address(ins));
@@ -1325,14 +1314,14 @@ VOID InstrumentInstruction(INS ins, VOID *v)
             IPOINT_AFTER, (AFUNPTR)AlterRdtscValueEdx,
             IARG_CONTEXT,
             IARG_RETURN_REGS,
-            REG_GDX,
+            LEVEL_BASE::REG_GDX,
             IARG_END);
 
         INS_InsertCall(ins,
             IPOINT_AFTER, (AFUNPTR)AlterRdtscValueEax,
             IARG_CONTEXT,
             IARG_RETURN_REGS,
-            REG_GAX,
+            LEVEL_BASE::REG_GAX,
             IARG_END);
     }
 #ifdef USE_ANTIDEBUG
@@ -1579,8 +1568,8 @@ static void OnCtxChange(THREADID threadIndex,
 
     PinLocker locker;
 
-    const ADDRINT addrFrom = (ADDRINT)PIN_GetContextReg(ctxtFrom, REG_INST_PTR);
-    const ADDRINT addrTo = (ADDRINT)PIN_GetContextReg(ctxtTo, REG_INST_PTR);
+    const ADDRINT addrFrom = (ADDRINT)PIN_GetContextReg(ctxtFrom, LEVEL_BASE::REG_INST_PTR);
+    const ADDRINT addrTo = (ADDRINT)PIN_GetContextReg(ctxtTo, LEVEL_BASE::REG_INST_PTR);
     _SaveTransitions(addrFrom, addrTo, FALSE);
 }
 

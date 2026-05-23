@@ -195,8 +195,8 @@ typedef struct _IMAGE_EXPORT_DIRECTORY {
 } IMAGE_EXPORT_DIRECTORY, * PIMAGE_EXPORT_DIRECTORY;
 
 #ifndef FIELD_OFFSET
-#define FIELD_OFFSET(type, field)    ((LONG)(BYTE*)&(((type *)0)->field))
-#define UFIELD_OFFSET(type, field)    ((DWORD)(BYTE*)&(((type *)0)->field))
+#define FIELD_OFFSET(type, field)    ((LONG)offsetof(type, field))
+#define UFIELD_OFFSET(type, field)    ((DWORD)offsetof(type, field))
 #endif
 
 

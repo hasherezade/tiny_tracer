@@ -2,7 +2,6 @@
 # Copyright (C) 2012-2020 Intel Corporation.
 # SPDX-License-Identifier: MIT
 #
-
 ##############################################################
 #
 # This file includes all the test targets as well as all the
@@ -17,6 +16,17 @@ else
   BITNESS := 32
 endif
 
+##############################################################
+#
+# Windows SDK (needed for PIN 4.x clang-cl builds)
+#
+##############################################################
+ifeq ($(OS),Windows_NT)
+-include sdk_lib.mk
+ifdef WINDOWS_SDK_KERNEL32
+TOOL_LIBS += $(WINDOWS_SDK_KERNEL32)
+endif
+endif
 
 ##############################################################
 #
@@ -31,7 +41,6 @@ endif
 # Tests defined here should not be defined in TOOL_ROOTS and TEST_ROOTS.
 TEST_TOOL_ROOTS := TinyTracer$(BITNESS)
 
-
 ##############################################################
 #
 # Build rules
@@ -41,7 +50,7 @@ TEST_TOOL_ROOTS := TinyTracer$(BITNESS)
 # This section contains the build rules for all binaries that have special build rules.
 # See makefile.default.rules for the default build rules.
 
-ifeq ($(TARGET), WIN32)
+ifeq ($(OS),Windows_NT)
 EVASION_CHECKS=$(OBJDIR)AntiDebug$(OBJ_SUFFIX) $(OBJDIR)AntiVm$(OBJ_SUFFIX) $(OBJDIR)EvasionWatch$(OBJ_SUFFIX)
 EXPORTS_INFO=$(OBJDIR)ExportsInfo$(OBJ_SUFFIX)
 else
@@ -49,8 +58,13 @@ EVASION_CHECKS=
 EXPORTS_INFO=
 endif
 
-$(OBJDIR)TinyTracer$(BITNESS)$(PINTOOL_SUFFIX): $(OBJDIR)Util$(OBJ_SUFFIX) $(OBJDIR)Settings$(OBJ_SUFFIX) $(OBJDIR)TraceLog$(OBJ_SUFFIX) \
+# Auto-generate SDK lib path on Windows if missing
+ifeq ($(OS),Windows_NT)
+sdk_lib.mk: find_sdk_win.sh
+	bash find_sdk_win.sh
+endif
+
+$(OBJDIR)TinyTracer$(BITNESS)$(PINTOOL_SUFFIX): $(OBJDIR)Util$(OBJ_SUFFIX) $(OBJDIR)SysUtil$(OBJ_SUFFIX) $(OBJDIR)Settings$(OBJ_SUFFIX) $(OBJDIR)TraceLog$(OBJ_SUFFIX) \
 	$(OBJDIR)TinyTracer$(OBJ_SUFFIX) $(OBJDIR)ModuleInfo$(OBJ_SUFFIX) $(OBJDIR)ProcessInfo$(OBJ_SUFFIX) $(OBJDIR)FuncWatch$(OBJ_SUFFIX) \
 	$(OBJDIR)TrackReturns$(OBJ_SUFFIX) $(EVASION_CHECKS) $(EXPORTS_INFO)
 	$(LINKER) $(TOOL_LDFLAGS) $(LINK_EXE)$@ $^ $(TOOL_LPATHS) $(TOOL_LIBS)
-	

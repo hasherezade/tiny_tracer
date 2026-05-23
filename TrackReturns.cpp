@@ -7,6 +7,7 @@
 #include <vector>
 #include <stack>
 #include <iostream>
+#include <sstream>
 
 #define MEM_SNAPSHOT_SIZE 8
 
@@ -56,7 +57,7 @@ namespace RetTracker {
         // Create the TLS key 
         RetTracker::tlsKey = PIN_CreateThreadDataKey(deleteCallstack);
         if (tlsKey == static_cast<TLS_KEY>(-1)) {
-            // handle error -> you’ve exhausted TLS keys
+            // handle error -> you've exhausted TLS keys
             std::cerr << "Exhausted TLS keys!\n";
             PIN_ExitProcess(1);
         }
