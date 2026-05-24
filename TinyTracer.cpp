@@ -618,12 +618,13 @@ VOID PauseAtOffset(const CONTEXT* ctxt)
             return;
         }
         {//log info
+            const bool forceFlush = true;
             std::stringstream ss;
             ss << "# Stop offset reached: RVA = 0x" << std::hex << rva << ". Sleeping " << std::dec << m_Settings.stopOffsetTime << " s.";
             if (itr->times) {
                 ss << " Hits remaining: " << (itr->times - 1);
             }
-            traceLog.logLine(ss.str());
+            traceLog.logLine(ss.str(), forceFlush);
             std::cerr << ss.str() << std::endl;
         }
 
@@ -641,11 +642,12 @@ VOID PauseAtOffset(const CONTEXT* ctxt)
 
     { //scope1
         //log info
+        const bool forceFlush = true;
         PinLocker locker;
         std::stringstream ss;
         ss.clear();
         ss << "# Resuming execution";
-        traceLog.logLine(ss.str());
+        traceLog.logLine(ss.str(), forceFlush);
         std::cerr << ss.str() << std::endl;
     } //!scope1
 }

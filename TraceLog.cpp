@@ -134,14 +134,14 @@ void TraceLog::logSyscall(const ADDRINT base, const ADDRINT rva, const ADDRINT p
     logLine(ss.str());
 }
 
-void TraceLog::logLine(const std::string& str)
+void TraceLog::logLine(const std::string& str, bool forceFlush)
 {
     std::lock_guard<std::mutex> lock(m_fileMutex);
 
     if (!createFile()) return;
 
     m_traceFile << str << std::endl;
-    autoFlush();
+    autoFlush(forceFlush);
 }
 
 void TraceLog::logNewSectionCalled(const ADDRINT prevAddr, const std::string &prevSection, const std::string &currSection)

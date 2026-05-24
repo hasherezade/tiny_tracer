@@ -40,7 +40,7 @@ public:
     void logInstruction(const ADDRINT base, const ADDRINT rva, const std::string& mnem);
     void logSyscall(const ADDRINT base, const ADDRINT rva, const ADDRINT param, const std::string &funcName);
 
-    void logLine(const std::string &str);
+    void logLine(const std::string &str, bool forceFlush = false);
 
 protected:
 
@@ -60,11 +60,11 @@ protected:
         return false;
     }
 
-    bool maybeFlush()
+    bool maybeFlush(bool forceFlush)
     {
         auto now = std::chrono::steady_clock::now();
 
-        if (m_firstFlush ||
+        if (m_firstFlush || forceFlush ||
             std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastFlushTime) >= m_flushInterval)
         {
             m_traceFile.flush();
@@ -75,12 +75,12 @@ protected:
         return false;
     }
 
-    void autoFlush(bool close = true)
+    void autoFlush(bool forceFlush = false, bool close = true)
     {
         if (!m_traceFile.is_open()) {
             return;
         }
-        const bool isFlushed = maybeFlush();
+        const bool isFlushed = maybeFlush(forceFlush);
         if (isFlushed && close) {
             m_traceFile.close();
         }
