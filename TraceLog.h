@@ -87,7 +87,7 @@ protected:
     }
 
     std::chrono::steady_clock::time_point m_lastFlushTime;
-    std::chrono::milliseconds m_flushInterval{ 200 };
+    std::chrono::milliseconds m_flushInterval{ 1000 };
     bool m_firstFlush;
 
     std::mutex m_fileMutex;
