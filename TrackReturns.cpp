@@ -2,6 +2,7 @@
 #include "Settings.h"
 #include "TinyTracer.h"
 #include "ModuleInfo.h"
+#include "TraceLog.h"
 
 #include <string>
 #include <vector>
