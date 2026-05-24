@@ -1,18 +1,28 @@
 #!/bin/bash
 
+
+mingw32-make clean
 mingw32-make all TARGET=ia32
 mingw32-make all TARGET=intel64
 
-TT_32=./obj-ia32/TinyTracer32.dll
-TT_64=./obj-intel64/TinyTracer64.dll
- 
+TT_BUILD_32=TinyTracer32.dll
+TT_BUILD_64=TinyTracer64.dll
+
+TT_32=./obj-ia32/$TT_BUILD_32
+TT_64=./obj-intel64/$TT_BUILD_64
+
+TARGET_DIR=./install32_64
+
+rm $TARGET_DIR/$TT_BUILD_32
+rm $TARGET_DIR/$TT_BUILD_64
+
 APP_TYPE32=$(file "$TT_32")
 APP_TYPE64=$(file "$TT_64")
 
 if [[ $APP_TYPE64 == *"PE32+ executable"* ]];
 then
     echo "[+] 64 bit build ok."
-    cp "$TT_64" ./install32_64/TinyTracer64.dll
+    cp "$TT_64" $TARGET_DIR/$TT_BUILD_64
     if [[ $? == 0 ]];
     then
     	echo "[+] 64 bit install ok."
@@ -26,7 +36,7 @@ fi
 if [[ $APP_TYPE32 == *"PE32 executable"* ]];
 then
     echo "[+] 32 bit build ok."
-    cp "$TT_32" ./install32_64/TinyTracer32.dll
+    cp "$TT_32" $TARGET_DIR/$TT_BUILD_32
     if [[ $? == 0 ]];
     then
     	echo "[+] 32 bit install ok."
