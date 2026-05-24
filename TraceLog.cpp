@@ -136,6 +136,8 @@ void TraceLog::logSyscall(const ADDRINT base, const ADDRINT rva, const ADDRINT p
 
 void TraceLog::logLine(const std::string& str)
 {
+    std::lock_guard<std::mutex> lock(m_fileMutex);
+
     if (!createFile()) return;
 
     m_traceFile << str << std::endl;

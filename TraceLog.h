@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include <mutex>
 
 class TraceLog 
 {
@@ -88,6 +89,8 @@ protected:
     std::chrono::steady_clock::time_point m_lastFlushTime;
     std::chrono::milliseconds m_flushInterval{ 200 };
     bool m_firstFlush;
+
+    std::mutex m_fileMutex;
 
     std::string m_logFileName;
     std::ofstream m_traceFile;
