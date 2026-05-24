@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <chrono>
 
 class TraceLog 
 {
@@ -10,6 +11,7 @@ public:
     static const char DELIMITER = ';';
 
     TraceLog()
+        : m_firstFlush(true)
     {
     }
 
@@ -57,16 +59,35 @@ protected:
         return false;
     }
 
+    bool maybeFlush()
+    {
+        auto now = std::chrono::steady_clock::now();
+
+        if (m_firstFlush ||
+            std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastFlushTime) >= m_flushInterval)
+        {
+            m_traceFile.flush();
+            m_lastFlushTime = now;
+            m_firstFlush = false;
+            return true;
+        }
+        return false;
+    }
+
     void autoFlush(bool close = true)
     {
         if (!m_traceFile.is_open()) {
             return;
         }
-        m_traceFile.flush();
-        if (close) {
+        const bool isFlushed = maybeFlush();
+        if (isFlushed && close) {
             m_traceFile.close();
         }
     }
+
+    std::chrono::steady_clock::time_point m_lastFlushTime;
+    std::chrono::milliseconds m_flushInterval{ 200 };
+    bool m_firstFlush;
 
     std::string m_logFileName;
     std::ofstream m_traceFile;
