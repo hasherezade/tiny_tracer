@@ -1,8 +1,6 @@
 #include "TraceLog.h"
 
 #include "Util.h"
-
-#include <iostream>
 #include <sstream>
 
 void TraceLog::logCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, bool isRVA, const std::string &module, const std::string &func)
@@ -142,7 +140,7 @@ void TraceLog::logLine(const std::string& str)
     if (!createFile()) return;
 
     m_traceFile << str << std::endl;
-    m_traceFile.flush();
+    autoFlush();
 }
 
 void TraceLog::logNewSectionCalled(const ADDRINT prevAddr, const std::string &prevSection, const std::string &currSection)

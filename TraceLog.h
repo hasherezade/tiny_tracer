@@ -4,7 +4,6 @@
 #include <iostream>
 #include <fstream>
 
-
 class TraceLog 
 {
 public:
@@ -21,12 +20,11 @@ public:
         }
     }
 
-    void init(std::string fileName, bool is_short)
+    void init(const std::string &fileName, bool is_short)
     {
-        if (fileName.empty()) fileName = "output.txt";
-        m_logFileName = fileName;
+        m_logFileName = (fileName.empty()) ? "output.txt" : fileName;
         m_shortLog = is_short;
-        createFile();
+        createFile(true);
     }
 
     void logCall(const ADDRINT prevModuleBase, const ADDRINT prevAddr, bool isRVA, const std::string &module, const std::string &func = "");
@@ -43,16 +41,31 @@ public:
 
 protected:
 
-    bool createFile()
+    bool createFile(bool reset = false)
     {
         if (m_traceFile.is_open()) {
             return true;
         }
-        m_traceFile.open(m_logFileName.c_str(), std::ios::out);
+        auto mode = std::ios::out;
+        if (!reset) {
+            mode |= std::ios::app;
+        }
+        m_traceFile.open(m_logFileName.c_str(), mode);
         if (m_traceFile.is_open()) {
             return true;
         }
         return false;
+    }
+
+    void autoFlush(bool close = true)
+    {
+        if (!m_traceFile.is_open()) {
+            return;
+        }
+        m_traceFile.flush();
+        if (close) {
+            m_traceFile.close();
+        }
     }
 
     std::string m_logFileName;
