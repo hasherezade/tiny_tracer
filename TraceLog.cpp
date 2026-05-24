@@ -69,8 +69,7 @@ void TraceLog::logSectionChange(const ADDRINT prevAddr, std::string &name)
     ss
         << std::hex << prevAddr 
         << DELIMITER 
-        << "section: [" << name << "]"
-        << std::endl;
+        << "section: [" << name << "]";
     logLine(ss.str());
 }
 
