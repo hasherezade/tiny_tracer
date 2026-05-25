@@ -137,6 +137,7 @@ public:
             std::cerr << "Coud not open file: " << filename << std::endl;
             return 0;
         }
+        const size_t count_before = funcs.size();
         const size_t MAX_LINE = 300;
         char line[MAX_LINE] = { 0 };
         while (!myfile.eof()) {
@@ -149,7 +150,7 @@ public:
                 appendFunc(func_info);
             }
         }
-        return funcs.size();
+        return funcs.size() - count_before;
     }
 
     std::vector<WFuncInfo_T> funcs;

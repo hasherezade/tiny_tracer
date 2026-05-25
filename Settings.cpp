@@ -423,8 +423,10 @@ bool Settings::loadINI(const std::string &filename)
 
 size_t Settings::loadExcluded(const char* excludedList)
 {
-    this->excludedFuncs.loadList(excludedList);
+    const size_t loadedFunc = this->excludedFuncs.loadList(excludedList);
 
+    const size_t count_before = this->excludedDll.size();
+    // load excluded Dlls
     std::ifstream myfile(excludedList);
     if (!myfile.is_open()) {
         return 0;
@@ -445,6 +447,7 @@ size_t Settings::loadExcluded(const char* excludedList)
         this->excludedDll.insert(dllName);
         dllsCount++;
     }
-    return dllsCount;
+
+    return loadedFunc + (this->excludedDll.size() - count_before);
 }
 

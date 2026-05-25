@@ -1760,7 +1760,9 @@ int main(int argc, char *argv[])
     const size_t local_watch_count = m_Settings.funcWatch.loadList(localWatchedPath.c_str(), &m_Settings.excludedFuncs);
 
     if (local_watch_count || global_watch_count) {
-        std::cout << "Watching " << std::dec << local_watch_count << " (local)" 
+        std::cout << "Watching " << std::dec << (local_watch_count + global_watch_count) 
+            << ": " 
+            << local_watch_count << " (local)" 
             << " and " << global_watch_count << " (global); "
             << m_Settings.funcWatch.funcs.size() << " functions; " 
             << m_Settings.funcWatch.syscalls.size() << " syscalls"
@@ -1768,7 +1770,9 @@ int main(int argc, char *argv[])
     }
 
     if (local_excl_count || global_excl_count) {
-        std::cout << "Excluded " << std::dec << local_excl_count << " (local)"
+        std::cout << "Excluded " << std::dec << (local_excl_count + global_excl_count)
+            << ": "
+            << local_excl_count << " (local)"
             << " and " << global_excl_count << " (global); "
             << m_Settings.excludedFuncs.funcs.size() << " functions; "
             << m_Settings.excludedDll.size() << " DLLs"
