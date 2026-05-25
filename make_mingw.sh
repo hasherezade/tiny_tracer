@@ -1,10 +1,5 @@
 #!/bin/bash
 
-
-mingw32-make clean
-mingw32-make all TARGET=ia32
-mingw32-make all TARGET=intel64
-
 TT_BUILD_32=TinyTracer32.dll
 TT_BUILD_64=TinyTracer64.dll
 
@@ -13,8 +8,22 @@ TT_64=./obj-intel64/$TT_BUILD_64
 
 TARGET_DIR=./install32_64
 
-rm $TARGET_DIR/$TT_BUILD_32
-rm $TARGET_DIR/$TT_BUILD_64
+if [ -f $TT_32 ]; then
+  rm $TT_32
+fi
+if [ -f $TT_64 ]; then
+  rm $TT_64
+fi
+
+if [ -f $TARGET_DIR/$TT_BUILD_32 ]; then
+  rm $TARGET_DIR/$TT_BUILD_32
+fi
+if [ -f $TARGET_DIR/$TT_BUILD_64 ]; then
+  rm $TARGET_DIR/$TT_BUILD_64
+fi
+
+mingw32-make all TARGET=ia32
+mingw32-make all TARGET=intel64
 
 APP_TYPE32=$(file "$TT_32")
 APP_TYPE64=$(file "$TT_64")
