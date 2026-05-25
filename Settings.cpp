@@ -438,7 +438,11 @@ size_t Settings::loadExcluded(const char* excludedList)
         if (strchr(line, LIST_DELIMITER) != nullptr) {
             continue;
         }
-        this->excludedDll.insert(line);
+        std::string dllName(line);
+        util::trim(dllName);
+        if (dllName.empty()) continue;
+
+        this->excludedDll.insert(dllName);
         dllsCount++;
     }
     return dllsCount;

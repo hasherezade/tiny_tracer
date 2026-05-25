@@ -85,7 +85,9 @@ size_t FuncWatchList::loadList(const char* filename, FuncList* exclusions)
 {
     std::ifstream myfile(filename);
     if (!myfile.is_open()) {
+#ifdef _DEBUG
         std::cerr << "Coud not open file: " << filename << std::endl;
+#endif//_DEBUG
         return 0;
     }
     const size_t MAX_LINE = 300;

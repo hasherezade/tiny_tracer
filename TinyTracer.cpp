@@ -55,6 +55,8 @@
 #define LOCAL_FUNC_FILE_SUFFIX "func.csv"
 #define DISASM_RANGE_FILE_SUFFIX "disasm_range.csv"
 #define STOP_OFFSETS_FILE_SUFFIX "stop_offsets.txt"
+#define PARAMS_FILE_SUFFIX "params.txt"
+#define EXCLUDED_FILE_SUFFIX "excluded.txt"
 
 bool g_IsIndirectSyscall = false;
 
@@ -1700,24 +1702,6 @@ int main(int argc, char *argv[])
     }
     PIN_InitSymbolsAlt(mode);
 
-    if (KnobExcludedListFile.Enabled()) {
-        std::string excludedList = KnobExcludedListFile.ValueString();
-        if (excludedList.length()) {
-            m_Settings.loadExcluded(excludedList.c_str());
-            std::cout << "Excluded " << m_Settings.excludedFuncs.funcs.size() << " functions\n";
-            std::cout << "Excluded " << m_Settings.excludedDll.size() << " DLLs\n";
-        }
-    }
-
-    if (KnobWatchListFile.Enabled()) {
-        std::string watchListFile = KnobWatchListFile.ValueString();
-        if (watchListFile.length()) {
-            m_Settings.funcWatch.loadList(watchListFile.c_str(), &m_Settings.excludedFuncs);
-            std::cout << "Watch " << m_Settings.funcWatch.funcs.size() << " functions\n";
-            std::cout << "Watch " << m_Settings.funcWatch.syscalls.size() << " syscalls\n";
-        }
-    }
-
     if (KnobSyscallsTable.Enabled()) {
         std::string syscallsTableFile = KnobSyscallsTable.ValueString();
         if (syscallsTableFile.length()) {
@@ -1747,10 +1731,48 @@ int main(int argc, char *argv[])
     if (m_Settings.disasmRanges.size()) {
         std::cout << "Disasm ranges: " << m_Settings.disasmRanges.size() << std::endl;
     }
-    std::string stopOffsetsPath = util::makePath(outDir, targetModule, STOP_OFFSETS_FILE_SUFFIX);
+    const std::string stopOffsetsPath = util::makePath(outDir, targetModule, STOP_OFFSETS_FILE_SUFFIX);
     Settings::loadStopOffsetsList(stopOffsetsPath.c_str(), m_Settings.stopOffsets);
     if (m_Settings.stopOffsets.size()) {
         std::cout << "Loaded " << m_Settings.stopOffsets.size() << " stop offsets\n";
+    }
+
+    size_t global_excl_count = 0;
+    if (KnobExcludedListFile.Enabled()) {
+        std::string excludedList = KnobExcludedListFile.ValueString();
+        if (excludedList.length()) {
+            global_excl_count = m_Settings.loadExcluded(excludedList.c_str());
+        }
+    }
+
+    const std::string localExcludedPath = util::makePath(outDir, targetModule, EXCLUDED_FILE_SUFFIX);
+    size_t local_excl_count = m_Settings.loadExcluded(localExcludedPath.c_str());
+
+    size_t global_watch_count = 0;
+    if (KnobWatchListFile.Enabled()) {
+        std::string watchListFile = KnobWatchListFile.ValueString();
+        if (watchListFile.length()) {
+            global_watch_count = m_Settings.funcWatch.loadList(watchListFile.c_str(), &m_Settings.excludedFuncs);
+        }
+    }
+
+    const std::string localWatchedPath = util::makePath(outDir, targetModule, PARAMS_FILE_SUFFIX);
+    const size_t local_watch_count = m_Settings.funcWatch.loadList(localWatchedPath.c_str(), &m_Settings.excludedFuncs);
+
+    if (local_watch_count || global_watch_count) {
+        std::cout << "Watching " << std::dec << local_watch_count << " (local)" 
+            << " and " << global_watch_count << " (global); "
+            << m_Settings.funcWatch.funcs.size() << " functions; " 
+            << m_Settings.funcWatch.syscalls.size() << " syscalls"
+            << std::endl;
+    }
+
+    if (local_excl_count || global_excl_count) {
+        std::cout << "Excluded " << std::dec << local_excl_count << " (local)"
+            << " and " << global_excl_count << " (global); "
+            << m_Settings.excludedFuncs.funcs.size() << " functions; "
+            << m_Settings.excludedDll.size() << " DLLs"
+            << std::endl;
     }
 #ifdef _WIN32
     TrackThreads::InstrumentCreateThreadSyscalls();
