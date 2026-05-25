@@ -4,8 +4,6 @@
 #include <fstream>
 #include <sstream>
 
-#include "Util.h"
-
 bool WFuncInfo::load(const std::string &sline, char delimiter)
 {
     std::vector<std::string> args;
@@ -17,7 +15,7 @@ bool WFuncInfo::load(const std::string &sline, char delimiter)
     this->paramCount = 0;
 
     if (args.size() >= 3) {
-        this->paramCount = util::loadInt(args[2]);
+        this->paramCount = util::loadInt<size_t>(args[2]);
     }
     return true;
 }
@@ -51,11 +49,11 @@ bool WSyscallInfo::load(const std::string& sline, char delimiter)
     if (args[0] != "<SYSCALL>") return false;
 
     // Parse syscall ID as a hexadecimal number
-    const int syscallId = util::loadInt(args[1], true);
+    const int syscallId = util::loadInt<int>(args[1], true);
     if (syscallId < 0) return false;
 
     this->syscallId = static_cast<uint32_t>(syscallId);
-    this->paramCount = util::loadInt(args[2]);
+    this->paramCount = util::loadInt<size_t>(args[2]);
 
     return true;
 }

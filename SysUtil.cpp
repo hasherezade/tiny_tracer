@@ -1,7 +1,9 @@
 #include "SysUtil.h"
 
-#ifdef _WIN32
+#include "ModuleInfo.h"
+#include "Util.h"
 
+#ifdef _WIN32
 #pragma comment(lib, "kernel32.lib")
 
 // Minimal Win32 declarations to avoid pulling in Windows.h under PinCRT
@@ -37,9 +39,6 @@ extern "C" {
 #else
 #include <cstdio>
 #endif
-
-#include "ModuleInfo.h"
-#include "Util.h"
 
 size_t getReadableMemSize(VOID* addr)
 {

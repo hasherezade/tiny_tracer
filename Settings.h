@@ -172,7 +172,8 @@ public:
         emulateSingleStep(true),
         disasmCtx(false), disasmDepth(DISASM_INNER),
         logReturn(false), followArgReturn(false),
-        volumeID(0)
+        volumeID(0),
+        flushInterval(1)
     {
     }
 
@@ -209,6 +210,7 @@ public:
     bool logSectTrans; // watch transitions between sections
     bool logShelcTrans; // watch transitions between shellcodes
     bool shortLogging; // Use short call logging (without a full DLL path)
+    long flushInterval; // Interval in which the log will be forced to flush (in seconds)
     bool logIndirect;
     size_t hexdumpSize;
     bool hookSleep;

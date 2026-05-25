@@ -33,6 +33,7 @@
 #define KEY_FOLLOW_ARGS_RETURN          "FOLLOW_ARGS_RETURN"
 #define KEY_PARSE_EXPORTS               "PARSE_EXPORTS"
 #define KEY_VOLUME_ID                   "VOLUME_ID"
+#define KEY_FLUSH_INTERVAL              "FLUSH_INTERVAL"
 
 t_shellc_options ConvertShcOption(unsigned int value)
 {
@@ -79,7 +80,7 @@ size_t SyscallsTable::load(const std::string& filename)
 
             std::string numId = lineStr.substr(0, found);
             std::string funcName = lineStr.substr(found + 1);
-            int syscallId = util::loadInt(numId, true);
+            int syscallId = util::loadInt<int>(numId, true);
 
             syscallToFuncName[syscallId] = funcName;
         }
@@ -95,13 +96,13 @@ bool StopOffset::load(const std::string& sline, char delimiter)
     util::splitList(sline, delimiter, args);
     if (!args.size()) return false;
 
-    this->rva = util::loadInt(args[0], true);
+    this->rva = util::loadInt<ADDRINT>(args[0], true);
     if (!this->rva) {
         return false;
     }
     // optional argument:
     if (args.size() >= 2) {
-        this->times = util::loadInt(args[1], false);
+        this->times = util::loadInt<size_t>(args[1], false);
     }
     return true;
 }
@@ -116,7 +117,7 @@ bool loadBoolean(const std::string &str)
     if (util::iequals(str, "False") || util::iequals(str, "off") || util::iequals(str, "no")) {
         return false;
     }
-    const int val = util::loadInt(str);
+    const int val = util::loadInt<int>(str);
     if (val == 0) return false;
     return true;
 }
@@ -142,9 +143,9 @@ bool parseRange(const std::string &token, std::set<DisasmRange>& disasmRanges)
             ss << "Range_" << std::dec << rangeCount;
             rangeName = ss.str();
         }
-        int start = util::loadInt(startHex, true);
+        int start = util::loadInt<int>(startHex, true);
         if (start == 0) return false;
-        int stop = util::loadInt(endHex, true);
+        int stop = util::loadInt<int>(endHex, true);
 
         DisasmRange r(start, stop, rangeName);
         disasmRanges.insert(r);
@@ -177,7 +178,7 @@ bool fillSettings(Settings &s, const std::string &line)
     util::trim(valStr);
 
     if (util::iequals(valName, KEY_FOLLOW_SHELLCODES)) {
-        const int val = util::loadInt(valStr);
+        const int val = util::loadInt<int>(valStr);
         s.followShellcode = ConvertShcOption(val);
         isFilled = true;
     }
@@ -209,8 +210,12 @@ bool fillSettings(Settings &s, const std::string &line)
         s.shortLogging = loadBoolean(valStr);
         isFilled = true;
     }
+    if (util::iequals(valName, KEY_FLUSH_INTERVAL)) {
+        s.flushInterval = util::loadInt<long>(valStr, false);
+        isFilled = true;
+    }
     if (util::iequals(valName, HEXDUMP_SIZE)) {
-        s.hexdumpSize = util::loadInt(valStr);
+        s.hexdumpSize = util::loadInt<size_t>(valStr);
         isFilled = true;
     }
     if (util::iequals(valName, LOG_INDIRECT)) {
@@ -222,20 +227,20 @@ bool fillSettings(Settings &s, const std::string &line)
         isFilled = true;
     }
     if (util::iequals(valName, SLEEP_TIME)) {
-        s.sleepTime = util::loadInt(valStr);
+        s.sleepTime = util::loadInt<size_t>(valStr);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_STOP_OFFSET_TIME)) {
-        s.stopOffsetTime = util::loadInt(valStr);
+        s.stopOffsetTime = util::loadInt<size_t>(valStr);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_ANTIDEBUG)) {
-        const int val = util::loadInt(valStr);
+        const int val = util::loadInt<int>(valStr);
         s.antidebug = ConvertWatchLevel(val);
         isFilled = true;
     }
     if (util::iequals(valName, KEY_ANTIVM)) {
-        const int val = util::loadInt(valStr);
+        const int val = util::loadInt<int>(valStr);
         s.antivm = ConvertWatchLevel(val);
         isFilled = true;
     }
@@ -256,7 +261,7 @@ bool fillSettings(Settings &s, const std::string &line)
         isFilled = true;
     }
     if (util::iequals(valName, KEY_DISASM_DEPTH)) {
-        const int val = util::loadInt(valStr);
+        const int val = util::loadInt<int>(valStr);
         s.disasmDepth = ConvertDisasmLevel(val);
         isFilled = true;
     }
@@ -273,7 +278,7 @@ bool fillSettings(Settings &s, const std::string &line)
         isFilled = true;
     }
     if (util::iequals(valName, KEY_VOLUME_ID)) {
-        s.volumeID = util::loadInt(valStr, true);
+        s.volumeID = util::loadInt<uint32_t>(valStr, true);
         isFilled = true;
     }
     return isFilled;
@@ -331,7 +336,7 @@ size_t Settings::loadCustomDefs(const char* filename, std::map<ADDRINT, std::str
         util::splitList(sline, ',', args);
         if (args.size() < 2) break;
 
-        const ADDRINT rva = util::loadInt(args[0], true);
+        const ADDRINT rva = util::loadInt<ADDRINT>(args[0], true);
         std::string name = args[1];
         customDefs[rva] = name;
     }
@@ -372,6 +377,7 @@ bool Settings::saveINI(const std::string &filename)
     myfile << KEY_LOG_SECTIONS_TRANSITIONS << DELIM << booleanToStr(this->logSectTrans) << "\r\n";
     myfile << KEY_LOG_SHELLCODES_TRANSITIONS << DELIM << booleanToStr(this->logShelcTrans) << "\r\n";
     myfile << KEY_SHORT_LOGGING << DELIM << booleanToStr(this->shortLogging) << "\r\n";
+    myfile << KEY_FLUSH_INTERVAL << DELIM << std::dec << this->flushInterval << "\r\n";
     myfile << KEY_USE_DEBUG_SYMBOLS << DELIM << booleanToStr(this->useDebugSym) << "\r\n";
     myfile << HEXDUMP_SIZE << DELIM << std::dec << this->hexdumpSize << "\r\n";
     myfile << HOOK_SLEEP << DELIM << std::dec << booleanToStr(this->hookSleep) << "\r\n";

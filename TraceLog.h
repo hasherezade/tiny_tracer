@@ -23,10 +23,18 @@ public:
         }
     }
 
-    void init(const std::string &fileName, bool is_short)
+    void init(const std::string &fileName, bool is_short, long flushIntervalSeconds)
     {
+        std::lock_guard<std::mutex> lock(m_fileMutex);
+
         m_logFileName = (fileName.empty()) ? "output.txt" : fileName;
         m_shortLog = is_short;
+
+        m_flushInterval =
+            (flushIntervalSeconds < 0)
+            ? std::chrono::milliseconds{ -1 }
+        : std::chrono::seconds{ flushIntervalSeconds };
+
         createFile(true);
     }
 
@@ -64,9 +72,17 @@ protected:
     {
         auto now = std::chrono::steady_clock::now();
 
-        if (m_firstFlush || forceFlush ||
-            std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastFlushTime) >= m_flushInterval)
+        if (forceFlush ||
+            (m_flushInterval.count() >= 0 &&
+                (m_firstFlush ||
+                    std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastFlushTime) >= m_flushInterval)))
         {
+#ifdef _DEBUG
+            m_traceFile << "--- "
+                << std::chrono::duration_cast<std::chrono::milliseconds>(
+                    now - m_lastFlushTime).count()
+                << " ms vs Interval:" << m_flushInterval.count() <<"\n";
+#endif //_DEBUG
             m_traceFile.flush();
             m_lastFlushTime = now;
             m_firstFlush = false;

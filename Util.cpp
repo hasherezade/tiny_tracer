@@ -106,17 +106,6 @@ void util::trim(std::string &s)
     rtrim(s);
 }
 
-int util::loadInt(const std::string &str, bool as_hex)
-{
-     int intVal = 0;
-     
-     std::stringstream ss;
-     ss << (as_hex ? std::hex : std::dec) << str;
-     ss >> intVal;
-
-     return intVal;
-}
-
 std::string util::stripQuotes(const std::string& str)
 {
      std::string s = str;

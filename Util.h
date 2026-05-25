@@ -38,7 +38,25 @@ namespace util {
     // trim from both ends (in place)
     void trim(std::string &s);
 
-    int loadInt(const std::string &str, bool as_hex = false);
+    template <typename T_INT>
+    T_INT loadInt(std::string str, bool as_hex = false)
+    {
+        // Allow values like "(-1)"
+        if (str.size() >= 2 &&
+            str.front() == '(' &&
+            str.back() == ')')
+        {
+            str = str.substr(1, str.size() - 2);
+        }
+
+        T_INT intVal = 0;
+
+        std::stringstream ss;
+        ss << (as_hex ? std::hex : std::dec) << str;
+        ss >> intVal;
+
+        return intVal;
+    }
 
     std::string stripQuotes(const std::string& str);
 

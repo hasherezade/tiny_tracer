@@ -26,7 +26,7 @@
 #include "SysUtil.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "4.0-rc1"
+#define VERSION "4.0-rc2"
 
 #include "Util.h"
 #include "Settings.h"
@@ -1746,7 +1746,7 @@ int main(int argc, char *argv[])
     if (m_Settings.followChildprocesses) {
         filename = addPidToFilename(filename, PIN_GetPid());
     }
-    traceLog.init(filename, m_Settings.shortLogging);
+    traceLog.init(filename, m_Settings.shortLogging, m_Settings.flushInterval);
 
     std::string customDefsPath = util::makePath(outDir, targetModule, LOCAL_FUNC_FILE_SUFFIX);
     Settings::loadCustomDefs(customDefsPath.c_str(), m_Settings.customDefs);
