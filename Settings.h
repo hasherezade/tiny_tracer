@@ -159,6 +159,7 @@ public:
         logSectTrans(true),
         logShelcTrans(true),
         shortLogging(true),
+        flushInterval(1),
         logIndirect(false),
         hexdumpSize(8),
         hookSleep(false),
@@ -172,8 +173,7 @@ public:
         emulateSingleStep(true),
         disasmCtx(false), disasmDepth(DISASM_INNER),
         logReturn(false), followArgReturn(false),
-        volumeID(0),
-        flushInterval(1)
+        volumeID(0)
     {
     }
 

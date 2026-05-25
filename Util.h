@@ -4,7 +4,8 @@
 #include <iostream>
 #include <cstring>
 #include <cstdio>
-#include <string>
+#include <string>       // std::string
+#include <sstream>      // std::stringstream
 #include <vector>
 
 #define IS_PRINTABLE(c) (c >= 0x20 && c < 0x7f)
@@ -50,11 +51,15 @@ namespace util {
         }
 
         T_INT intVal = 0;
-
-        std::stringstream ss;
-        ss << (as_hex ? std::hex : std::dec) << str;
-        ss >> intVal;
-
+	std::stringstream ss;
+	if (as_hex) {
+            ss.setf(std::ios::hex, std::ios::basefield);
+	}   
+	else {
+            ss.setf(std::ios::dec, std::ios::basefield);
+	}
+	ss << str;
+	ss >> intVal;
         return intVal;
     }
 
