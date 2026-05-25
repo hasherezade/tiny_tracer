@@ -292,7 +292,7 @@ void Settings::stripComments(std::string &str)
     }
 }
 
-size_t Settings::loadOffsetsList(const char* filename, std::set<StopOffset>& offsetsList)
+size_t Settings::loadStopOffsetsList(const char* filename, std::set<StopOffset>& offsetsList)
 {
     std::ifstream myfile(filename);
     if (!myfile.is_open()) {

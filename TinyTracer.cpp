@@ -26,7 +26,7 @@
 #include "SysUtil.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "4.0-rc2"
+#define VERSION "4.0-rc3"
 
 #include "Util.h"
 #include "Settings.h"
@@ -54,6 +54,7 @@
 
 #define LOCAL_FUNC_FILE_SUFFIX "func.csv"
 #define DISASM_RANGE_FILE_SUFFIX "disasm_range.csv"
+#define STOP_OFFSETS_FILE_SUFFIX "stop_offsets.txt"
 
 bool g_IsIndirectSyscall = false;
 
@@ -146,9 +147,6 @@ KNOB<std::string> KnobSyscallsTable(KNOB_MODE_WRITEONCE, "pintool",
 
 KNOB<std::string> KnobExcludedListFile(KNOB_MODE_WRITEONCE, "pintool",
     "x", "", "A list of functions excluded from watching");
-
-KNOB<std::string> KnobStopOffsets(KNOB_MODE_WRITEONCE, "pintool",
-    "p", "", "A list of stop offsets: RVAs of the traced module where the execution should pause");
 
 /* ===================================================================== */
 // Utilities
@@ -1607,8 +1605,6 @@ BOOL FollowChild(CHILD_PROCESS childProcess, VOID* userData)
     pinArgv[pinArgc++] = KnobWatchListFile.Value().c_str();
     pinArgv[pinArgc++] = "-x";
     pinArgv[pinArgc++] = KnobExcludedListFile.Value().c_str();
-    pinArgv[pinArgc++] = "-p";
-    pinArgv[pinArgc++] = KnobStopOffsets.Value().c_str();
     pinArgv[pinArgc++] = "-l";
     pinArgv[pinArgc++] = KnobSyscallsTable.Value().c_str();
     pinArgv[pinArgc++] = "-m";
@@ -1704,13 +1700,6 @@ int main(int argc, char *argv[])
     }
     PIN_InitSymbolsAlt(mode);
 
-    if (KnobStopOffsets.Enabled()) {
-        std::string stopOffsetsFile = KnobStopOffsets.ValueString();
-        if (stopOffsetsFile.length()) {
-            const size_t loaded = Settings::loadOffsetsList(stopOffsetsFile.c_str(), m_Settings.stopOffsets);
-            std::cout << "Loaded " << loaded << " stop offsets\n";
-        }
-    }
     if (KnobExcludedListFile.Enabled()) {
         std::string excludedList = KnobExcludedListFile.ValueString();
         if (excludedList.length()) {
@@ -1757,6 +1746,11 @@ int main(int argc, char *argv[])
     Settings::loadDisasmRanges(disasmRangeFile.c_str(), m_Settings.disasmRanges);
     if (m_Settings.disasmRanges.size()) {
         std::cout << "Disasm ranges: " << m_Settings.disasmRanges.size() << std::endl;
+    }
+    std::string stopOffsetsPath = util::makePath(outDir, targetModule, STOP_OFFSETS_FILE_SUFFIX);
+    Settings::loadStopOffsetsList(stopOffsetsPath.c_str(), m_Settings.stopOffsets);
+    if (m_Settings.stopOffsets.size()) {
+        std::cout << "Loaded " << m_Settings.stopOffsets.size() << " stop offsets\n";
     }
 #ifdef _WIN32
     TrackThreads::InstrumentCreateThreadSyscalls();
