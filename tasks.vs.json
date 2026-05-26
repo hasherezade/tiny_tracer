@@ -5,29 +5,23 @@
       "taskLabel": "Build x64",
       "appliesTo": "/",
       "type": "launch",
-      "command": "C:\\msys64\\mingw64\\bin\\mingw32-make.exe",
+      "command": "${workspaceRoot}\\build_env.bat",
       "args": ["all", "TARGET=intel64"],
-      "envVars": {
-        "PATH": "C:\\msys64\\usr\\bin;C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\Llvm\\x64\\bin;C:\\msys64\\mingw64\\bin;${env.PATH}"
-      },
       "contextType": "build"
     },
     {
       "taskLabel": "Build x86",
       "appliesTo": "/",
       "type": "launch",
-      "command": "C:\\msys64\\mingw64\\bin\\mingw32-make.exe",
+      "command": "${workspaceRoot}\\build_env.bat",
       "args": ["all", "TARGET=ia32"],
-      "envVars": {
-        "PATH": "C:\\msys64\\usr\\bin;C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\Llvm\\x64\\bin;C:\\msys64\\mingw64\\bin;${env.PATH}"
-      },
       "contextType": "build"
     },
     {
       "taskLabel": "Clean x64",
       "appliesTo": "/",
       "type": "launch",
-      "command": "C:\\msys64\\mingw64\\bin\\mingw32-make.exe",
+      "command": "${workspaceRoot}\\build_env.bat",
       "args": ["clean", "TARGET=intel64"],
       "contextType": "clean"
     },
@@ -35,7 +29,7 @@
       "taskLabel": "Clean x86",
       "appliesTo": "/",
       "type": "launch",
-      "command": "C:\\msys64\\mingw64\\bin\\mingw32-make.exe",
+      "command": "${workspaceRoot}\\build_env.bat",
       "args": ["clean", "TARGET=ia32"],
       "contextType": "clean"
     },
@@ -45,7 +39,11 @@
       "type": "launch",
       "command": "C:\\msys64\\usr\\bin\\bash.exe",
       "args": ["find_sdk.sh"],
+      "envVars": {
+        "PATH": "C:\\msys64\\usr\\bin;${env.PATH}"
+      },
       "contextType": "build"
     }
   ]
 }
+
