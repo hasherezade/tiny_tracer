@@ -44,7 +44,7 @@ It was tested with [Intel Pin 4.2](https://software.intel.com/en-us/articles/pin
 
 You can build it on Windows or on Linux. Detailed descriptions available [here](https://github.com/hasherezade/tiny_tracer/wiki/Installation).
 
-*If you have any problems with building the project on Windows, you can use the test builds from the [AppVeyor server](https://ci.appveyor.com/project/hasherezade/tiny-tracer). Select the platform, and then 'Artifacts'. Check the 'Console' output to see what version of Pin is required to use them. Then, follow the [installation instructions](https://github.com/hasherezade/tiny_tracer/wiki/Installation)*
+*If you have any problems with building the project on Windows, you can use the test builds from the [AppVeyor server](https://ci.appveyor.com/project/hasherezade/tiny-tracer). Select the platform, and then 'Artifacts'. Check the 'Console' output to see what version of Pin is required to use them. Then, follow the [installation instructions](https://github.com/hasherezade/tiny_tracer/wiki/Installation).*
 
 ## ⚙ Usage
 
