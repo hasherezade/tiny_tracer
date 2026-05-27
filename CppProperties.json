@@ -4,18 +4,18 @@
             "name": "PIN-x64",
             "includePath": [
                 "${workspaceRoot}",
-                "${workspaceRoot}\\..\\..\\..\\source\\include\\pin",
-                "${workspaceRoot}\\..\\..\\..\\source\\include\\pin\\gen",
-                "${workspaceRoot}\\..\\..\\..\\intel64\\pinrt\\include\\adaptor",
-                "${workspaceRoot}\\..\\..\\..\\extras\\components\\include",
-                "${workspaceRoot}\\..\\..\\..\\extras\\xed-intel64\\include\\xed",
-                "${workspaceRoot}\\..\\..\\..\\extras\\cxx\\include",
-                "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include",
-                "${workspaceRoot}\\..\\..\\..\\extras\\crt",
-                "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\arch-x86_64",
-                "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\kernel\\uapi",
-                "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\kernel\\uapi\\asm-x86",
-                "${workspaceRoot}\\..\\..\\..\\source\\tools\\Utils"
+                "${env.PIN_ROOT}\\source\\include\\pin",
+                "${env.PIN_ROOT}\\source\\include\\pin\\gen",
+                "${env.PIN_ROOT}\\${env.PIN_ARCH}\\pinrt\\include\\adaptor",
+                "${env.PIN_ROOT}\\extras\\components\\include",
+                "${env.PIN_ROOT}\\extras\\${env.XED_ARCH}\\include\\xed",
+                "${env.PIN_ROOT}\\extras\\cxx\\include",
+                "${env.PIN_ROOT}\\extras\\crt\\include",
+                "${env.PIN_ROOT}\\extras\\crt",
+                "${env.PIN_ROOT}\\extras\\crt\\include\\${env.CRT_ARCH}",
+                "${env.PIN_ROOT}\\extras\\crt\\include\\kernel\\uapi",
+                "${env.PIN_ROOT}\\extras\\crt\\include\\kernel\\uapi\\asm-x86",
+                "${env.PIN_ROOT}\\source\\tools\\Utils"
             ],
             "defines": [
                 "TARGET_IA32E",
@@ -33,7 +33,11 @@
             "environments": [
                 {
                     "environment": "PIN-x64",
-                    "TT_BUILD_ARCH": "x64"
+                    "TT_BUILD_ARCH": "x64",
+                    "PIN_ROOT": "${workspaceRoot}\\..\\..\\..",
+                    "PIN_ARCH": "intel64",
+                    "XED_ARCH": "xed-intel64",
+                    "CRT_ARCH": "arch-x86_64"
                 }
             ]
         },
@@ -41,18 +45,18 @@
             "name": "PIN-x86",
             "includePath": [
                 "${workspaceRoot}",
-                "${workspaceRoot}\\..\\..\\..\\source\\include\\pin",
-                "${workspaceRoot}\\..\\..\\..\\source\\include\\pin\\gen",
-                "${workspaceRoot}\\..\\..\\..\\ia32\\pinrt\\include\\adaptor",
-                "${workspaceRoot}\\..\\..\\..\\extras\\components\\include",
-                "${workspaceRoot}\\..\\..\\..\\extras\\xed-ia32\\include\\xed",
-                "${workspaceRoot}\\..\\..\\..\\extras\\cxx\\include",
-                "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include",
-                "${workspaceRoot}\\..\\..\\..\\extras\\crt",
-                "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\arch-x86",
-                "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\kernel\\uapi",
-                "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\kernel\\uapi\\asm-x86",
-                "${workspaceRoot}\\..\\..\\..\\source\\tools\\Utils"
+                "${env.PIN_ROOT}\\source\\include\\pin",
+                "${env.PIN_ROOT}\\source\\include\\pin\\gen",
+                "${env.PIN_ROOT}\\${env.PIN_ARCH}\\pinrt\\include\\adaptor",
+                "${env.PIN_ROOT}\\extras\\components\\include",
+                "${env.PIN_ROOT}\\extras\\${env.XED_ARCH}\\include\\xed",
+                "${env.PIN_ROOT}\\extras\\cxx\\include",
+                "${env.PIN_ROOT}\\extras\\crt\\include",
+                "${env.PIN_ROOT}\\extras\\crt",
+                "${env.PIN_ROOT}\\extras\\crt\\include\\${env.CRT_ARCH}",
+                "${env.PIN_ROOT}\\extras\\crt\\include\\kernel\\uapi",
+                "${env.PIN_ROOT}\\extras\\crt\\include\\kernel\\uapi\\asm-x86",
+                "${env.PIN_ROOT}\\source\\tools\\Utils"
             ],
             "defines": [
                 "TARGET_IA32",
@@ -70,7 +74,11 @@
             "environments": [
                 {
                     "environment": "PIN-x86",
-                    "TT_BUILD_ARCH": "x86"
+                    "TT_BUILD_ARCH": "x86",
+                    "PIN_ROOT": "${workspaceRoot}\\..\\..\\..",
+                    "PIN_ARCH": "ia32",
+                    "XED_ARCH": "xed-ia32",
+                    "CRT_ARCH": "arch-x86"
                 }
             ]
         }
