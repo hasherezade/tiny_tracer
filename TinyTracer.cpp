@@ -1656,6 +1656,32 @@ VOID ThreadEnd(THREADID tid, const CONTEXT* ctxt, INT32 code, VOID* v)
 
 //---
 
+static std::string GetEarlyKnobValue(int argc, char* argv[], const KNOB_BASE& knob)
+{
+    const std::string knobArg = "-" + knob.Name();
+
+    for (int i = 1; i < argc - 1; ++i) {
+        if (strcmp(argv[i], "--") == 0) {
+            break;
+        }
+        if (knobArg == argv[i]) {
+            return argv[i + 1];
+        }
+    }
+    return "";
+}
+
+static std::string GetTargetFromCommandLine(int argc, char* argv[])
+{
+    for (int i = 1; i < argc - 1; ++i) {
+        if (strcmp(argv[i], "--") == 0) {
+            return argv[i + 1];
+        }
+    }
+    return "";
+}
+
+//---
 
 /*!
 * The main procedure of the tool.
@@ -1664,43 +1690,47 @@ VOID ThreadEnd(THREADID tid, const CONTEXT* ctxt, INT32 code, VOID* v)
 * @param[in]   argv            array of command line arguments,
 *                              including pin -t <toolname> -- ...
 */
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
-    // Initialize PIN library. Print help message if -h(elp) is specified
-    // in the command line or the command line is invalid 
+    pinPath = argv[0];
 
-    if (PIN_Init(argc, argv))
-    {
-        return Usage();
+    // Early parse only for the settings file, because symbol mode must be
+    // selected before PIN_Init().
+    Settings earlySettings;
+
+    const std::string earlyIniFilename = GetEarlyKnobValue(argc, argv, KnobIniFile);
+    if (!earlyIniFilename.empty()) {
+        earlySettings.loadINI(earlyIniFilename);
     }
 
-    pinPath = argv[0];
+    SYMBOL_INFO_MODE mode = EXPORT_SYMBOLS;
+    if (earlySettings.useDebugSym) {
+        std::cout << "Using debug symbols (if available)\n";
+        mode = DEBUG_OR_EXPORT_SYMBOLS;
+    }
+
+    PIN_InitSymbolsAlt(mode);
+
+    // Now let PIN parse the real knobs...
+
+    // Initialize PIN library. Print help message if -h(elp) is specified
+    // in the command line or the command line is invalid 
+    if (PIN_Init(argc, argv)) {
+        return Usage();
+    }
+    
     std::string targetModule = KnobModuleName.Value();
-    if (targetModule.length() == 0) {
-        // init App Name:
-        for (int i = 1; i < (argc - 1); i++) {
-            if (strcmp(argv[i], "--") == 0) {
-                targetModule = argv[i + 1];
-                break;
-            }
-        }
+    if (targetModule.empty()) {
+        targetModule = GetTargetFromCommandLine(argc, argv);
     }
 
     pInfo.init(targetModule);
 
     const std::string iniFilename = KnobIniFile.ValueString();
     if (!m_Settings.loadINI(iniFilename)) {
-        std::cerr << "Coud not load the INI file: " << iniFilename << std::endl;
+        std::cerr << "Could not load the INI file: " << iniFilename << std::endl;
         m_Settings.saveINI(iniFilename);
     }
-
-    // select mode in which symbols should be initialized
-    SYMBOL_INFO_MODE mode = EXPORT_SYMBOLS;
-    if (m_Settings.useDebugSym) {
-        std::cout << "Using debug symbols (if available)\n";
-        mode = DEBUG_OR_EXPORT_SYMBOLS;
-    }
-    PIN_InitSymbolsAlt(mode);
 
     if (KnobSyscallsTable.Enabled()) {
         std::string syscallsTableFile = KnobSyscallsTable.ValueString();
