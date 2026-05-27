@@ -653,7 +653,7 @@ BOOL AntiDbgWatch::Init()
     watchedFuncs.appendFunc(EvasionFuncInfo("ntdll", "NtQueryObject", 5, AntiDbg_NtQueryObject, nullptr, WATCH_DEEP));
 
     watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "OutputDebugStringA", 5, nullptr, nullptr, WATCH_DEEP));
-    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "OutputDebugStringA", 5, nullptr, nullptr, WATCH_DEEP));
+    watchedFuncs.appendFunc(EvasionFuncInfo("kernel32", "OutputDebugStringW", 5, nullptr, nullptr, WATCH_DEEP));
 
     watchedFuncs.appendFunc(EvasionFuncInfo("user32", "GetWindowTextA", 3, nullptr, nullptr, WATCH_DEEP));
     watchedFuncs.appendFunc(EvasionFuncInfo("user32", "GetWindowTextW", 3, nullptr, nullptr, WATCH_DEEP));
