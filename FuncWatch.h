@@ -134,7 +134,7 @@ public:
     {
         std::ifstream myfile(filename);
         if (!myfile.is_open()) {
-            std::cerr << "Coud not open file: " << filename << std::endl;
+            std::cerr << "Could not open file: " << filename << std::endl;
             return 0;
         }
         const size_t count_before = funcs.size();

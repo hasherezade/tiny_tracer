@@ -86,7 +86,7 @@ size_t FuncWatchList::loadList(const char* filename, FuncList* exclusions)
     std::ifstream myfile(filename);
     if (!myfile.is_open()) {
 #ifdef _DEBUG
-        std::cerr << "Coud not open file: " << filename << std::endl;
+        std::cerr << "Could not open file: " << filename << std::endl;
 #endif//_DEBUG
         return 0;
     }
