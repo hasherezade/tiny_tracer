@@ -25,19 +25,33 @@ if [ -z "$SEARCH_DIR" ] || [ ! -d "$SEARCH_DIR" ]; then
     exit 1
 fi
 
-# Use glob instead of find — more reliable with special characters in MSYS2
-SDK_LIB=""
+SDK_LIB_X64=""
+SDK_LIB_X86=""
+
 for f in "$SEARCH_DIR"/*/Lib/*/um/x64/kernel32.lib; do
     if [ -f "$f" ]; then
-        SDK_LIB="$f"
+        SDK_LIB_X64="$f"
     fi
 done
 
-if [ -n "$SDK_LIB" ]; then
-    SHORT_PATH=$(cygpath -m -s "$SDK_LIB")
-    echo "WINDOWS_SDK_KERNEL32 := $SHORT_PATH" > sdk_lib.mk
-    echo "Found: $SHORT_PATH"
+for f in "$SEARCH_DIR"/*/Lib/*/um/x86/kernel32.lib; do
+    if [ -f "$f" ]; then
+        SDK_LIB_X86="$f"
+    fi
+done
+
+if [ -n "$SDK_LIB_X64" ] && [ -n "$SDK_LIB_X86" ]; then
+    SHORT_X64=$(cygpath -m -s "$SDK_LIB_X64")
+    SHORT_X86=$(cygpath -m -s "$SDK_LIB_X86")
+
+    {
+        echo "WINDOWS_SDK_KERNEL32_X64 := $SHORT_X64"
+        echo "WINDOWS_SDK_KERNEL32_X86 := $SHORT_X86"
+    } > sdk_lib.mk
+
+    echo "Found x64: $SHORT_X64"
+    echo "Found x86: $SHORT_X86"
 else
-    echo "kernel32.lib not found under: $SEARCH_DIR"
+    echo "kernel32.lib not found for both x64 and x86 under: $SEARCH_DIR"
     exit 1
 fi

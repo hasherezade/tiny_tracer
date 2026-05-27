@@ -58,11 +58,26 @@ EVASION_CHECKS=
 EXPORTS_INFO=
 endif
 
-# Auto-generate SDK lib path on Windows if missing
+# Auto-generate Windows SDK import-library path when sdk_lib.mk is missing.
 ifeq ($(OS),Windows_NT)
+
 sdk_lib.mk: find_sdk_win.sh
 	bash find_sdk_win.sh
+
+-include sdk_lib.mk
+
+ifeq ($(TARGET),intel64)
+ifdef WINDOWS_SDK_KERNEL32_X64
+TOOL_LIBS += $(WINDOWS_SDK_KERNEL32_X64)
 endif
+else ifeq ($(TARGET),ia32)
+ifdef WINDOWS_SDK_KERNEL32_X86
+TOOL_LIBS += $(WINDOWS_SDK_KERNEL32_X86)
+endif
+endif
+
+endif
+#
 
 $(OBJDIR)TinyTracer$(BITNESS)$(PINTOOL_SUFFIX): $(OBJDIR)Util$(OBJ_SUFFIX) $(OBJDIR)SysUtil$(OBJ_SUFFIX) $(OBJDIR)Settings$(OBJ_SUFFIX) $(OBJDIR)TraceLog$(OBJ_SUFFIX) \
 	$(OBJDIR)TinyTracer$(OBJ_SUFFIX) $(OBJDIR)ModuleInfo$(OBJ_SUFFIX) $(OBJDIR)ProcessInfo$(OBJ_SUFFIX) $(OBJDIR)FuncWatch$(OBJ_SUFFIX) \

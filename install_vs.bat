@@ -13,6 +13,8 @@ set "TT_64=%ROOT%obj-intel64\%TT_BUILD_64%"
 set "DST_32=%TARGET_DIR%\%TT_BUILD_32%"
 set "DST_64=%TARGET_DIR%\%TT_BUILD_64%"
 
+echo [*] Installing already-built TinyTracer DLLs...
+
 if not exist "%TARGET_DIR%" (
     mkdir "%TARGET_DIR%"
     if errorlevel 1 (
