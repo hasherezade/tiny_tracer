@@ -90,6 +90,8 @@ if errorlevel 1 (
 )
 
 set "PATH=C:\msys64\usr\bin;%VSROOT%\VC\Tools\Llvm\x64\bin;C:\msys64\mingw64\bin;%PATH%"
+set "ROOT=%~dp0"
+cd /d "%ROOT%"
 
 echo [*] Running: C:\msys64\mingw64\bin\mingw32-make.exe%MAKE_ARGS% TARGET=%MAKE_TARGET%
 C:\msys64\mingw64\bin\mingw32-make.exe%MAKE_ARGS% TARGET=%MAKE_TARGET%

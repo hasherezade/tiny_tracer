@@ -1,6 +1,6 @@
 #!/bin/bash
-# find_sdk_lib.sh - locate Windows SDK kernel32.lib
-# Usage: bash find_sdk_lib.sh [optional_sdk_root]
+# find_sdk_win.sh - locate Windows SDK kernel32.lib for x86 and x64
+# Usage: bash find_sdk_win.sh [optional_sdk_root]
 
 SEARCH_DIR="$1"
 
