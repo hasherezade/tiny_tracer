@@ -38,7 +38,7 @@
       "appliesTo": "/",
       "type": "launch",
       "command": "C:\\msys64\\usr\\bin\\bash.exe",
-      "args": ["find_sdk.sh"],
+      "args": ["find_sdk_win.sh"],
       "envVars": {
         "PATH": "C:\\msys64\\usr\\bin;${env.PATH}"
       },
