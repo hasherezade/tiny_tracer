@@ -2,48 +2,30 @@
   "version": "0.2.1",
   "tasks": [
     {
-      "taskLabel": "Build x64",
+      "taskLabel": "Build",
       "appliesTo": "/",
       "type": "launch",
       "command": "${workspaceRoot}\\build_env.bat",
-      "args": ["all", "TARGET=intel64"],
+      "args": [ "${env.TT_BUILD_ARCH}", "all" ],
+      "inheritEnvironments": [ "${cpp.activeConfiguration}" ],
       "contextType": "build"
     },
     {
-      "taskLabel": "Build x86",
+      "taskLabel": "Clean",
       "appliesTo": "/",
       "type": "launch",
       "command": "${workspaceRoot}\\build_env.bat",
-      "args": ["all", "TARGET=ia32"],
-      "contextType": "build"
-    },
-    {
-      "taskLabel": "Clean x64",
-      "appliesTo": "/",
-      "type": "launch",
-      "command": "${workspaceRoot}\\build_env.bat",
-      "args": ["clean", "TARGET=intel64"],
+      "args": [ "${env.TT_BUILD_ARCH}", "clean" ],
+      "inheritEnvironments": [ "${cpp.activeConfiguration}" ],
       "contextType": "clean"
     },
     {
-      "taskLabel": "Clean x86",
+      "taskLabel": "Install x86+x64",
       "appliesTo": "/",
       "type": "launch",
-      "command": "${workspaceRoot}\\build_env.bat",
-      "args": ["clean", "TARGET=ia32"],
-      "contextType": "clean"
-    },
-    {
-      "taskLabel": "Find SDK",
-      "appliesTo": "/",
-      "type": "launch",
-      "command": "C:\\msys64\\usr\\bin\\bash.exe",
-      "args": ["find_sdk_win.sh"],
-      "envVars": {
-        "PATH": "C:\\msys64\\usr\\bin;${env.PATH}"
-      },
-      "contextType": "build"
+      "command": "${workspaceRoot}\\install_vs.bat",
+      "args": [],
+      "contextType": "custom"
     }
   ]
 }
-

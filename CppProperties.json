@@ -1,66 +1,78 @@
 {
-  "configurations": [
-    {
-      "name": "PIN-x64",
-      "includePath": [
-        "${workspaceRoot}",
-        "${workspaceRoot}\\..\\..\\..\\source\\include\\pin",
-        "${workspaceRoot}\\..\\..\\..\\source\\include\\pin\\gen",
-        "${workspaceRoot}\\..\\..\\..\\intel64\\pinrt\\include\\adaptor",
-        "${workspaceRoot}\\..\\..\\..\\extras\\components\\include",
-        "${workspaceRoot}\\..\\..\\..\\extras\\xed-intel64\\include\\xed",
-        "${workspaceRoot}\\..\\..\\..\\extras\\cxx\\include",
-        "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include",
-        "${workspaceRoot}\\..\\..\\..\\extras\\crt",
-        "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\arch-x86_64",
-        "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\kernel\\uapi",
-        "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\kernel\\uapi\\asm-x86",
-        "${workspaceRoot}\\..\\..\\..\\source\\tools\\Utils"
-      ],
-      "defines": [
-        "TARGET_IA32E",
-        "HOST_IA32E",
-        "TARGET_WINDOWS",
-        "__PIN__=1",
-        "PIN_CRT=1",
-        "__LP64__",
-        "_LIBCPP_DISABLE_AVAILABILITY",
-        "_LIBCPP_NO_VCRUNTIME",
-        "__BIONIC__"
-      ],
-      "intelliSenseMode": "windows-clang-x64",
-      "compilerSwitches": "/GR- /EHs- /EHa-"
-    },
-    {
-      "name": "PIN-x86",
-      "includePath": [
-        "${workspaceRoot}",
-        "${workspaceRoot}\\..\\..\\..\\source\\include\\pin",
-        "${workspaceRoot}\\..\\..\\..\\source\\include\\pin\\gen",
-        "${workspaceRoot}\\..\\..\\..\\ia32\\pinrt\\include\\adaptor",
-        "${workspaceRoot}\\..\\..\\..\\extras\\components\\include",
-        "${workspaceRoot}\\..\\..\\..\\extras\\xed-ia32\\include\\xed",
-        "${workspaceRoot}\\..\\..\\..\\extras\\cxx\\include",
-        "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include",
-        "${workspaceRoot}\\..\\..\\..\\extras\\crt",
-        "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\arch-x86",
-        "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\kernel\\uapi",
-        "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\kernel\\uapi\\asm-x86",
-        "${workspaceRoot}\\..\\..\\..\\source\\tools\\Utils"
-      ],
-      "defines": [
-        "TARGET_IA32",
-        "HOST_IA32",
-        "TARGET_WINDOWS",
-        "__PIN__=1",
-        "PIN_CRT=1",
-        "__i386__",
-        "_LIBCPP_DISABLE_AVAILABILITY",
-        "_LIBCPP_NO_VCRUNTIME",
-        "__BIONIC__"
-      ],
-      "intelliSenseMode": "windows-clang-x86",
-      "compilerSwitches": "/GR- /EHs- /EHa-"
-    }
-  ]
+    "configurations": [
+        {
+            "name": "PIN-x64",
+            "includePath": [
+                "${workspaceRoot}",
+                "${workspaceRoot}\\..\\..\\..\\source\\include\\pin",
+                "${workspaceRoot}\\..\\..\\..\\source\\include\\pin\\gen",
+                "${workspaceRoot}\\..\\..\\..\\intel64\\pinrt\\include\\adaptor",
+                "${workspaceRoot}\\..\\..\\..\\extras\\components\\include",
+                "${workspaceRoot}\\..\\..\\..\\extras\\xed-intel64\\include\\xed",
+                "${workspaceRoot}\\..\\..\\..\\extras\\cxx\\include",
+                "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include",
+                "${workspaceRoot}\\..\\..\\..\\extras\\crt",
+                "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\arch-x86_64",
+                "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\kernel\\uapi",
+                "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\kernel\\uapi\\asm-x86",
+                "${workspaceRoot}\\..\\..\\..\\source\\tools\\Utils"
+            ],
+            "defines": [
+                "TARGET_IA32E",
+                "HOST_IA32E",
+                "TARGET_WINDOWS",
+                "__PIN__=1",
+                "PIN_CRT=1",
+                "__LP64__",
+                "_LIBCPP_DISABLE_AVAILABILITY",
+                "_LIBCPP_NO_VCRUNTIME",
+                "__BIONIC__"
+            ],
+            "intelliSenseMode": "windows-clang-x64",
+            "compilerSwitches": "/GR- /EHs- /EHa-",
+            "environments": [
+                {
+                    "environment": "PIN-x64",
+                    "TT_BUILD_ARCH": "x64"
+                }
+            ]
+        },
+        {
+            "name": "PIN-x86",
+            "includePath": [
+                "${workspaceRoot}",
+                "${workspaceRoot}\\..\\..\\..\\source\\include\\pin",
+                "${workspaceRoot}\\..\\..\\..\\source\\include\\pin\\gen",
+                "${workspaceRoot}\\..\\..\\..\\ia32\\pinrt\\include\\adaptor",
+                "${workspaceRoot}\\..\\..\\..\\extras\\components\\include",
+                "${workspaceRoot}\\..\\..\\..\\extras\\xed-ia32\\include\\xed",
+                "${workspaceRoot}\\..\\..\\..\\extras\\cxx\\include",
+                "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include",
+                "${workspaceRoot}\\..\\..\\..\\extras\\crt",
+                "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\arch-x86",
+                "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\kernel\\uapi",
+                "${workspaceRoot}\\..\\..\\..\\extras\\crt\\include\\kernel\\uapi\\asm-x86",
+                "${workspaceRoot}\\..\\..\\..\\source\\tools\\Utils"
+            ],
+            "defines": [
+                "TARGET_IA32",
+                "HOST_IA32",
+                "TARGET_WINDOWS",
+                "__PIN__=1",
+                "PIN_CRT=1",
+                "__i386__",
+                "_LIBCPP_DISABLE_AVAILABILITY",
+                "_LIBCPP_NO_VCRUNTIME",
+                "__BIONIC__"
+            ],
+            "intelliSenseMode": "windows-clang-x86",
+            "compilerSwitches": "/GR- /EHs- /EHa-",
+            "environments": [
+                {
+                    "environment": "PIN-x86",
+                    "TT_BUILD_ARCH": "x86"
+                }
+            ]
+        }
+    ]
 }
