@@ -104,10 +104,6 @@ size_t EvasionWatch::installCallbacks(IMG Image, EvasionWatchBeforeCallBack defa
             if (EvasionAddCallbackBefore(Image, wfunc.funcName.c_str(), wfunc.paramCount, callbackBefore)) {
                 added++;
             }
-            if (wfunc.callbackAfter)
-                if (EvasionAddCallbackAfter(Image, wfunc.funcName.c_str(), wfunc.callbackAfter)) {
-                    added++;
-                }
         }
     }
 
@@ -118,10 +114,12 @@ size_t EvasionWatch::installCallbacks(IMG Image, EvasionWatchBeforeCallBack defa
         if (wfunc.type > maxLevel) {
             continue;
         }
+        if (!wfunc.callbackAfter) {
+            continue;
+        }
         if (EvasionAddCallbackAfter(Image, wfunc.funcName.c_str(), wfunc.callbackAfter)) {
             added++;
         }
-
     }
     return added;
 }
