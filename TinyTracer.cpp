@@ -26,7 +26,7 @@
 #include "SysUtil.h"
 
 #define TOOL_NAME "TinyTracer"
-#define VERSION "4.0-rc3"
+#define VERSION "4.0"
 
 #include "Util.h"
 #include "Settings.h"
