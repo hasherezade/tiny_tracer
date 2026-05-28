@@ -38,15 +38,16 @@ sdk_lib.mk: find_sdk_win.sh
 
 ifeq ($(TARGET),intel64)
 ifdef WINDOWS_SDK_KERNEL32_X64
-TOOL_LIBS += $(WINDOWS_SDK_KERNEL32_X64)
+TOOL_LPATHS += -LIBPATH:$(dir $(WINDOWS_SDK_KERNEL32_X64))
 endif
 else ifeq ($(TARGET),ia32)
 ifdef WINDOWS_SDK_KERNEL32_X86
-TOOL_LIBS += $(WINDOWS_SDK_KERNEL32_X86)
+TOOL_LPATHS += -LIBPATH:$(dir $(WINDOWS_SDK_KERNEL32_X86))
 endif
 endif
 
 endif
+
 
 ##############################################################
 #
